@@ -1,0 +1,22 @@
+{
+  "name": "allfix-services-xpress",
+  "version": "1.0.0",
+  "description": "Service coordination platform connecting customers with local professionals in Nigeria",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "service-coordination",
+    "handyman",
+    "repairs",
+    "african-services",
+    "verified-vendors"
+  ],
+  "author": "ALLFIX Services Xpress",
+  "license": "ISC"
+}

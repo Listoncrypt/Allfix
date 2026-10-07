@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/favicon.png">
+<title>Request a Service | ALLFIX Services Xpress</title>
+  <meta name="description" content="Request verified professionals for home services, auto repair, appliances, and property care across Nigeria. Fast response and vetted quality.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  
+  <header class="site-header">
+    <div class="container nav-inner">
+      <a href="/" class="logo-wrapper" aria-label="ALLFIX Services Xpress Home">
+        <img class="brand-logo" src="/allfix-xpress-green.png" alt="">
+      </a>
+
+      <ul class="nav-links">
+        <li class="nav-item"><a href="/">Home</a></li>
+        <li class="nav-item"><a href="/about">How It Works</a></li>
+        <li class="nav-item"><a href="/request-service" class="active">Services</a></li>
+        <li class="nav-item"><a href="/become-vendor">For Vendors</a></li>
+        <li class="nav-item"><a href="/contact">Contact</a></li>
+        <li class="nav-item"><a href="/admin" style="color: #68756B; font-size: 0.85rem;">Compliance Audit</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <a href="/become-vendor" class="btn btn-outline btn-sm">Join as Vendor</a>
+        <a href="/request-service" class="btn btn-primary btn-sm">Request a Service</a>
+        <button class="mobile-menu-btn" aria-label="Toggle navigation menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  
+  <div class="mobile-nav">
+    <ul class="nav-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="/about">How It Works</a></li>
+      <li><a href="/request-service">Request a Service</a></li>
+      <li><a href="/become-vendor">Become a Vendor</a></li>
+      <li><a href="/client-terms">Client Terms (v1.0)</a></li>
+      <li><a href="/vendor-terms">Vendor Terms (v1.0)</a></li>
+      <li><a href="/contact">Contact Us</a></li>
+      <li><a href="/admin">Audit Portal</a></li>
+    </ul>
+    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
+      <a href="/request-service" class="btn btn-primary" style="width: 100%;">Request a Service</a>
+      <a href="/become-vendor" class="btn btn-outline" style="width: 100%;">Become a Vendor</a>
+    </div>
+  </div>
+
+  
+  <div class="legal-page-header">
+    <div class="container container-narrow">
+      <div class="section-tag">Direct Matching Portal</div>
+      <h1 style="font-size: 2.75rem; margin-bottom: 0.75rem;">
+        Request a <span class="text-highlight">Verified Service</span>
+      </h1>
+      <p style="font-size: 1.1rem; color: #68756B;">
+        Tell us what needs attention. We match you with nearby, background-checked specialists and coordinate delivery.
+      </p>
+    </div>
+  </div>
+
+  
+  <div class="section">
+    <div class="container">
+      <div class="form-card-container">
+        
+        <form id="serviceRequestForm">
+          
+          <h3 style="font-size: 1.25rem; margin-bottom: 1.25rem; color: #151B17; display: flex; align-items: center; gap: 0.5rem;">
+            <span style="width: 28px; height: 28px; background: #DCFCE7; color: #16883D; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700;">1</span>
+            Your Contact Information
+          </h3>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="customerName">
+                Full Name <span class="required">*</span>
+              </label>
+              <input type="text" id="customerName" class="form-control" placeholder="e.g. Adeola Olawale" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="phone">
+                Phone Number (WhatsApp preferred) <span class="required">*</span>
+              </label>
+              <input type="tel" id="phone" class="form-control" placeholder="e.g. +234 803 123 4567" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="email">
+              Email Address <span style="font-size: 0.8rem; color: #929B93;">(For dispatch receipts)</span>
+            </label>
+            <input type="email" id="email" class="form-control" placeholder="adeola.o@gmail.com">
+          </div>
+
+          
+          <h3 style="font-size: 1.25rem; margin: 2rem 0 1.25rem 0; color: #151B17; display: flex; align-items: center; gap: 0.5rem;">
+            <span style="width: 28px; height: 28px; background: #DCFCE7; color: #16883D; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700;">2</span>
+            Service & Location Requirements
+          </h3>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="category">
+                Service Category <span class="required">*</span>
+              </label>
+              <select id="category" class="form-control" required>
+                <option value="">Select Service Category</option>
+                <option value="Home Services">Home Services (Plumbing, Electrical, Carpentry)</option>
+                <option value="Cars & Vehicles">Cars & Vehicles (Mechanic, AC, Diagnostics)</option>
+                <option value="Property Maintenance">Property Maintenance (Roofing, Borehole, Solar)</option>
+                <option value="Construction & Land">Construction & Land (Building, Development, Verified Land)</option>
+                <option value="Cleaning & Janitorial">Cleaning & Janitorial (Residential, Office, Fumigation)</option>
+                <option value="Appliance Repairs">Appliance Repairs (AC, Fridge, Generator, Washer)</option>
+                <option value="Products & Spare Parts">Products & Spare Parts (Hardware, Certified Parts)</option>
+                <option value="Other Specialist Services">Other Specialist Services</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="service">
+                Specific Service Item
+              </label>
+                <input type="text" id="service" class="form-control" list="serviceSuggestions" placeholder="e.g. Water heater pipe replacement">
+                <datalist id="serviceSuggestions">
+                  <option value="House construction"></option>
+                  <option value="Building renovation"></option>
+                  <option value="Property development"></option>
+                  <option value="Land sourcing"></option>
+                </datalist>
+            </div>
+          </div>
+
+            <fieldset class="choice-fieldset conditional-fields" id="propertyTypeSection" hidden aria-hidden="true">
+              <legend>What type of property is this for?</legend>
+              <p class="choice-help">Choose all that apply.</p>
+              <div class="choice-grid property-type-grid">
+                <label class="choice-option"><input type="checkbox" name="propertyTypes" value="Bungalow"><span>Bungalow</span></label>
+                <label class="choice-option"><input type="checkbox" name="propertyTypes" value="Terrace Duplex"><span>Terrace Duplex</span></label>
+                <label class="choice-option"><input type="checkbox" name="propertyTypes" value="Fully Detached Duplex"><span>Fully Detached Duplex</span></label>
+                <label class="choice-option"><input type="checkbox" name="propertyTypes" value="Semi Detached Duplex"><span>Semi Detached Duplex</span></label>
+                <label class="choice-option"><input type="checkbox" name="propertyTypes" value="Land"><span>Land</span></label>
+                <label class="choice-option"><input type="checkbox" name="propertyTypes" value="Other" id="propertyTypeOther"><span>Other</span></label>
+              </div>
+              <div class="form-group choice-other-field" id="propertyTypeOtherWrap" hidden>
+                <label class="form-label" for="propertyTypeOtherText">Tell us the property type</label>
+                <input type="text" class="form-control" id="propertyTypeOtherText" placeholder="Describe the property type">
+              </div>
+            </fieldset>
+
+            <section class="choice-fieldset conditional-fields" id="constructionDetailsSection" hidden aria-hidden="true" aria-labelledby="constructionHeading">
+              <h3 class="choice-legend" id="constructionHeading">Construction & land details</h3>
+              <div class="form-group">
+                <label class="form-label" for="constructionDescription">Describe what you want to construct <span class="required">*</span></label>
+                <textarea class="form-control" id="constructionDescription" rows="3" placeholder="For example, a three-bedroom bungalow with a boys’ quarters"></textarea>
+              </div>
+              <fieldset class="choice-subgroup">
+                <legend>What is the land size?</legend>
+                <p class="choice-help">Choose the closest option.</p>
+                <div class="choice-grid land-size-grid">
+                  <label class="choice-option"><input type="radio" name="landSize" value="Half plot"><span>Half plot</span></label>
+                  <label class="choice-option"><input type="radio" name="landSize" value="1 plot"><span>1 plot</span></label>
+                  <label class="choice-option"><input type="radio" name="landSize" value="2 plots"><span>2 plots</span></label>
+                  <label class="choice-option"><input type="radio" name="landSize" value="3 plots"><span>3 plots</span></label>
+                  <label class="choice-option"><input type="radio" name="landSize" value="Full plot"><span>Full plot</span></label>
+                  <label class="choice-option"><input type="radio" name="landSize" value="Other" id="landSizeOther"><span>Other</span></label>
+                </div>
+                <div class="form-group choice-other-field" id="landSizeOtherWrap" hidden>
+                  <label class="form-label" for="landSizeOtherText">Enter the land size</label>
+                  <input type="text" class="form-control" id="landSizeOtherText" placeholder="e.g. 1,200 square metres">
+                </div>
+              </fieldset>
+              <fieldset class="choice-subgroup land-status-group">
+                <legend>Do you already have land?</legend>
+                <div class="choice-grid land-status-grid">
+                  <label class="choice-option"><input type="radio" name="landStatus" value="already-have-land"><span>Yes, I already have land</span></label>
+                  <label class="choice-option"><input type="radio" name="landStatus" value="help-finding-land"><span>No, I want ALLFIX to help me get genuine verified land</span></label>
+                </div>
+              </fieldset>
+            </section>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="location">
+                City / Location Address <span class="required">*</span>
+              </label>
+              <input type="text" id="location" class="form-control" placeholder="e.g. Lekki Phase 1, Lagos" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="urgency">
+                Urgency Level <span class="required">*</span>
+              </label>
+              <select id="urgency" class="form-control" required>
+                <option value="Today">Urgent / Today</option>
+                <option value="Emergency">Emergency (Immediate Dispatch)</option>
+                <option value="Within 48 hours" selected>Within 48 hours</option>
+                <option value="Flexible">Flexible Schedule</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="preferredDate">
+              Preferred Service Date
+            </label>
+            <input type="date" id="preferredDate" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="description">
+              Describe the Issue / Scope of Work <span class="required">*</span>
+            </label>
+            <textarea id="description" class="form-control" rows="4" placeholder="Please describe the fault or requirement in detail. Include any specific symptoms or equipment brands." required></textarea>
+          </div>
+
+          
+          <div class="terms-enforcement-box" id="termsEnforcementBox">
+            <label class="terms-checkbox-label">
+              <input type="checkbox" id="clientTermsCheckbox" class="terms-checkbox">
+              <div class="terms-text-content">
+                <strong>I have read and agree to the ALLFIX Services Xpress Client Terms & Conditions</strong>
+                <span class="terms-version-pill">Version v1.0</span>
+                <p style="margin-top: 0.45rem; font-size: 0.85rem; color: #56645A;">
+                  Mandatory agreement for service matching. Understand platform coordination guidelines, inspection quotes, and customer responsibilities.
+                  <a href="/client-terms" target="_blank" rel="noopener noreferrer" class="terms-link-highlight">
+                    Read Client Terms & Conditions &rarr;
+                  </a>
+                </p>
+              </div>
+            </label>
+            <div id="termsStatusMsg" class="terms-status-msg"></div>
+          </div>
+
+          
+          <div class="form-submit-container">
+            <button type="submit" id="submitRequestBtn" class="btn btn-primary btn-lg" style="width: 100%;" disabled>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+              Submit Service Request
+            </button>
+            <p class="submit-lock-notice" id="submitLockNotice">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              The Submit Request button unlocks automatically once you accept the Client Terms above.
+            </p>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="modal-overlay" id="successModal">
+    <div class="modal-card">
+      <div class="modal-icon-wrap">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <h2 class="modal-title">Request Received!</h2>
+      <p class="modal-body-text">
+        Thank you, <strong id="modalCustomerName">Customer</strong>! Your request has been dispatched to our matching desk. A verified artisan will contact you shortly to confirm inspection details.
+      </p>
+
+      
+      <dl class="modal-audit-box">
+        <dt>Request Tracking Reference:</dt>
+        <dd id="modalReqId">REQ-...</dd>
+        <dt>Terms Audit Agreement ID:</dt>
+        <dd id="modalAgrId">AGR-C-...</dd>
+        <dt>Terms Version Accepted:</dt>
+        <dd id="modalAgrVersion">Client Terms v1.0</dd>
+        <dt>Accepted Timestamp (ISO):</dt>
+        <dd id="modalTimestamp">2026-10-07T...</dd>
+        <dt>Status:</dt>
+        <dd style="color: #15803D; font-weight: 700;">Verified & Legally Logged</dd>
+      </dl>
+
+      <button type="button" id="closeModalBtn" class="btn btn-secondary" style="width: 100%;">
+        Done / Return to Platform
+      </button>
+    </div>
+  </div>
+
+  
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="/" class="logo-wrapper" style="color: white;">
+            <img class="brand-logo" src="/allfix-xpress-green.png" alt="">
+          </a>
+          <p>
+            Nigeria's leading service coordination and matching ecosystem. Connecting homeowners, property leaders, and motorists with verified professionals across Nigeria.
+          </p>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Quick Links</h4>
+          <ul class="footer-links-list">
+            <li><a href="/request-service">Request a Service</a></li>
+            <li><a href="/become-vendor">Become a Vendor</a></li>
+            <li><a href="/about">How It Works</a></li>
+            <li><a href="/contact">Contact Support</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Legal Terms</h4>
+          <ul class="footer-links-list">
+            <li><a href="/client-terms">Client Terms (v1.0)</a></li>
+            <li><a href="/vendor-terms">Vendor Terms (v1.0)</a></li>
+            <li><a href="/privacy-policy">Privacy Policy</a></li>
+            <li><a href="/disclaimer">Disclaimer</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Support Hours</h4>
+          <p style="color: #929B93; font-size: 0.9rem; margin-bottom: 0.5rem;">Monday – Saturday: 7:30 AM – 8:00 PM</p>
+          <p style="color: #929B93; font-size: 0.9rem;">Emergency Support: 24/7 Hotline</p>
+          <p style="color: #16883D; font-weight: 700; margin-top: 0.75rem;">+234 (0) 800-ALLFIX (255-349)</p>
+        </div>
+      </div>
+
+      <div class="footer-bottom-bar">
+        <div>&copy; 2026 ALLFIX Services Xpress. All rights reserved.</div>
+        <div class="footer-legal-links">
+          <a href="/client-terms">Client Terms</a>
+          <span class="footer-separator">|</span>
+          <a href="/vendor-terms">Vendor Terms</a>
+          <span class="footer-separator">|</span>
+          <a href="/privacy-policy">Privacy Policy</a>
+          <span class="footer-separator">|</span>
+          <a href="/disclaimer">Disclaimer</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/main.js"></script>
+  <script src="/js/request-form.js"></script>
+</body>
+</html>
