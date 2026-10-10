@@ -3,62 +3,141 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="/favicon.png">
-<title>Compliance Audit & Operations Portal | ALLFIX Services Xpress</title>
-  <meta name="description" content="Operations and legal compliance audit dashboard for ALLFIX Services Xpress platform.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <title>Admin & Dispatch Operations Portal | ALLFIX Services Xpress</title>
+  <meta name="description" content="Operations dashboard for managing customer service requests, vendor onboarding, and dispatch callbacks across Abuja and Nigeria.">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    body {
+      background: #F4F7F4;
+    }
+    .admin-header-bar {
+      background: #0C100D;
+      color: white;
+      padding: 1rem 0;
+      border-bottom: 3px solid #16883D;
+    }
+    .admin-header-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .admin-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+    .admin-brand img {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #151B17;
+    }
+    .admin-title-group h1 {
+      color: white;
+      font-size: 1.25rem;
+      margin: 0;
+      line-height: 1.2;
+    }
+    .admin-title-group p {
+      color: #86EFAC;
+      font-size: 0.78rem;
+      margin: 0;
+      font-weight: 600;
+    }
+    .admin-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
     .admin-stats-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1.5rem;
-      margin-bottom: 2.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 1.25rem;
+      margin: 2rem 0;
     }
     .admin-stat-card {
       background: white;
       border: 1px solid #E2E7E3;
-      border-radius: 16px;
-      padding: 1.5rem;
-      box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05);
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s ease, border-color 0.2s ease;
     }
-    .admin-stat-card .val {
-      font-size: 2.25rem;
-      font-weight: 800;
-      color: #151B17;
-      line-height: 1.2;
+    .admin-stat-card:hover {
+      border-color: #16883D;
+      transform: translateY(-2px);
     }
     .admin-stat-card .lbl {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       color: #68756B;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      font-weight: 600;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .admin-stat-card .val {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #151B17;
+      line-height: 1.1;
+    }
+    .admin-stat-card .subtext {
+      font-size: 0.78rem;
+      color: #68756B;
+      margin-top: 0.4rem;
     }
     .admin-tabs-nav {
       display: flex;
       gap: 0.5rem;
       border-bottom: 2px solid #E2E7E3;
-      margin-bottom: 2rem;
+      margin-bottom: 1.75rem;
+      overflow-x: auto;
+      padding-bottom: 2px;
     }
     .admin-tab-btn {
-      padding: 0.85rem 1.5rem;
+      padding: 0.85rem 1.35rem;
       font-family: inherit;
       font-size: 0.95rem;
       font-weight: 700;
       background: none;
       border: none;
       border-bottom: 3px solid transparent;
-      margin-bottom: -2px;
-      color: #68756B;
+      margin-bottom: -4px;
+      color: #56645A;
       cursor: pointer;
-      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+    .admin-tab-btn:hover {
+      color: #16883D;
     }
     .admin-tab-btn.active {
       color: #16883D;
       border-bottom-color: #16883D;
+    }
+    .tab-counter-badge {
+      background: #E2E7E3;
+      color: #151B17;
+      padding: 0.15rem 0.55rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .admin-tab-btn.active .tab-counter-badge {
+      background: #DCFCE7;
+      color: #166534;
     }
     .admin-tab-pane {
       display: none;
@@ -66,37 +145,301 @@
     .admin-tab-pane.active {
       display: block;
     }
+    .filter-toolbar {
+      background: white;
+      border: 1px solid #E2E7E3;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.85rem;
+    }
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+    .admin-search-input {
+      min-width: 260px;
+      padding: 0.55rem 0.95rem;
+      border: 1px solid #CDD3CE;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      outline: none;
+    }
+    .admin-search-input:focus {
+      border-color: #16883D;
+      box-shadow: 0 0 0 3px rgba(22, 136, 59, 0.15);
+    }
+    .admin-select {
+      padding: 0.55rem 0.95rem;
+      border: 1px solid #CDD3CE;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      background: white;
+      outline: none;
+      cursor: pointer;
+    }
+    .admin-select:focus {
+      border-color: #16883D;
+    }
+    .request-cards-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .request-card {
+      background: white;
+      border: 1px solid #E2E7E3;
+      border-radius: 14px;
+      padding: 1.35rem 1.5rem;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .request-card:hover {
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.07);
+      border-color: #CDD3CE;
+    }
+    .request-card.status-pending_matching {
+      border-left: 5px solid #16883D;
+    }
+    .request-card.status-contacted {
+      border-left: 5px solid #0284C7;
+    }
+    .request-card.status-in_progress {
+      border-left: 5px solid #D97706;
+    }
+    .request-card.status-completed {
+      border-left: 5px solid #68756B;
+      opacity: 0.85;
+    }
+    .request-card.status-cancelled {
+      border-left: 5px solid #DC2626;
+      opacity: 0.7;
+    }
+    .card-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 0.85rem;
+    }
+    .req-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+    .req-id-badge {
+      font-family: monospace;
+      font-weight: 700;
+      color: #16883D;
+      background: #F0FDF4;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      border: 1px solid #DCFCE7;
+    }
+    .req-time {
+      font-size: 0.82rem;
+      color: #68756B;
+    }
+    .req-urgency-badge {
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .urgency-High, .urgency-Emergency { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+    .urgency-Medium, .urgency-Today, .urgency-Within-48-hours { background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A; }
+    .urgency-Low, .urgency-Flexible { background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; }
+
+    .card-main-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1.6fr 1fr;
+      gap: 1.25rem;
+      align-items: center;
+    }
+    @media (max-width: 960px) {
+      .card-main-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+    }
+    .cust-info strong {
+      font-size: 1.15rem;
+      color: #151B17;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+    .cust-contact-line {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.9rem;
+      color: #3E4D42;
+      margin-top: 0.2rem;
+    }
+    .cust-location {
+      font-size: 0.85rem;
+      color: #68756B;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-top: 0.35rem;
+    }
+    .service-info .category-pill {
+      display: inline-block;
+      background: #F0FDF4;
+      color: #166534;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+    }
+    .service-info h3 {
+      font-size: 1rem;
+      margin-bottom: 0.3rem;
+      color: #151B17;
+    }
+    .service-desc-snippet {
+      font-size: 0.86rem;
+      color: #56645A;
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .card-actions-col {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      align-items: flex-end;
+    }
+    @media (max-width: 960px) {
+      .card-actions-col {
+        align-items: stretch;
+      }
+    }
+    .btn-contact-whatsapp {
+      background: #25D366;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 0.55rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.18s ease, transform 0.18s ease;
+      width: 100%;
+    }
+    .btn-contact-whatsapp:hover {
+      background: #1EBE5D;
+      transform: translateY(-1px);
+      color: white;
+    }
+    .btn-contact-call {
+      background: #151B17;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 0.55rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.18s ease, transform 0.18s ease;
+      width: 100%;
+    }
+    .btn-contact-call:hover {
+      background: #26312A;
+      transform: translateY(-1px);
+      color: white;
+    }
+    .card-sub-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+    }
+    .btn-view-details {
+      background: #F2F4F2;
+      color: #151B17;
+      border: 1px solid #CDD3CE;
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      flex: 1;
+      text-align: center;
+    }
+    .btn-view-details:hover {
+      background: #E2E7E3;
+    }
+    .status-select-inline {
+      padding: 0.45rem 0.65rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border: 1px solid #CDD3CE;
+      background: white;
+      cursor: pointer;
+      flex: 1;
+    }
     .data-table-container {
       background: white;
       border: 1px solid #E2E7E3;
-      border-radius: 16px;
+      border-radius: 14px;
       overflow-x: auto;
-      box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05);
+      box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);
     }
     .data-table {
       width: 100%;
       border-collapse: collapse;
       text-align: left;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
     }
     .data-table th {
       background: #F8FAF8;
-      padding: 1rem 1.25rem;
+      padding: 0.95rem 1.2rem;
       font-weight: 700;
       color: #3E4D42;
       border-bottom: 1px solid #E2E7E3;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
     .data-table td {
-      padding: 1.1rem 1.25rem;
+      padding: 1rem 1.2rem;
       border-bottom: 1px solid #F2F4F2;
       color: #151B17;
       vertical-align: middle;
     }
     .data-table tr:hover td {
-      background: #FAFAFA;
+      background: #F8FAF8;
     }
     .badge {
       display: inline-block;
@@ -106,151 +449,325 @@
       font-weight: 700;
       text-transform: uppercase;
     }
-    .badge-client { background: #F0FDF4; color: #166534; }
-    .badge-pending { background: #F0FDF4; color: #166534; }
-    .badge-green { background: #F0FDF4; color: #15803D; }
+    .badge-green { background: #DCFCE7; color: #166534; }
+    .badge-blue { background: #E0F2FE; color: #0369A1; }
+    .badge-yellow { background: #FEF3C7; color: #92400E; }
     .badge-gray { background: #F2F4F2; color: #56645A; }
     .badge-red { background: #FEF2F2; color: #DC2626; }
+
+    /* Modal Styles */
+    .admin-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(12, 16, 13, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 1100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: all 0.22s ease;
+    }
+    .admin-modal-overlay.open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+    .admin-modal-card {
+      background: white;
+      width: 100%;
+      max-width: 680px;
+      max-height: 90vh;
+      overflow-y: auto;
+      border-radius: 18px;
+      padding: 2rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      position: relative;
+    }
+    .modal-close-btn {
+      position: absolute;
+      top: 1.25rem;
+      right: 1.25rem;
+      background: #F2F4F2;
+      border: none;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 700;
+      color: #56645A;
+    }
+    .modal-close-btn:hover {
+      background: #E2E7E3;
+      color: #151B17;
+    }
+    .details-dl {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 0.75rem 1rem;
+      margin: 1.5rem 0;
+      font-size: 0.92rem;
+    }
+    .details-dl dt {
+      color: #68756B;
+      font-weight: 600;
+    }
+    .details-dl dd {
+      color: #151B17;
+      margin: 0;
+      word-break: break-word;
+    }
   </style>
 </head>
-<body style="background: #F8FAF8;">
+<body>
 
-  
-  <header class="site-header">
-    <div class="container nav-inner">
-      <a href="/" class="logo-wrapper" aria-label="ALLFIX Services Xpress Home">
-        <img class="brand-logo" src="/allfix-xpress-green.png" alt="">
-      </a>
+  <!-- Secure Admin Login Screen -->
+  <div id="adminLoginScreen" style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; background: linear-gradient(135deg, #0C100D 0%, #151B17 100%);">
+    <div style="max-width: 440px; width: 100%; background: #ffffff; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); padding: 2.5rem 2rem; border: 1px solid rgba(255,255,255,0.1);">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 68px; height: 68px; border-radius: 50%; background: #0C100D; box-shadow: 0 0 20px rgba(22, 136, 59, 0.4); margin-bottom: 1.25rem;">
+          <img src="/allfix-xpress-green.png" alt="ALLFIX Xpress" style="width: 52px; height: 52px; border-radius: 50%;">
+        </div>
+        <h1 style="font-size: 1.45rem; font-weight: 800; color: #151B17; margin: 0 0 0.4rem; letter-spacing: -0.02em;">Admin & Operations Portal</h1>
+        <p style="font-size: 0.86rem; color: #56645A; margin: 0;">Restricted access &bull; Abuja HQ Dispatch Operations</p>
+      </div>
 
-      <ul class="nav-links">
-        <li class="nav-item"><a href="/">Home</a></li>
-        <li class="nav-item"><a href="/request-service">Request a Service</a></li>
-        <li class="nav-item"><a href="/become-vendor">Become a Vendor</a></li>
-        <li class="nav-item"><a href="/client-terms">Client Terms (v1.0)</a></li>
-        <li class="nav-item"><a href="/vendor-terms">Vendor Terms (v1.0)</a></li>
-        <li class="nav-item"><a href="/admin" class="active">Compliance Audit</a></li>
-      </ul>
+      <div id="adminLoginAlert" style="display: none; padding: 0.85rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; margin-bottom: 1.25rem; background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA;"></div>
 
-      <div class="nav-actions">
-        <a href="/request-service" class="btn btn-primary btn-sm">New Request</a>
+      <form id="adminLoginForm" onsubmit="return handleAdminLogin(event)">
+        <div style="margin-bottom: 1.25rem;">
+          <label for="adminUsernameInput" style="display: block; font-size: 0.82rem; font-weight: 700; color: #3E4D42; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.4rem;">Admin Username</label>
+          <input type="text" id="adminUsernameInput" required autocomplete="username" placeholder="Enter username (e.g. admintony)" style="width: 100%; padding: 0.85rem 1rem; border: 1px solid #CDD3CE; border-radius: 10px; font-size: 0.95rem; font-family: inherit; outline: none; transition: border-color 0.15s ease; box-sizing: border-box;">
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label for="adminPasswordInput" style="display: block; font-size: 0.82rem; font-weight: 700; color: #3E4D42; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.4rem;">Secure Password</label>
+          <div style="position: relative;">
+            <input type="password" id="adminPasswordInput" required autocomplete="current-password" placeholder="Enter secure password" style="width: 100%; padding: 0.85rem 3.2rem 0.85rem 1rem; border: 1px solid #CDD3CE; border-radius: 10px; font-size: 0.95rem; font-family: inherit; outline: none; transition: border-color 0.15s ease; box-sizing: border-box;">
+            <button type="button" id="togglePasswordVisibilityBtn" onclick="toggleAdminPassword()" aria-label="Toggle password visibility" style="position: absolute; right: 0.45rem; top: 50%; transform: translateY(-50%); background: #F4F7F4; border: 1px solid #CDD3CE; border-radius: 6px; cursor: pointer; color: #151B17; font-size: 1.15rem; padding: 0.35rem 0.6rem; z-index: 20; display: inline-flex; align-items: center; justify-content: center;">
+              👁️
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="adminLoginSubmitBtn" class="btn btn-primary" style="width: 100%; padding: 0.95rem; font-size: 1rem; font-weight: 700; border-radius: 10px; justify-content: center; box-shadow: 0 4px 14px rgba(22, 136, 59, 0.35); cursor: pointer;">
+          Unlock Admin Portal →
+        </button>
+      </form>
+
+      <div style="margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid #E2E7E3; text-align: center;">
+        <span style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.76rem; color: #68756B; font-weight: 600;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16883D" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          256-Bit SSL Encrypted &bull; Access Monitored
+        </span>
       </div>
     </div>
-  </header>
+  </div>
 
-  
-  <main class="section">
+  <!-- Authenticated Operations Workspace -->
+  <div id="adminApp" style="display: none;">
+    <!-- Admin Top Bar -->
+    <header class="admin-header-bar">
+      <div class="container admin-header-inner">
+        <div class="admin-brand">
+          <a href="/">
+            <img src="/allfix-xpress-green.png" alt="ALLFIX Xpress Logo">
+          </a>
+          <div class="admin-title-group">
+            <h1>ALLFIX Operations & Dispatch Desk</h1>
+            <p>Abuja Headquarters &bull; Live Customer Request Center</p>
+          </div>
+        </div>
+
+        <div class="admin-header-actions">
+          <button id="supabaseConfigBtn" class="btn btn-outline-white btn-sm" style="font-size: 0.82rem; padding: 0.4rem 0.85rem; display: inline-flex; align-items: center; gap: 0.45rem;">
+            <span id="supabaseIndicatorDot" style="width: 8px; height: 8px; background: #E2E7E3; border-radius: 50%;"></span>
+            <span id="supabaseBackendLabel">Storage: Local</span> ⚙️
+          </button>
+          <button id="refreshDataBtn" class="btn btn-outline-white btn-sm" style="font-size: 0.82rem; padding: 0.45rem 0.85rem;">
+            ↻ Refresh Data
+          </button>
+          <a href="/" target="_blank" class="btn btn-outline-white btn-sm" style="font-size: 0.82rem; padding: 0.45rem 0.85rem;">
+            View Website ↗
+          </a>
+          <button id="adminLogoutBtn" class="btn btn-outline-white btn-sm" style="font-size: 0.82rem; padding: 0.45rem 0.85rem; border-color: #EF4444; color: #FCA5A5; display: inline-flex; align-items: center; gap: 0.35rem;">
+            Log Out ⏻
+          </button>
+        </div>
+      </div>
+    </header>
+
+  <main class="section-sm">
     <div class="container">
       
-      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
-        <div>
-          <span class="section-tag" style="margin-bottom: 0.5rem;">Legal Registry & Live Operations</span>
-          <h1 style="font-size: 2.25rem;">Platform Compliance <span class="text-highlight">Audit Portal</span></h1>
-          <p style="color: #68756B;">Inspect all recorded Terms & Conditions acceptances, customer requests, and vendor credentials in real-time.</p>
-        </div>
-        <div>
-          <span style="display: inline-flex; align-items: center; gap: 0.5rem; background: #F0FDF4; color: #15803D; padding: 0.4rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.82rem; border: 1px solid #BBF7D0;">
-            <span style="width: 8px; height: 8px; background: #22C55E; border-radius: 50%;"></span>
-            Database Connected & Active
-          </span>
-        </div>
-      </div>
-
-      
+      <!-- Key Operational Metrics -->
       <div class="admin-stats-grid">
         <div class="admin-stat-card">
+          <div class="lbl">New Requests (Pending Callback)</div>
+          <div class="val" id="statPendingRequests" style="color: #16883D;">0</div>
+          <div class="subtext">Requires immediate phone or WhatsApp follow-up</div>
+        </div>
+
+        <div class="admin-stat-card">
+          <div class="lbl">Total Service Requests</div>
+          <div class="val" id="statTotalRequests">0</div>
+          <div class="subtext" id="statActualRequestsText">Logged from website forms</div>
+        </div>
+
+        <div class="admin-stat-card">
+          <div class="lbl">Verified Vendors</div>
+          <div class="val" id="statVerifiedVendors" style="color: #0284C7;">0</div>
+          <div class="subtext">Onboarded contractors & artisans</div>
+        </div>
+
+        <div class="admin-stat-card">
+          <div class="lbl">Contact Desk Messages</div>
+          <div class="val" id="statTotalMessages" style="color: #D97706;">0</div>
+          <div class="subtext">Direct inquiries from /contact</div>
+        </div>
+
+        <div class="admin-stat-card">
           <div class="lbl">Audited Terms Signed</div>
-          <div class="val" id="adminStatAgreements" style="color: #15803D;">2,272</div>
-          <p style="font-size: 0.8rem; color: #68756B; margin-top: 0.25rem;">Client Terms v1.0 & Vendor Terms v1.0</p>
-        </div>
-
-        <div class="admin-stat-card">
-          <div class="lbl">Customer Requests</div>
-          <div class="val" id="adminStatRequests" style="color: #16883D;">1,851</div>
-          <p style="font-size: 0.8rem; color: #68756B; margin-top: 0.25rem;">All matched with verified terms log</p>
-        </div>
-
-        <div class="admin-stat-card">
-          <div class="lbl">Registered Vendors</div>
-          <div class="val" id="adminStatVendors" style="color: #16883D;">421</div>
-          <p style="font-size: 0.8rem; color: #68756B; margin-top: 0.25rem;">ID & CAC verification track</p>
+          <div class="val" id="statAgreements" style="color: #15803D;">0</div>
+          <div class="subtext">Client Terms v1.0 & Vendor Terms</div>
         </div>
       </div>
 
-      
+      <!-- Navigation Tabs -->
       <div class="admin-tabs-nav">
-        <button class="admin-tab-btn active" data-tab="tab-agreements">
-          Terms & Conditions Audit Log (v1.0)
-        </button>
-        <button class="admin-tab-btn" data-tab="tab-requests">
-          Customer Service Requests
+        <button class="admin-tab-btn active" data-tab="tab-requests">
+          <span>🛠️ Customer Service Requests</span>
+          <span class="tab-counter-badge" id="badgeRequestsCount">0</span>
         </button>
         <button class="admin-tab-btn" data-tab="tab-vendors">
-          Vendor Onboarding Applications
+          <span>👷 Registered Vendors</span>
+          <span class="tab-counter-badge" id="badgeVendorsCount">0</span>
+        </button>
+        <button class="admin-tab-btn" data-tab="tab-messages">
+          <span>✉️ Contact Inquiries</span>
+          <span class="tab-counter-badge" id="badgeMessagesCount">0</span>
+        </button>
+        <button class="admin-tab-btn" data-tab="tab-agreements">
+          <span>📜 Terms Audit Trail</span>
+          <span class="tab-counter-badge" id="badgeAgreementsCount">0</span>
         </button>
       </div>
 
-      
-      <div class="admin-tab-pane active" id="tab-agreements">
-        <div class="data-table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Agreement ID</th>
-                <th>User / Contact</th>
-                <th>Agreement Type</th>
-                <th>Version</th>
-                <th>Accepted At (ISO)</th>
-                <th>Audit Status</th>
-                <th>Client IP</th>
-              </tr>
-            </thead>
-            <tbody id="agreementsTableBody">
-              
-              <tr><td colspan="7" style="text-align:center; padding: 2rem;">Loading audit records...</td></tr>
-            </tbody>
-          </table>
+      <!-- TAB 1: CUSTOMER SERVICE REQUESTS -->
+      <div class="admin-tab-pane active" id="tab-requests">
+        
+        <!-- Filter and Search Toolbar -->
+        <div class="filter-toolbar">
+          <div class="filter-group">
+            <input type="text" id="requestSearchInput" class="admin-search-input" placeholder="Search customer, phone, location, or service...">
+            
+            <select id="requestStatusFilter" class="admin-select">
+              <option value="all">All Statuses</option>
+              <option value="pending_matching">New / Pending Matching</option>
+              <option value="contacted">Customer Contacted</option>
+              <option value="in_progress">Vendor Assigned / In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+
+            <select id="requestUrgencyFilter" class="admin-select">
+              <option value="all">All Urgencies</option>
+              <option value="High">High Urgency</option>
+              <option value="Medium">Medium Urgency</option>
+              <option value="Low">Low Urgency</option>
+            </select>
+          </div>
+
+          <div style="font-size: 0.85rem; color: #68756B;" id="requestResultsCount">
+            Showing all requests
+          </div>
+        </div>
+
+        <!-- Requests Cards Feed -->
+        <div id="requestsContainer" class="request-cards-container">
+          <div style="background: white; border: 1px solid #E2E7E3; border-radius: 12px; padding: 3rem; text-align: center; color: #68756B;">
+            Loading customer requests from local database...
+          </div>
         </div>
       </div>
 
-      
-      <div class="admin-tab-pane" id="tab-requests">
-        <div class="data-table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Request ID</th>
-                <th>Customer</th>
-                <th>Category & Location</th>
-                <th>Urgency</th>
-                <th>Terms Verified</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="requestsTableBody">
-              
-              <tr><td colspan="6" style="text-align:center; padding: 2rem;">Loading service requests...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      
+      <!-- TAB 2: REGISTERED VENDORS -->
       <div class="admin-tab-pane" id="tab-vendors">
+        <div class="filter-toolbar">
+          <div class="filter-group">
+            <input type="text" id="vendorSearchInput" class="admin-search-input" placeholder="Search vendor name, trade, phone, or CAC...">
+            <select id="vendorStatusFilter" class="admin-select">
+              <option value="all">All Verifications</option>
+              <option value="pending">Pending Review</option>
+              <option value="verified">Verified</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+        </div>
+
         <div class="data-table-container">
           <table class="data-table">
             <thead>
               <tr>
                 <th>Vendor ID</th>
-                <th>Business / Name</th>
-                <th>Phone</th>
+                <th>Business & Lead Contact</th>
                 <th>Trade & Experience</th>
-                <th>Terms Verified</th>
+                <th>Operating Areas</th>
                 <th>Verification</th>
+                <th style="text-align: right;">Direct Actions</th>
               </tr>
             </thead>
             <tbody id="vendorsTableBody">
-              
               <tr><td colspan="6" style="text-align:center; padding: 2rem;">Loading vendors...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 3: CONTACT INQUIRIES -->
+      <div class="admin-tab-pane" id="tab-messages">
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Message ID</th>
+                <th>Sender & Contact</th>
+                <th>Subject</th>
+                <th>Message Preview</th>
+                <th>Received</th>
+                <th style="text-align: right;">Direct Actions</th>
+              </tr>
+            </thead>
+            <tbody id="messagesTableBody">
+              <tr><td colspan="6" style="text-align:center; padding: 2rem;">Loading contact messages...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 4: TERMS COMPLIANCE AUDIT -->
+      <div class="admin-tab-pane" id="tab-agreements">
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Agreement ID</th>
+                <th>User / Phone</th>
+                <th>Type</th>
+                <th>Version</th>
+                <th>Signed Timestamp (ISO)</th>
+                <th>Audit Status</th>
+                <th>Client IP</th>
+              </tr>
+            </thead>
+            <tbody id="agreementsTableBody">
+              <tr><td colspan="7" style="text-align:center; padding: 2rem;">Loading legal audit records...</td></tr>
             </tbody>
           </table>
         </div>
@@ -259,15 +776,152 @@
     </div>
   </main>
 
-  
-  <footer class="site-footer" style="margin-top: 4rem;">
+  <!-- Detailed Request Modal -->
+  <div class="admin-modal-overlay" id="requestDetailModal">
+    <div class="admin-modal-card">
+      <button class="modal-close-btn" id="closeDetailModalBtn">&times;</button>
+      
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+        <span class="req-id-badge" id="modalReqId">REQ-...</span>
+        <span class="badge badge-green" id="modalReqStatusBadge">Pending Matching</span>
+      </div>
+      <h2 style="font-size: 1.4rem; color: #151B17; margin-bottom: 0.25rem;" id="modalCustomerName">Customer Name</h2>
+      <p style="color: #68756B; font-size: 0.88rem;" id="modalCustomerMeta">Location &bull; Date</p>
+
+      <div style="display: flex; gap: 0.75rem; margin: 1.25rem 0;">
+        <a id="modalWhatsAppBtn" href="#" target="_blank" class="btn-contact-whatsapp" style="text-align: center;">
+          💬 Chat on WhatsApp
+        </a>
+        <a id="modalCallBtn" href="#" class="btn-contact-call" style="text-align: center;">
+          📞 Call Customer
+        </a>
+      </div>
+
+      <dl class="details-dl">
+        <dt>Service Category:</dt>
+        <dd id="modalCategory">-</dd>
+
+        <dt>Specific Service:</dt>
+        <dd id="modalService">-</dd>
+
+        <dt>Scope of Work:</dt>
+        <dd style="background: #F8FAF8; padding: 0.75rem; border-radius: 8px; border: 1px solid #E2E7E3;" id="modalDescription">-</dd>
+
+        <dt>Property Type:</dt>
+        <dd id="modalPropertyTypes">-</dd>
+
+        <dt id="modalConstructionLabel">Construction:</dt>
+        <dd id="modalConstructionDetails">-</dd>
+
+        <dt id="modalLandLabel">Land Details:</dt>
+        <dd id="modalLandDetails">-</dd>
+
+        <dt>Urgency:</dt>
+        <dd id="modalUrgency">-</dd>
+
+        <dt>Preferred Date:</dt>
+        <dd id="modalPreferredDate">-</dd>
+
+        <dt>Location Address:</dt>
+        <dd id="modalLocation">-</dd>
+
+        <dt>Phone (WhatsApp):</dt>
+        <dd id="modalPhone">-</dd>
+
+        <dt>Email Address:</dt>
+        <dd id="modalEmail">-</dd>
+
+        <dt>Terms Audit ID:</dt>
+        <dd><span style="font-family: monospace; color: #166534;" id="modalAgreementId">-</span> (v1.0 Accepted)</dd>
+      </dl>
+
+      <div style="border-top: 1px solid #E2E7E3; padding-top: 1.25rem; margin-top: 1.25rem;">
+        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.4rem; color: #151B17;">
+          Update Request Status & Dispatch Notes:
+        </label>
+        <div style="display: flex; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <select id="modalStatusSelect" class="admin-select" style="flex: 1;">
+            <option value="pending_matching">Pending Matching (New)</option>
+            <option value="contacted">Customer Contacted</option>
+            <option value="in_progress">Vendor Assigned / In Progress</option>
+            <option value="completed">Service Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <textarea id="modalAdminNotes" class="form-control" rows="2" placeholder="Add private notes (e.g., Called customer, assigned technician Emeka, quoted N15,000 for inspection)..." style="font-size: 0.88rem; margin-bottom: 0.75rem;"></textarea>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <button id="saveModalStatusBtn" class="btn btn-primary btn-sm">
+            Save Status & Notes
+          </button>
+          <button id="deleteRequestBtn" style="background: none; border: none; color: #DC2626; font-size: 0.82rem; cursor: pointer; text-decoration: underline;">
+            Delete Request
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Supabase Database Configuration Modal -->
+  <div class="admin-modal-overlay" id="supabaseModal">
+    <div class="admin-modal-card" style="max-width: 620px;">
+      <button class="modal-close-btn" id="closeSupabaseModalBtn">&times;</button>
+      
+      <div style="display: flex; align-items: center; gap: 0.65rem; margin-bottom: 0.5rem;">
+        <span style="font-size: 1.5rem;">⚡</span>
+        <h2 style="font-size: 1.4rem; color: #151B17; margin: 0;">Supabase Database Integration</h2>
+      </div>
+      <p style="color: #68756B; font-size: 0.88rem; margin-bottom: 1.25rem;">
+        Connect ALLFIX directly to your Supabase PostgreSQL cloud database for persistent, real-time customer requests and vendor data.
+      </p>
+
+      <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 10px; padding: 1rem; margin-bottom: 1.25rem;">
+        <strong style="color: #166534; display: block; font-size: 0.9rem; margin-bottom: 0.25rem;">Step 1: Set Up Tables in Supabase</strong>
+        <p style="color: #3E4D42; font-size: 0.82rem; margin: 0 0 0.5rem 0;">
+          Run the official ALLFIX schema in your Supabase SQL Editor (<a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" style="color: #16883D; text-decoration: underline;">supabase.com/dashboard</a>).
+        </p>
+        <button type="button" id="copySqlSchemaBtn" class="btn btn-outline btn-sm" style="background: white; font-size: 0.8rem; padding: 0.35rem 0.75rem;">
+          📋 Copy Supabase SQL Schema
+        </button>
+        <span id="copySqlStatus" style="font-size: 0.8rem; color: #16883D; font-weight: 600; margin-left: 0.5rem;"></span>
+      </div>
+
+      <form id="supabaseConfigForm">
+        <strong style="color: #151B17; display: block; font-size: 0.9rem; margin-bottom: 0.75rem;">Step 2: Enter Supabase Credentials</strong>
+        
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="form-label" for="supabaseUrlInput" style="font-size: 0.85rem;">
+            Supabase Project URL <span class="required">*</span>
+          </label>
+          <input type="url" id="supabaseUrlInput" class="form-control" placeholder="https://your-project-id.supabase.co" required style="font-size: 0.88rem;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label class="form-label" for="supabaseKeyInput" style="font-size: 0.85rem;">
+            Supabase Anon / Service Role Key <span class="required">*</span>
+          </label>
+          <input type="password" id="supabaseKeyInput" class="form-control" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." required style="font-size: 0.88rem;">
+          <span style="font-size: 0.78rem; color: #68756B;">Found in Supabase: Project Settings &rarr; API &rarr; Project API keys</span>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #E2E7E3; padding-top: 1rem;">
+          <button type="submit" id="saveSupabaseBtn" class="btn btn-primary btn-sm" style="padding: 0.6rem 1.25rem;">
+            Save & Connect Supabase
+          </button>
+          <span id="supabaseSaveStatus" style="font-size: 0.82rem; font-weight: 600;"></span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="site-footer" style="margin-top: 4rem; padding-top: 2rem;">
     <div class="container">
       <div class="footer-bottom-bar" style="border-top: none; padding-top: 0;">
-        <div>&copy; 2026 ALLFIX Services Xpress &bull; Compliance Registry v1.0</div>
+        <div>&copy; 2026 ALLFIX Services Xpress &bull; Abuja Operations &bull; Hotline: +234 802 695 2761</div>
         <div class="footer-legal-links">
-          <a href="/client-terms">Client Terms</a>
+          <a href="/client-terms">Client Terms (v1.0)</a>
           <span class="footer-separator">|</span>
-          <a href="/vendor-terms">Vendor Terms</a>
+          <a href="/vendor-terms">Vendor Terms (v1.0)</a>
           <span class="footer-separator">|</span>
           <a href="/privacy-policy">Privacy Policy</a>
           <span class="footer-separator">|</span>
@@ -275,9 +929,108 @@
         </div>
       </div>
     </div>
-  </footer>
+    </footer>
+  </div> <!-- /#adminApp -->
 
-  <script src="/js/main.js"></script>
-  <script src="/js/admin.js"></script>
+  <script>
+    function toggleAdminPassword() {
+      const input = document.getElementById('adminPasswordInput');
+      const btn = document.getElementById('togglePasswordVisibilityBtn');
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        if (btn) btn.innerHTML = '🔒';
+      } else {
+        input.type = 'password';
+        if (btn) btn.innerHTML = '👁️';
+      }
+    }
+
+    async function handleAdminLogin(e) {
+      if (e) e.preventDefault();
+      const usernameInput = document.getElementById('adminUsernameInput');
+      const passwordInput = document.getElementById('adminPasswordInput');
+      const submitBtn = document.getElementById('adminLoginSubmitBtn');
+      const alertBox = document.getElementById('adminLoginAlert');
+      const loginScreen = document.getElementById('adminLoginScreen');
+      const adminApp = document.getElementById('adminApp');
+
+      const username = (usernameInput ? usernameInput.value : '').trim();
+      const password = (passwordInput ? passwordInput.value : '').trim();
+
+      if (!username || !password) {
+        if (alertBox) {
+          alertBox.textContent = 'Please enter both username and password.';
+          alertBox.style.display = 'block';
+        }
+        return false;
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Verifying credentials...';
+      }
+      if (alertBox) alertBox.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const json = await res.json();
+        if (json.success) {
+          if (loginScreen) loginScreen.style.display = 'none';
+          if (adminApp) adminApp.style.display = 'block';
+          if (typeof window.refreshAll === 'function') {
+            window.refreshAll();
+          } else {
+            window.location.reload();
+          }
+        } else {
+          if (alertBox) {
+            alertBox.textContent = json.error || 'Invalid credentials. Access denied.';
+            alertBox.style.display = 'block';
+          }
+        }
+      } catch (err) {
+        if (alertBox) {
+          alertBox.textContent = 'Connection error: ' + err.message;
+          alertBox.style.display = 'block';
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Unlock Admin Portal →';
+        }
+      }
+      return false;
+    }
+
+    (async function initAdminAuth() {
+      try {
+        const res = await fetch('/api/admin/auth-check');
+        const json = await res.json();
+        const loginScreen = document.getElementById('adminLoginScreen');
+        const adminApp = document.getElementById('adminApp');
+        if (json.authenticated) {
+          if (loginScreen) loginScreen.style.display = 'none';
+          if (adminApp) adminApp.style.display = 'block';
+          if (typeof window.refreshAll === 'function') window.refreshAll();
+        } else {
+          if (loginScreen) loginScreen.style.display = 'flex';
+          if (adminApp) adminApp.style.display = 'none';
+        }
+      } catch (e) {
+        const loginScreen = document.getElementById('adminLoginScreen');
+        const adminApp = document.getElementById('adminApp');
+        if (loginScreen) loginScreen.style.display = 'flex';
+        if (adminApp) adminApp.style.display = 'none';
+      }
+    })();
+  </script>
+
+  <script src="/js/main.js?v=2.2"></script>
+  <script src="/js/admin.js?v=2.2"></script>
 </body>
 </html>

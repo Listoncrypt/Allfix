@@ -64,6 +64,29 @@ document.addEventListener('DOMContentLoaded', () => {
   serviceInput.addEventListener('input', updateServiceDetails);
   propertyOther.addEventListener('change', updateServiceDetails);
   landSizeOther.addEventListener('change', updateServiceDetails);
+  const urlParams = new URLSearchParams(window.location.search);
+  const catParam = urlParams.get('cat');
+  if (catParam) {
+    const catMap = {
+      'home': 'Home Services',
+      'cars': 'Cars & Vehicles',
+      'property': 'Property Maintenance',
+      'construction': 'Construction & Land',
+      'cleaning': 'Cleaning & Janitorial',
+      'appliances': 'Appliance Repairs',
+      'products': 'Products & Spare Parts',
+      'other': 'Other Specialist Services'
+    };
+    const matched = catMap[catParam.toLowerCase()] ||
+      [...categoryInput.options].find(opt => opt.value.toLowerCase().includes(catParam.toLowerCase()))?.value;
+    if (matched) {
+      categoryInput.value = matched;
+    }
+  }
+  const svcParam = urlParams.get('service');
+  if (svcParam) {
+    serviceInput.value = svcParam;
+  }
   updateServiceDetails();
   submitBtn.disabled = !checkbox.checked;
   updateTermsVisuals(checkbox.checked);
@@ -99,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
       category: document.getElementById('category').value,
       service: document.getElementById('service').value.trim(),
       location: document.getElementById('location').value.trim(),
-      urgency: document.getElementById('urgency').value,
+      urgency: (form.querySelector('input[name="urgency"]:checked')?.value) || 'Medium',
       preferredDate: document.getElementById('preferredDate').value,
       description: generalDescription.value.trim() || (constructionSection.hidden ? '' : document.getElementById('constructionDescription').value.trim()),
       propertyTypes: [...form.querySelectorAll('input[name="propertyTypes"]:checked:not(:disabled)')].map(input => input.value),

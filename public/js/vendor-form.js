@@ -10,6 +10,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeModalBtn = document.getElementById('closeModalBtn');
 
   if (!form || !checkbox || !submitBtn) return;
+  const categorySelect = document.getElementById('category');
+  if (categorySelect) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const catParam = urlParams.get('cat');
+    if (catParam) {
+      const catMap = {
+        'home': 'Home Services',
+        'cars': 'Cars & Vehicles',
+        'property': 'Property Maintenance',
+        'cleaning': 'Cleaning & Janitorial',
+        'appliances': 'Appliance Repairs',
+        'products': 'Products & Spare Parts',
+        'other': 'Other Specialist Services'
+      };
+      const matched = catMap[catParam.toLowerCase()] ||
+        [...categorySelect.options].find(opt => opt.value.toLowerCase().includes(catParam.toLowerCase()))?.value;
+      if (matched) {
+        categorySelect.value = matched;
+      }
+    }
+  }
   submitBtn.disabled = !checkbox.checked;
   updateVendorTermsVisuals(checkbox.checked);
   checkbox.addEventListener('change', () => {

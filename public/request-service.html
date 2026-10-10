@@ -20,14 +20,15 @@
         <img class="brand-logo" src="/allfix-xpress-green.png" alt="">
       </a>
 
-      <ul class="nav-links">
-        <li class="nav-item"><a href="/">Home</a></li>
-        <li class="nav-item"><a href="/about">How It Works</a></li>
-        <li class="nav-item"><a href="/request-service" class="active">Services</a></li>
-        <li class="nav-item"><a href="/become-vendor">For Vendors</a></li>
-        <li class="nav-item"><a href="/contact">Contact</a></li>
-        <li class="nav-item"><a href="/admin" style="color: #68756B; font-size: 0.85rem;">Compliance Audit</a></li>
-      </ul>
+      <nav aria-label="Main navigation">
+        <ul class="nav-links">
+          <li class="nav-item"><a href="/">Home</a></li>
+          <li class="nav-item"><a href="/about">How It Works</a></li>
+          <li class="nav-item"><a href="/request-service" class="active">Services</a></li>
+          <li class="nav-item"><a href="/become-vendor">For Vendors</a></li>
+          <li class="nav-item"><a href="/contact">Contact</a></li>
+        </ul>
+      </nav>
 
       <div class="nav-actions">
         <a href="/become-vendor" class="btn btn-outline btn-sm">Join as Vendor</a>
@@ -195,26 +196,53 @@
               </fieldset>
             </section>
 
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label class="form-label" for="location">
-                City / Location Address <span class="required">*</span>
-              </label>
-              <input type="text" id="location" class="form-control" placeholder="e.g. Lekki Phase 1, Lagos" required>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="urgency">
-                Urgency Level <span class="required">*</span>
-              </label>
-              <select id="urgency" class="form-control" required>
-                <option value="Today">Urgent / Today</option>
-                <option value="Emergency">Emergency (Immediate Dispatch)</option>
-                <option value="Within 48 hours" selected>Within 48 hours</option>
-                <option value="Flexible">Flexible Schedule</option>
-              </select>
-            </div>
+          <div class="form-group">
+            <label class="form-label" for="location">
+              City / Location Address <span class="required">*</span>
+            </label>
+            <input type="text" id="location" class="form-control" placeholder="e.g. Wuse 2, Abuja or Garki" required>
           </div>
+
+          <fieldset class="choice-fieldset urgency-fieldset" style="margin: 1.5rem 0; padding: 1.25rem;">
+            <legend class="form-label" style="font-weight: 700; margin-bottom: 0.35rem; display: block; font-size: 1rem; color: #151B17;">
+              How urgent? <span class="required">*</span>
+            </legend>
+            <p class="choice-help" style="margin-bottom: 0.85rem;">Select how quickly you need a specialist dispatched.</p>
+            <div class="choice-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem;">
+              <label class="choice-option urgency-option-high">
+                <input type="radio" name="urgency" value="High" required>
+                <div>
+                  <strong style="color: #DC2626; display: flex; align-items: center; gap: 0.35rem;">
+                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #DC2626;"></span>
+                    High
+                  </strong>
+                  <span style="font-size: 0.8rem; color: #68756B; display: block; margin-top: 0.15rem;">Immediate / Emergency</span>
+                </div>
+              </label>
+
+              <label class="choice-option urgency-option-medium">
+                <input type="radio" name="urgency" value="Medium" checked>
+                <div>
+                  <strong style="color: #D97706; display: flex; align-items: center; gap: 0.35rem;">
+                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #D97706;"></span>
+                    Medium
+                  </strong>
+                  <span style="font-size: 0.8rem; color: #68756B; display: block; margin-top: 0.15rem;">Within 24–48 hours</span>
+                </div>
+              </label>
+
+              <label class="choice-option urgency-option-low">
+                <input type="radio" name="urgency" value="Low">
+                <div>
+                  <strong style="color: #16883D; display: flex; align-items: center; gap: 0.35rem;">
+                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #16883D;"></span>
+                    Low
+                  </strong>
+                  <span style="font-size: 0.8rem; color: #68756B; display: block; margin-top: 0.15rem;">Flexible schedule</span>
+                </div>
+              </label>
+            </div>
+          </fieldset>
 
           <div class="form-group">
             <label class="form-label" for="preferredDate">
@@ -338,10 +366,11 @@
         </div>
 
         <div>
-          <h4 class="footer-col-title">Support Hours</h4>
+          <h4 class="footer-col-title">Support & Hotline</h4>
           <p style="color: #929B93; font-size: 0.9rem; margin-bottom: 0.5rem;">Monday – Saturday: 7:30 AM – 8:00 PM</p>
-          <p style="color: #929B93; font-size: 0.9rem;">Emergency Support: 24/7 Hotline</p>
-          <p style="color: #16883D; font-weight: 700; margin-top: 0.75rem;">+234 (0) 800-ALLFIX (255-349)</p>
+          <p style="color: #16883D; font-weight: 700; margin-top: 0.25rem;"><a href="tel:+2348026952761" style="color: #16883D;">+234 802 695 2761</a></p>
+          <p style="color: #929B93; font-size: 0.9rem;">Abuja HQ, Nigeria</p>
+          <p style="margin-top: 0.35rem;"><a href="https://wa.me/message/DE26QFV3RJF2N1" target="_blank" rel="noopener noreferrer" style="color: #15803D; font-size: 0.85rem; font-weight: 700;">💬 Chat on WhatsApp</a></p>
         </div>
       </div>
 

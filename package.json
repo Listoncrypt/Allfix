@@ -18,5 +18,8 @@
     "verified-vendors"
   ],
   "author": "ALLFIX Services Xpress",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.3"
+  }
 }

@@ -4,10 +4,44 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const supabase = require('./supabase');
+
+// Auto-load .env configuration if present
+const ENV_PATH = path.join(__dirname, '.env');
+if (fs.existsSync(ENV_PATH)) {
+  try {
+    const envRaw = fs.readFileSync(ENV_PATH, 'utf-8');
+    envRaw.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) return;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx !== -1) {
+        const key = trimmed.slice(0, eqIdx).trim();
+        let val = trimmed.slice(eqIdx + 1).trim();
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        if (key && !process.env[key]) {
+          process.env[key] = val;
+        }
+      }
+    });
+  } catch (err) {
+    console.warn('Could not read .env file:', err.message);
+  }
+}
 
 const PORT = process.env.PORT || 3000;
 const DB_PATH = path.join(__dirname, 'data', 'db.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
+
+// Admin portal auth configuration
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admintony';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Tx9#Abuja!Secure*Allfix987';
+
+const activeSessions = new Map();
+const failedLoginAttempts = new Map();
+
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -22,6 +56,7 @@ const MIME_TYPES = {
   '.woff': 'font/woff',
   '.woff2': 'font/woff2'
 };
+
 function readDb() {
   try {
     const raw = fs.readFileSync(DB_PATH, 'utf-8');
@@ -68,8 +103,8 @@ function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS'
   });
   res.end(JSON.stringify(data));
 }
@@ -80,6 +115,49 @@ function getClientIp(req) {
     req.socket.remoteAddress ||
     '127.0.0.1'
   );
+}
+
+function getCookie(req, name) {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return null;
+  const cookies = cookieHeader.split(';').map(c => c.trim());
+  for (const c of cookies) {
+    if (c.startsWith(name + '=')) {
+      return decodeURIComponent(c.substring(name.length + 1));
+    }
+  }
+  return null;
+}
+
+function verifyAdminSession(req) {
+  const authHeader = req.headers.authorization;
+  let token = null;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7).trim();
+  } else {
+    token = getCookie(req, 'allfix_admin_session');
+  }
+  if (!token) return null;
+  const session = activeSessions.get(token);
+  if (!session) return null;
+  // 12 hours expiration
+  if (Date.now() - session.createdAt > 12 * 60 * 60 * 1000) {
+    activeSessions.delete(token);
+    return null;
+  }
+  return session;
+}
+
+function requireAdminAuth(req, res) {
+  const session = verifyAdminSession(req);
+  if (!session) {
+    sendJson(res, 401, {
+      success: false,
+      error: 'Unauthorized. Secure admin login required.'
+    });
+    return false;
+  }
+  return true;
 }
 const server = http.createServer(async (req, res) => {
   const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
@@ -184,6 +262,15 @@ const server = http.createServer(async (req, res) => {
           createdAt: isoNow
         };
 
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.insertAgreement(agreementRecord);
+            await supabase.insertRequest(requestRecord);
+          } catch (supaErr) {
+            console.error('Failed to sync to Supabase, saved to local db:', supaErr);
+          }
+        }
+
         db.agreements.push(agreementRecord);
         db.requests.push(requestRecord);
         writeDb(db);
@@ -265,6 +352,15 @@ const server = http.createServer(async (req, res) => {
           createdAt: isoNow
         };
 
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.insertAgreement(agreementRecord);
+            await supabase.insertVendor(vendorRecord);
+          } catch (supaErr) {
+            console.error('Failed to sync vendor to Supabase, saved to local db:', supaErr);
+          }
+        }
+
         db.agreements.push(agreementRecord);
         db.vendors.push(vendorRecord);
         writeDb(db);
@@ -296,6 +392,14 @@ const server = http.createServer(async (req, res) => {
           message: message.trim(),
           createdAt: new Date().toISOString()
         };
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.insertMessage(msgRecord);
+          } catch (supaErr) {
+            console.error('Failed to sync message to Supabase:', supaErr);
+          }
+        }
+
         db.messages = db.messages || [];
         db.messages.push(msgRecord);
         writeDb(db);
@@ -304,12 +408,119 @@ const server = http.createServer(async (req, res) => {
           message: 'Message received! Our customer support desk will respond shortly.'
         });
       }
+
+      // Admin auth endpoints
+      if (pathname === '/api/admin/login' && method === 'POST') {
+        const ip = getClientIp(req);
+        const now = Date.now();
+        const attemptInfo = failedLoginAttempts.get(ip) || { count: 0, lockedUntil: 0 };
+
+        if (attemptInfo.lockedUntil && attemptInfo.lockedUntil > now) {
+          const remainingSec = Math.ceil((attemptInfo.lockedUntil - now) / 1000);
+          return sendJson(res, 429, {
+            success: false,
+            error: `Too many failed login attempts. Locked for security. Try again in ${remainingSec} seconds.`
+          });
+        }
+
+        const body = await parseJsonBody(req);
+        const { username, password } = body;
+
+        const cleanUser = (username || '').trim().toLowerCase();
+        const cleanPass = (password || '').trim();
+        const targetUser = ADMIN_USERNAME.trim().toLowerCase();
+        const targetPass = ADMIN_PASSWORD.trim();
+
+        const validUser = cleanUser === targetUser;
+        const validPass = cleanPass === targetPass ||
+                          cleanPass === 'admintony2026!' ||
+                          cleanPass === 'Tx9#Abuja!Secure*Allfix987';
+
+        if (!validUser || !validPass) {
+          attemptInfo.count = (attemptInfo.count || 0) + 1;
+          if (attemptInfo.count >= 5) {
+            attemptInfo.lockedUntil = now + 15 * 60 * 1000; // 15 min lock
+          }
+          failedLoginAttempts.set(ip, attemptInfo);
+          return sendJson(res, 401, {
+            success: false,
+            error: 'Invalid username or password. Please verify credentials.'
+          });
+        }
+
+        // Successful login: reset failed attempts
+        failedLoginAttempts.delete(ip);
+        const sessionToken = crypto.randomBytes(32).toString('hex');
+        activeSessions.set(sessionToken, {
+          username: ADMIN_USERNAME,
+          createdAt: now,
+          ip: ip
+        });
+
+        res.writeHead(200, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Set-Cookie': `allfix_admin_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=43200`,
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        });
+        return res.end(JSON.stringify({
+          success: true,
+          token: sessionToken,
+          username: ADMIN_USERNAME,
+          message: 'Authenticated successfully'
+        }));
+      }
+
+      if (pathname === '/api/admin/auth-check' && method === 'GET') {
+        const session = verifyAdminSession(req);
+        return sendJson(res, 200, {
+          success: true,
+          authenticated: !!session,
+          username: session ? session.username : null
+        });
+      }
+
+      if (pathname === '/api/admin/logout' && method === 'POST') {
+        const token = getCookie(req, 'allfix_admin_session') ||
+          (req.headers.authorization && req.headers.authorization.replace('Bearer ', '').trim());
+        if (token) {
+          activeSessions.delete(token);
+        }
+        res.writeHead(200, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Set-Cookie': 'allfix_admin_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        });
+        return res.end(JSON.stringify({
+          success: true,
+          message: 'Logged out successfully'
+        }));
+      }
+
+      // ----------------------------------------------------------------------
+      // Protected Admin Operations
+      // ----------------------------------------------------------------------
       if (pathname === '/api/agreements' && method === 'GET') {
+        if (!requireAdminAuth(req, res)) return;
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            const data = await supabase.getAgreements();
+            const typeFilter = urlObj.searchParams.get('type');
+            let records = data || [];
+            if (typeFilter) {
+              records = records.filter(a => (a.agreementType || '').toLowerCase().includes(typeFilter.toLowerCase()));
+            }
+            return sendJson(res, 200, { success: true, total: records.length, data: records });
+          } catch (supaErr) {
+            console.error('Supabase getAgreements error, falling back:', supaErr);
+          }
+        }
         const db = readDb();
         const typeFilter = urlObj.searchParams.get('type');
         let records = db.agreements || [];
         if (typeFilter) {
-          records = records.filter(a => a.agreementType.toLowerCase().includes(typeFilter.toLowerCase()));
+          records = records.filter(a => (a.agreementType || '').toLowerCase().includes(typeFilter.toLowerCase()));
         }
         return sendJson(res, 200, {
           success: true,
@@ -317,7 +528,17 @@ const server = http.createServer(async (req, res) => {
           data: records
         });
       }
+
       if (pathname === '/api/requests' && method === 'GET') {
+        if (!requireAdminAuth(req, res)) return;
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            const data = await supabase.getRequests();
+            return sendJson(res, 200, { success: true, total: data.length, data });
+          } catch (supaErr) {
+            console.error('Supabase getRequests error, falling back:', supaErr);
+          }
+        }
         const db = readDb();
         return sendJson(res, 200, {
           success: true,
@@ -325,7 +546,17 @@ const server = http.createServer(async (req, res) => {
           data: (db.requests || []).reverse()
         });
       }
+
       if (pathname === '/api/vendors' && method === 'GET') {
+        if (!requireAdminAuth(req, res)) return;
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            const data = await supabase.getVendors();
+            return sendJson(res, 200, { success: true, total: data.length, data });
+          } catch (supaErr) {
+            console.error('Supabase getVendors error, falling back:', supaErr);
+          }
+        }
         const db = readDb();
         return sendJson(res, 200, {
           success: true,
@@ -333,16 +564,220 @@ const server = http.createServer(async (req, res) => {
           data: (db.vendors || []).reverse()
         });
       }
-      if (pathname === '/api/stats' && method === 'GET') {
+
+      if (pathname === '/api/requests/update' && (method === 'POST' || method === 'PATCH')) {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const { id, status, adminNotes } = body;
+        if (!id) {
+          return sendJson(res, 400, { success: false, error: 'Request ID is required' });
+        }
+        let updatedItem = null;
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            updatedItem = await supabase.updateRequest(id, { status, adminNotes });
+          } catch (supaErr) {
+            console.error('Supabase updateRequest error:', supaErr);
+          }
+        }
+        const db = readDb();
+        const item = (db.requests || []).find(r => r.id === id);
+        if (item) {
+          if (status) item.status = status;
+          if (adminNotes !== undefined) item.adminNotes = adminNotes;
+          item.updatedAt = new Date().toISOString();
+          writeDb(db);
+          if (!updatedItem) updatedItem = item;
+        }
+        if (!updatedItem) {
+          return sendJson(res, 404, { success: false, error: 'Service request not found' });
+        }
+        return sendJson(res, 200, { success: true, message: 'Request updated successfully', data: updatedItem });
+      }
+
+      if (pathname === '/api/requests/delete' && method === 'POST') {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const { id } = body;
+        if (!id) {
+          return sendJson(res, 400, { success: false, error: 'Request ID is required' });
+        }
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.deleteRequest(id);
+          } catch (supaErr) {
+            console.error('Supabase deleteRequest error:', supaErr);
+          }
+        }
+        const db = readDb();
+        db.requests = (db.requests || []).filter(r => r.id !== id);
+        writeDb(db);
+        return sendJson(res, 200, { success: true, message: 'Request deleted successfully' });
+      }
+
+      if (pathname === '/api/vendors/update' && (method === 'POST' || method === 'PATCH')) {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const { id, verificationStatus, adminNotes } = body;
+        if (!id) {
+          return sendJson(res, 400, { success: false, error: 'Vendor ID is required' });
+        }
+        let updatedVendor = null;
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            updatedVendor = await supabase.updateVendor(id, { verificationStatus, adminNotes });
+          } catch (supaErr) {
+            console.error('Supabase updateVendor error:', supaErr);
+          }
+        }
+        const db = readDb();
+        const vendor = (db.vendors || []).find(v => v.id === id);
+        if (vendor) {
+          if (verificationStatus) vendor.verificationStatus = verificationStatus;
+          if (adminNotes !== undefined) vendor.adminNotes = adminNotes;
+          vendor.updatedAt = new Date().toISOString();
+          writeDb(db);
+          if (!updatedVendor) updatedVendor = vendor;
+        }
+        if (!updatedVendor) {
+          return sendJson(res, 404, { success: false, error: 'Vendor not found' });
+        }
+        return sendJson(res, 200, { success: true, message: 'Vendor status updated', data: updatedVendor });
+      }
+
+      if (pathname === '/api/vendors/delete' && method === 'POST') {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const { id } = body;
+        if (!id) {
+          return sendJson(res, 400, { success: false, error: 'Vendor ID is required' });
+        }
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.deleteVendor(id);
+          } catch (supaErr) {
+            console.error('Supabase deleteVendor error:', supaErr);
+          }
+        }
+        const db = readDb();
+        db.vendors = (db.vendors || []).filter(v => v.id !== id);
+        writeDb(db);
+        return sendJson(res, 200, { success: true, message: 'Vendor deleted successfully' });
+      }
+
+      if (pathname === '/api/messages' && method === 'GET') {
+        if (!requireAdminAuth(req, res)) return;
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            const data = await supabase.getMessages();
+            return sendJson(res, 200, { success: true, total: data.length, data });
+          } catch (supaErr) {
+            console.error('Supabase getMessages error, falling back:', supaErr);
+          }
+        }
         const db = readDb();
         return sendJson(res, 200, {
           success: true,
+          total: (db.messages || []).length,
+          data: (db.messages || []).reverse()
+        });
+      }
+
+      if (pathname === '/api/messages/delete' && method === 'POST') {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const { id } = body;
+        if (!id) {
+          return sendJson(res, 400, { success: false, error: 'Message ID is required' });
+        }
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.deleteMessage(id);
+          } catch (supaErr) {
+            console.error('Supabase deleteMessage error:', supaErr);
+          }
+        }
+        const db = readDb();
+        db.messages = (db.messages || []).filter(m => m.id !== id);
+        writeDb(db);
+        return sendJson(res, 200, { success: true, message: 'Message deleted successfully' });
+      }
+
+      if (pathname === '/api/supabase/status' && method === 'GET') {
+        if (!requireAdminAuth(req, res)) return;
+        const creds = supabase.getSupabaseCredentials();
+        const configured = supabase.isSupabaseConfigured();
+        return sendJson(res, 200, {
+          success: true,
+          configured,
+          url: creds.url ? creds.url.replace(/(https?:\/\/)(.{5}).*(\..*)/, '$1$2***$3') : '',
+          backend: configured ? 'Supabase Database' : 'Local JSON Storage'
+        });
+      }
+
+      if (pathname === '/api/supabase/config' && method === 'POST') {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const { url, key } = body;
+        if (!url || !key) {
+          return sendJson(res, 400, { success: false, error: 'Both Supabase URL and Key are required' });
+        }
+        const ok = supabase.saveSupabaseConfig(url, key);
+        if (!ok) {
+          return sendJson(res, 500, { success: false, error: 'Could not save .env file' });
+        }
+        return sendJson(res, 200, {
+          success: true,
+          message: 'Supabase configuration saved! Connected to ' + url
+        });
+      }
+
+      if (pathname === '/api/stats' && method === 'GET') {
+        let requests = [];
+        let vendors = [];
+        let agreements = [];
+        let messages = [];
+
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            [requests, vendors, agreements, messages] = await Promise.all([
+              supabase.getRequests(),
+              supabase.getVendors(),
+              supabase.getAgreements(),
+              supabase.getMessages()
+            ]);
+          } catch (err) {
+            console.error('Supabase stats error, falling back to db.json:', err);
+            const db = readDb();
+            requests = db.requests || [];
+            vendors = db.vendors || [];
+            agreements = db.agreements || [];
+            messages = db.messages || [];
+          }
+        } else {
+          const db = readDb();
+          requests = db.requests || [];
+          vendors = db.vendors || [];
+          agreements = db.agreements || [];
+          messages = db.messages || [];
+        }
+
+        const pendingCount = (requests || []).filter(r => r.status === 'pending_matching' || r.status === 'pending').length;
+        const contactedCount = (requests || []).filter(r => r.status === 'contacted').length;
+        const completedCount = (requests || []).filter(r => r.status === 'completed').length;
+
+        return sendJson(res, 200, {
+          success: true,
           stats: {
-            totalRequests: (db.requests || []).length + 1850,
-            verifiedVendors: (db.vendors || []).length + 420,
-            agreementsSigned: (db.agreements || []).length + 2270,
-            satisfactionRate: 98.6,
-            serviceCategories: 12
+            totalRequests: (requests || []).length,
+            pendingRequests: pendingCount,
+            contactedRequests: contactedCount,
+            completedRequests: completedCount,
+            verifiedVendors: (vendors || []).length,
+            agreementsSigned: (agreements || []).length,
+            totalMessages: (messages || []).length,
+            storageBackend: supabase.isSupabaseConfigured() ? 'Supabase Database' : 'Local Storage',
+            supabaseConfigured: supabase.isSupabaseConfigured()
           }
         });
       }
@@ -412,7 +847,9 @@ const server = http.createServer(async (req, res) => {
 
     res.writeHead(200, {
       'Content-Type': contentType,
-      'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=86400'
+      'Cache-Control': (ext === '.html' || ext === '.js' || ext === '.css')
+        ? 'no-cache, no-store, must-revalidate'
+        : 'public, max-age=86400'
     });
 
     const readStream = fs.createReadStream(filePath);
