@@ -82,8 +82,8 @@ function parseJsonBody(req) {
     let body = '';
     req.on('data', chunk => {
       body += chunk;
-      if (body.length > 5 * 1024 * 1024) {
-        reject(new Error('Payload too large'));
+      if (body.length > 15 * 1024 * 1024) {
+        reject(new Error('Payload too large (maximum 15MB)'));
       }
     });
     req.on('end', () => {

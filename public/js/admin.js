@@ -1094,9 +1094,127 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     });
   }
 
+  // Property Image Upload & Preview Handling (from device or camera)
+  const propFileInput = document.getElementById('propFormFileInput');
+  const propUploadZone = document.getElementById('propImageUploadZone');
+  const propUploadPrompt = document.getElementById('propImageUploadPrompt');
+  const propPreviewWrap = document.getElementById('propImagePreviewWrap');
+  const propPreviewImg = document.getElementById('propImagePreviewImg');
+  const propPreviewMeta = document.getElementById('propImagePreviewMeta');
+  const propImageInput = document.getElementById('propFormImage');
+  const propRemoveBtn = document.getElementById('propImageRemoveBtn');
+
+  function showPropertyImagePreview(src, metaText) {
+    if (!propPreviewWrap || !propPreviewImg) return;
+    propPreviewImg.src = src;
+    if (propPreviewMeta) propPreviewMeta.textContent = metaText || '✓ Photo Selected';
+    if (propUploadPrompt) propUploadPrompt.style.display = 'none';
+    propPreviewWrap.style.display = 'block';
+  }
+
+  function clearPropertyImagePreview() {
+    if (propPreviewImg) propPreviewImg.src = '';
+    if (propImageInput) propImageInput.value = '';
+    if (propFileInput) propFileInput.value = '';
+    if (propPreviewWrap) propPreviewWrap.style.display = 'none';
+    if (propUploadPrompt) propUploadPrompt.style.display = 'block';
+  }
+
+  if (propRemoveBtn) {
+    propRemoveBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearPropertyImagePreview();
+    });
+  }
+
+  if (propUploadZone && propFileInput) {
+    propUploadZone.addEventListener('click', (e) => {
+      if (e.target.closest('#propImageRemoveBtn')) return;
+      propFileInput.click();
+    });
+
+    propUploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      propUploadZone.classList.add('dragover');
+    });
+
+    propUploadZone.addEventListener('dragleave', () => {
+      propUploadZone.classList.remove('dragover');
+    });
+
+    propUploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      propUploadZone.classList.remove('dragover');
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+        processSelectedImageFile(e.dataTransfer.files[0]);
+      }
+    });
+  }
+
+  if (propFileInput) {
+    propFileInput.addEventListener('change', () => {
+      if (propFileInput.files && propFileInput.files[0]) {
+        processSelectedImageFile(propFileInput.files[0]);
+      }
+    });
+  }
+
+  if (propImageInput) {
+    propImageInput.addEventListener('input', () => {
+      const val = propImageInput.value.trim();
+      if (val) {
+        showPropertyImagePreview(val, '✓ External Image URL');
+      } else {
+        clearPropertyImagePreview();
+      }
+    });
+  }
+
+  function processSelectedImageFile(file) {
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (JPG, PNG, WEBP, etc.).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const maxDim = 1280;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.84);
+        const approxKb = Math.round((dataUrl.length * 3 / 4) / 1024);
+
+        if (propImageInput) propImageInput.value = dataUrl;
+        showPropertyImagePreview(dataUrl, `✓ Photo Loaded (${width}x${height} • ~${approxKb} KB)`);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
   function openNewPropertyModal() {
     if (!propertyEditModal) return;
     propertyEditForm.reset();
+    clearPropertyImagePreview();
     document.getElementById('propFormId').value = '';
     if (propertyModalHeading) propertyModalHeading.textContent = 'Post Available Property';
     if (deletePropBtn) deletePropBtn.style.display = 'none';
@@ -1115,6 +1233,12 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     document.getElementById('propFormImage').value = prop.imageUrl || '';
     document.getElementById('propFormDesc').value = prop.description || '';
     
+    if (prop.imageUrl) {
+      showPropertyImagePreview(prop.imageUrl, '✓ Current Property Photo');
+    } else {
+      clearPropertyImagePreview();
+    }
+
     if (propertyModalHeading) propertyModalHeading.textContent = `Edit Property: ${prop.title}`;
     if (deletePropBtn) deletePropBtn.style.display = 'inline-block';
     propertyEditModal.classList.add('open');
