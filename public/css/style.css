@@ -1957,12 +1957,8 @@ textarea.form-control {
 .text-link:hover span,.all-services-link:hover span { transform: translateX(3px); }
 .home-hero-proof { display: flex; align-items: center; gap: .75rem; margin-top: 3rem; color: #68756B; font-size: .78rem; }
 .proof-rule { width: 28px; height: 1px; background: #a9afb2; flex: 0 0 auto; }
-.home-hero-photo { height: 430px; margin: 0; position: relative; background: #d9d6ce; }
-.home-hero-photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(13,24,35,.48), transparent 36%); pointer-events: none; }
+.home-hero-photo { height: 430px; margin: 0; position: relative; background: #d9d6ce; overflow: hidden; border-radius: var(--radius-lg); }
 .home-hero-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 44%; }
-.home-hero-photo figcaption { position: absolute; z-index: 1; left: 1.5rem; bottom: 1.3rem; color: white; font-size: .86rem; font-weight: 600; }
-.photo-caption-dot { display: inline-block; width: 7px; height: 7px; margin-right: .45rem; border-radius: 50%; background: #42E94D; vertical-align: 1px; }
-.photo-index { position: absolute; z-index: 1; top: 1rem; right: 1rem; color: white; font-size: .7rem; font-weight: 700; letter-spacing: .12em; }
 .hero-bottomline { background: #151B17; color: #e8edf0; font-size: .75rem; letter-spacing: .015em; }
 .hero-bottomline .container { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .hero-bottomline > .container > span:first-child { color: #aebcc6; }
