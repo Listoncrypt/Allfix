@@ -185,6 +185,15 @@ const server = http.createServer(async (req, res) => {
           urgency,
           preferredDate,
           description,
+          bedrooms,
+          preferredLocations,
+          propertyBudget,
+          propertyTimeline,
+          carType,
+          carModelYear,
+          isElectricVehicle,
+          carColours,
+          carBudget,
           propertyTypes,
           propertyTypeOther,
           constructionDescription,
@@ -246,8 +255,17 @@ const server = http.createServer(async (req, res) => {
           service: (service || category).trim(),
           location: (location || 'Not specified').trim(),
           urgency: urgency || 'Standard',
-          preferredDate: preferredDate || isoNow.split('T')[0],
+          preferredDate: preferredDate || '',
           description: description.trim(),
+          bedrooms: (bedrooms || '').trim(),
+          preferredLocations: Array.isArray(preferredLocations) ? preferredLocations : [],
+          propertyBudget: (propertyBudget || '').trim(),
+          propertyTimeline: (propertyTimeline || '').trim(),
+          carType: (carType || '').trim(),
+          carModelYear: (carModelYear || '').trim(),
+          isElectricVehicle: (isElectricVehicle || '').trim(),
+          carColours: Array.isArray(carColours) ? carColours : [],
+          carBudget: (carBudget || '').trim(),
           propertyTypes: Array.isArray(propertyTypes) ? propertyTypes.filter(type => typeof type === 'string') : [],
           propertyTypeOther: (propertyTypeOther || '').trim(),
           constructionDescription: (constructionDescription || '').trim(),
@@ -531,15 +549,34 @@ const server = http.createServer(async (req, res) => {
 
       if (pathname === '/api/requests' && method === 'GET') {
         if (!requireAdminAuth(req, res)) return;
+        const db = readDb();
+        const localReqMap = new Map((db.requests || []).map(r => [r.id, r]));
+
         if (supabase.isSupabaseConfigured()) {
           try {
             const data = await supabase.getRequests();
-            return sendJson(res, 200, { success: true, total: data.length, data });
+            const merged = (data || []).map(r => {
+              const local = localReqMap.get(r.id);
+              if (!local) return r;
+              return {
+                ...local,
+                ...r,
+                bedrooms: r.bedrooms || local.bedrooms || '',
+                preferredLocations: (r.preferredLocations && r.preferredLocations.length) ? r.preferredLocations : (local.preferredLocations || []),
+                propertyBudget: r.propertyBudget || local.propertyBudget || '',
+                propertyTimeline: r.propertyTimeline || local.propertyTimeline || '',
+                carType: r.carType || local.carType || '',
+                carModelYear: r.carModelYear || local.carModelYear || '',
+                isElectricVehicle: r.isElectricVehicle || local.isElectricVehicle || '',
+                carColours: (r.carColours && r.carColours.length) ? r.carColours : (local.carColours || []),
+                carBudget: r.carBudget || local.carBudget || ''
+              };
+            });
+            return sendJson(res, 200, { success: true, total: merged.length, data: merged });
           } catch (supaErr) {
             console.error('Supabase getRequests error, falling back:', supaErr);
           }
         }
-        const db = readDb();
         return sendJson(res, 200, {
           success: true,
           total: (db.requests || []).length,
@@ -710,7 +747,8 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 200, {
           success: true,
           configured,
-          url: creds.url ? creds.url.replace(/(https?:\/\/)(.{5}).*(\..*)/, '$1$2***$3') : '',
+          url: creds.url || '',
+          key: creds.key || '',
           backend: configured ? 'Supabase Database' : 'Local JSON Storage'
         });
       }

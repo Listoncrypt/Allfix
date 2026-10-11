@@ -145,16 +145,12 @@
               </select>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" id="serviceItemWrap">
               <label class="form-label" for="service">
                 Specific Service Item
               </label>
-                <input type="text" id="service" class="form-control" list="serviceSuggestions" placeholder="e.g. Barber home visit, Frontal install, Property purchase...">
+                <input type="text" id="service" class="form-control" list="serviceSuggestions" placeholder="e.g. Barber home visit, Frontal install, Plumbing repair...">
                 <datalist id="serviceSuggestions">
-                  <!-- Property Sales & Rentals -->
-                  <option value="Property sales (Duplex, Bungalow, Apartment)"></option>
-                  <option value="Property rentals (Residential / Commercial)"></option>
-                  <option value="Land scouting & purchase"></option>
                   <!-- Beauty & Grooming -->
                   <option value="Barber & Men's grooming (Home / Studio)"></option>
                   <option value="Nail tech (Acrylics, Gel, Manicure & Pedicure)"></option>
@@ -179,10 +175,9 @@
                   <option value="House construction & civil building"></option>
                   <option value="Building renovation & remodeling"></option>
                   <option value="Property development project"></option>
-                  <!-- Home & Vehicles -->
+                  <!-- Home & Appliances -->
                   <option value="Plumbing installation & leak repair"></option>
                   <option value="Electrical installation & inverter setup"></option>
-                  <option value="Car mechanic & computer diagnostics"></option>
                   <option value="Air conditioner servicing & gas refill"></option>
                   <option value="Generator repair & servicing"></option>
                   <option value="Deep home cleaning & fumigation"></option>
@@ -190,62 +185,218 @@
             </div>
           </div>
 
-            <fieldset class="choice-fieldset conditional-fields" id="propertyTypeSection" hidden aria-hidden="true">
-              <legend>What type of property is this for?</legend>
-              <p class="choice-help">Choose all that apply.</p>
+          <!-- 1. Dedicated Property Request Section -->
+          <section class="choice-fieldset conditional-fields" id="propertySection" hidden aria-hidden="true" style="margin-top: 1.25rem;">
+            <!-- What type of property are you looking for? -->
+            <fieldset class="choice-subgroup" style="margin-top: 0; padding-top: 0; border-top: none;">
+              <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">What type of property are you looking for?</legend>
+              <p class="choice-help">Select all property types you are interested in.</p>
               <div class="choice-grid property-type-grid">
                 <label class="choice-option"><input type="checkbox" name="propertyTypes" value="Bungalow"><span>Bungalow</span></label>
                 <label class="choice-option"><input type="checkbox" name="propertyTypes" value="Terrace Duplex"><span>Terrace Duplex</span></label>
                 <label class="choice-option"><input type="checkbox" name="propertyTypes" value="Fully Detached Duplex"><span>Fully Detached Duplex</span></label>
                 <label class="choice-option"><input type="checkbox" name="propertyTypes" value="Semi Detached Duplex"><span>Semi Detached Duplex</span></label>
-                <label class="choice-option"><input type="checkbox" name="propertyTypes" value="Land"><span>Land</span></label>
+                <label class="choice-option"><input type="checkbox" name="propertyTypes" value="Apartment / Flat"><span>Apartment / Flat</span></label>
+                <label class="choice-option"><input type="checkbox" name="propertyTypes" value="Land / Plot"><span>Land / Plot</span></label>
+                <label class="choice-option"><input type="checkbox" name="propertyTypes" value="Commercial / Office"><span>Commercial / Office</span></label>
                 <label class="choice-option"><input type="checkbox" name="propertyTypes" value="Other" id="propertyTypeOther"><span>Other</span></label>
               </div>
               <div class="form-group choice-other-field" id="propertyTypeOtherWrap" hidden>
-                <label class="form-label" for="propertyTypeOtherText">Tell us the property type</label>
-                <input type="text" class="form-control" id="propertyTypeOtherText" placeholder="Describe the property type">
+                <label class="form-label" for="propertyTypeOtherText">Tell us the specific property type</label>
+                <input type="text" class="form-control" id="propertyTypeOtherText" placeholder="e.g. Penthouse, Farmland, Warehouse, Event Centre">
               </div>
             </fieldset>
 
-            <section class="choice-fieldset conditional-fields" id="constructionDetailsSection" hidden aria-hidden="true" aria-labelledby="constructionHeading">
-              <h3 class="choice-legend" id="constructionHeading">Construction & land details</h3>
-              <div class="form-group">
-                <label class="form-label" for="constructionDescription">Describe what you want to construct <span class="required">*</span></label>
-                <textarea class="form-control" id="constructionDescription" rows="3" placeholder="For example, a three-bedroom bungalow with a boys’ quarters"></textarea>
+            <!-- Number of Bedrooms -->
+            <fieldset class="choice-subgroup">
+              <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">Number of Bedrooms</legend>
+              <p class="choice-help">Choose your desired bedroom count or specify custom.</p>
+              <div class="choice-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+                <label class="choice-option"><input type="radio" name="propertyBedrooms" value="1 Bedroom"><span>1 Bedroom</span></label>
+                <label class="choice-option"><input type="radio" name="propertyBedrooms" value="2 Bedrooms"><span>2 Bedrooms</span></label>
+                <label class="choice-option"><input type="radio" name="propertyBedrooms" value="3 Bedrooms"><span>3 Bedrooms</span></label>
+                <label class="choice-option"><input type="radio" name="propertyBedrooms" value="4 Bedrooms"><span>4 Bedrooms</span></label>
+                <label class="choice-option"><input type="radio" name="propertyBedrooms" value="5+ Bedrooms"><span>5+ Bedrooms</span></label>
+                <label class="choice-option"><input type="radio" name="propertyBedrooms" value="Custom" id="propertyBedroomsCustomRadio"><span>Custom</span></label>
               </div>
-              <fieldset class="choice-subgroup">
-                <legend>What is the land size?</legend>
-                <p class="choice-help">Choose the closest option.</p>
-                <div class="choice-grid land-size-grid">
-                  <label class="choice-option"><input type="radio" name="landSize" value="Half plot"><span>Half plot</span></label>
-                  <label class="choice-option"><input type="radio" name="landSize" value="1 plot"><span>1 plot</span></label>
-                  <label class="choice-option"><input type="radio" name="landSize" value="2 plots"><span>2 plots</span></label>
-                  <label class="choice-option"><input type="radio" name="landSize" value="3 plots"><span>3 plots</span></label>
-                  <label class="choice-option"><input type="radio" name="landSize" value="Full plot"><span>Full plot</span></label>
-                  <label class="choice-option"><input type="radio" name="landSize" value="Other" id="landSizeOther"><span>Other</span></label>
-                </div>
-                <div class="form-group choice-other-field" id="landSizeOtherWrap" hidden>
-                  <label class="form-label" for="landSizeOtherText">Enter the land size</label>
-                  <input type="text" class="form-control" id="landSizeOtherText" placeholder="e.g. 1,200 square metres">
-                </div>
-              </fieldset>
-              <fieldset class="choice-subgroup land-status-group">
-                <legend>Do you already have land?</legend>
-                <div class="choice-grid land-status-grid">
-                  <label class="choice-option"><input type="radio" name="landStatus" value="already-have-land"><span>Yes, I already have land</span></label>
-                  <label class="choice-option"><input type="radio" name="landStatus" value="help-finding-land"><span>No, I want ALLFIX to help me get genuine verified land</span></label>
-                </div>
-              </fieldset>
-            </section>
+              <div class="form-group choice-other-field" id="propertyBedroomsCustomWrap" hidden>
+                <label class="form-label" for="propertyBedroomsCustomText">Enter Preferred Number of Bedrooms</label>
+                <input type="text" class="form-control" id="propertyBedroomsCustomText" placeholder="e.g. 6 Bedrooms with Penthouse & BQ">
+              </div>
+            </fieldset>
 
-          <div class="form-group">
-            <label class="form-label" for="location">
+            <!-- Preferred Location(s) for the Property (Multi-select) -->
+            <fieldset class="choice-subgroup">
+              <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">Preferred location(s) for the property</legend>
+              <p class="choice-help">Choose all areas you are open to (multi-select friendly).</p>
+              <div class="choice-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+                <label class="choice-option"><input type="checkbox" name="propLocations" value="Lugbe"><span>Lugbe</span></label>
+                <label class="choice-option"><input type="checkbox" name="propLocations" value="Lokogoma"><span>Lokogoma</span></label>
+                <label class="choice-option"><input type="checkbox" name="propLocations" value="Guzape"><span>Guzape</span></label>
+                <label class="choice-option"><input type="checkbox" name="propLocations" value="Katampe"><span>Katampe</span></label>
+                <label class="choice-option"><input type="checkbox" name="propLocations" value="Asokoro"><span>Asokoro</span></label>
+                <label class="choice-option"><input type="checkbox" name="propLocations" value="Maitama"><span>Maitama</span></label>
+                <label class="choice-option"><input type="checkbox" name="propLocations" value="Jabi"><span>Jabi</span></label>
+                <label class="choice-option"><input type="checkbox" name="propLocations" value="Wuse 2"><span>Wuse 2</span></label>
+                <label class="choice-option"><input type="checkbox" name="propLocations" value="Gwarinpa"><span>Gwarinpa</span></label>
+                <label class="choice-option"><input type="checkbox" name="propLocations" value="Airport Road"><span>Airport Road</span></label>
+                <label class="choice-option"><input type="checkbox" name="propLocations" value="Apo / Resettlement"><span>Apo</span></label>
+                <label class="choice-option"><input type="checkbox" name="propLocations" value="Other Area" id="propLocationOther"><span>Other Area</span></label>
+              </div>
+              <div class="form-group choice-other-field" id="propLocationOtherWrap" hidden>
+                <label class="form-label" for="propLocationOtherText">Specify other preferred area(s)</label>
+                <input type="text" class="form-control" id="propLocationOtherText" placeholder="e.g. Kado, Lifecamp, Dawaki, Central Area, Lagos, etc.">
+              </div>
+            </fieldset>
+
+            <!-- Budget Range for Property -->
+            <fieldset class="choice-subgroup">
+              <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">Budget Range for the Property</legend>
+              <p class="choice-help">Indicate your budget expectation to help us present the right options.</p>
+              <div class="choice-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+                <label class="choice-option"><input type="radio" name="propBudget" value="Under ₦30 Million"><span>Under ₦30M</span></label>
+                <label class="choice-option"><input type="radio" name="propBudget" value="₦30M – ₦70 Million"><span>₦30M – ₦70M</span></label>
+                <label class="choice-option"><input type="radio" name="propBudget" value="₦70M – ₦150 Million"><span>₦70M – ₦150M</span></label>
+                <label class="choice-option"><input type="radio" name="propBudget" value="₦150M – ₦300 Million"><span>₦150M – ₦300M</span></label>
+                <label class="choice-option"><input type="radio" name="propBudget" value="₦300 Million+"><span>₦300M+</span></label>
+                <label class="choice-option"><input type="radio" name="propBudget" value="Custom" id="propBudgetCustomRadio"><span>Custom Budget</span></label>
+              </div>
+              <div class="form-group choice-other-field" id="propBudgetCustomWrap" hidden>
+                <label class="form-label" for="propBudgetCustomText">Enter Your Target Budget</label>
+                <input type="text" class="form-control" id="propBudgetCustomText" placeholder="e.g. ₦85,000,000 or ₦4,500,000/yr rent">
+              </div>
+            </fieldset>
+
+            <!-- When do you plan to acquire or rent this property? -->
+            <fieldset class="choice-subgroup">
+              <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">When do you plan to acquire or rent this property?</legend>
+              <p class="choice-help">Select your timeline so our property desk can prioritize inspections.</p>
+              <div class="choice-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                <label class="choice-option"><input type="radio" name="propTimeline" value="Ready immediately (1–2 weeks)"><span>⚡ Ready immediately (1–2 weeks)</span></label>
+                <label class="choice-option"><input type="radio" name="propTimeline" value="Actively searching (Within 1 month)" checked><span>🔍 Actively searching (Within 1 month)</span></label>
+                <label class="choice-option"><input type="radio" name="propTimeline" value="Planning ahead (1–3 months)"><span>📅 Planning ahead (1–3 months)</span></label>
+                <label class="choice-option"><input type="radio" name="propTimeline" value="Exploring market options"><span>💡 Exploring & comparing market options</span></label>
+              </div>
+            </fieldset>
+          </section>
+
+          <!-- 2. Dedicated Car / Vehicle Request Section -->
+          <section class="choice-fieldset conditional-fields" id="carSection" hidden aria-hidden="true" style="margin-top: 1.25rem;">
+            <!-- What type of car are you looking for? -->
+            <fieldset class="choice-subgroup" style="margin-top: 0; padding-top: 0; border-top: none;">
+              <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">What type of car are you looking for?</legend>
+              <p class="choice-help">Select the category of vehicle you want.</p>
+              <div class="choice-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+                <label class="choice-option"><input type="radio" name="carType" value="Sedan / Saloon"><span>Sedan / Saloon</span></label>
+                <label class="choice-option"><input type="radio" name="carType" value="SUV / Jeep" checked><span>SUV / Jeep</span></label>
+                <label class="choice-option"><input type="radio" name="carType" value="Pickup Truck"><span>Pickup Truck</span></label>
+                <label class="choice-option"><input type="radio" name="carType" value="Hatchback / Compact"><span>Hatchback</span></label>
+                <label class="choice-option"><input type="radio" name="carType" value="Luxury / Executive"><span>Luxury / Executive</span></label>
+                <label class="choice-option"><input type="radio" name="carType" value="Commercial Bus / Van"><span>Commercial Bus / Van</span></label>
+                <label class="choice-option"><input type="radio" name="carType" value="Sports Car / Coupe"><span>Sports / Coupe</span></label>
+                <label class="choice-option"><input type="radio" name="carType" value="Other" id="carTypeOtherRadio"><span>Other</span></label>
+              </div>
+              <div class="form-group choice-other-field" id="carTypeOtherWrap" hidden>
+                <label class="form-label" for="carTypeOtherText">Specify vehicle type</label>
+                <input type="text" class="form-control" id="carTypeOtherText" placeholder="e.g. Electric Crossover, Bulletproof SUV, Armored">
+              </div>
+            </fieldset>
+
+            <!-- Car Year / Model -->
+            <div class="form-group" style="margin-top: 1.25rem;">
+              <label class="form-label" for="carModelYear">
+                Car Year / Model <span class="required">*</span>
+              </label>
+              <input type="text" id="carModelYear" class="form-control" placeholder="e.g. Toyota RAV4 2022, Lexus RX350 2020, Mercedes-Benz GLE 2021">
+            </div>
+
+            <!-- Electric Vehicle? (Yes / No) -->
+            <fieldset class="choice-subgroup">
+              <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">Electric Vehicle?</legend>
+              <p class="choice-help">Select whether you want a full electric car (EV) or petrol/diesel/hybrid.</p>
+              <div class="choice-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                <label class="choice-option"><input type="radio" name="isElectricVehicle" value="No (Petrol / Diesel / Hybrid)" checked><span>No (Petrol / Diesel / Hybrid)</span></label>
+                <label class="choice-option"><input type="radio" name="isElectricVehicle" value="Yes (100% Electric EV)"><span>⚡ Yes (100% Electric EV)</span></label>
+              </div>
+            </fieldset>
+
+            <!-- Preferred Colour(s) -->
+            <fieldset class="choice-subgroup">
+              <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">Preferred Colour(s)</legend>
+              <p class="choice-help">Choose all colours you would consider (multi-select).</p>
+              <div class="choice-grid" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
+                <label class="choice-option"><input type="checkbox" name="carColours" value="Black"><span>Black</span></label>
+                <label class="choice-option"><input type="checkbox" name="carColours" value="White"><span>White</span></label>
+                <label class="choice-option"><input type="checkbox" name="carColours" value="Silver"><span>Silver</span></label>
+                <label class="choice-option"><input type="checkbox" name="carColours" value="Grey"><span>Grey</span></label>
+                <label class="choice-option"><input type="checkbox" name="carColours" value="Dark Blue / Navy"><span>Navy Blue</span></label>
+                <label class="choice-option"><input type="checkbox" name="carColours" value="Wine / Burgundy"><span>Wine / Burgundy</span></label>
+                <label class="choice-option"><input type="checkbox" name="carColours" value="Red"><span>Red</span></label>
+                <label class="choice-option"><input type="checkbox" name="carColours" value="Any Colour" checked><span>Any Colour</span></label>
+              </div>
+            </fieldset>
+
+            <!-- Budget Field for Car -->
+            <fieldset class="choice-subgroup">
+              <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">Budget Range for the Car</legend>
+              <p class="choice-help">Select your target price bracket or type your custom budget.</p>
+              <div class="choice-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+                <label class="choice-option"><input type="radio" name="carBudget" value="Under ₦15 Million"><span>Under ₦15M</span></label>
+                <label class="choice-option"><input type="radio" name="carBudget" value="₦15M – ₦30 Million"><span>₦15M – ₦30M</span></label>
+                <label class="choice-option"><input type="radio" name="carBudget" value="₦30M – ₦60 Million"><span>₦30M – ₦60M</span></label>
+                <label class="choice-option"><input type="radio" name="carBudget" value="₦60M – ₦100 Million"><span>₦60M – ₦100M</span></label>
+                <label class="choice-option"><input type="radio" name="carBudget" value="₦100 Million+"><span>₦100M+</span></label>
+                <label class="choice-option"><input type="radio" name="carBudget" value="Custom" id="carBudgetCustomRadio"><span>Custom Budget</span></label>
+              </div>
+              <div class="form-group choice-other-field" id="carBudgetCustomWrap" hidden>
+                <label class="form-label" for="carBudgetCustomText">Enter Your Specific Car Budget</label>
+                <input type="text" class="form-control" id="carBudgetCustomText" placeholder="e.g. ₦38,000,000">
+              </div>
+            </fieldset>
+          </section>
+
+          <!-- 3. Construction & Land Details Section -->
+          <section class="choice-fieldset conditional-fields" id="constructionDetailsSection" hidden aria-hidden="true" aria-labelledby="constructionHeading">
+            <h3 class="choice-legend" id="constructionHeading">Construction & land details</h3>
+            <div class="form-group">
+              <label class="form-label" for="constructionDescription">Describe what you want to construct <span class="required">*</span></label>
+              <textarea class="form-control" id="constructionDescription" rows="3" placeholder="For example, a three-bedroom bungalow with a boys’ quarters"></textarea>
+            </div>
+            <fieldset class="choice-subgroup">
+              <legend>What is the land size?</legend>
+              <p class="choice-help">Choose the closest option.</p>
+              <div class="choice-grid land-size-grid">
+                <label class="choice-option"><input type="radio" name="landSize" value="Half plot"><span>Half plot</span></label>
+                <label class="choice-option"><input type="radio" name="landSize" value="1 plot"><span>1 plot</span></label>
+                <label class="choice-option"><input type="radio" name="landSize" value="2 plots"><span>2 plots</span></label>
+                <label class="choice-option"><input type="radio" name="landSize" value="3 plots"><span>3 plots</span></label>
+                <label class="choice-option"><input type="radio" name="landSize" value="Full plot"><span>Full plot</span></label>
+                <label class="choice-option"><input type="radio" name="landSize" value="Other" id="landSizeOther"><span>Other</span></label>
+              </div>
+              <div class="form-group choice-other-field" id="landSizeOtherWrap" hidden>
+                <label class="form-label" for="landSizeOtherText">Enter the land size</label>
+                <input type="text" class="form-control" id="landSizeOtherText" placeholder="e.g. 1,200 square metres">
+              </div>
+            </fieldset>
+            <fieldset class="choice-subgroup land-status-group">
+              <legend>Do you already have land?</legend>
+              <div class="choice-grid land-status-grid">
+                <label class="choice-option"><input type="radio" name="landStatus" value="already-have-land"><span>Yes, I already have land</span></label>
+                <label class="choice-option"><input type="radio" name="landStatus" value="help-finding-land"><span>No, I want ALLFIX to help me get genuine verified land</span></label>
+              </div>
+            </fieldset>
+          </section>
+
+          <!-- Standard City / Location Address (Used for General Services & Cars) -->
+          <div class="form-group" id="standardLocationWrap">
+            <label class="form-label" for="location" id="locationLabel">
               City / Location Address <span class="required">*</span>
             </label>
             <input type="text" id="location" class="form-control" placeholder="e.g. Wuse 2, Abuja or Garki" required>
           </div>
 
-          <fieldset class="choice-fieldset urgency-fieldset" style="margin: 1.5rem 0; padding: 1.25rem;">
+          <!-- Standard Urgency Fieldset (Used for General Services) -->
+          <fieldset class="choice-fieldset urgency-fieldset" id="standardUrgencyFieldset" style="margin: 1.5rem 0; padding: 1.25rem;">
             <legend class="form-label" style="font-weight: 700; margin-bottom: 0.35rem; display: block; font-size: 1rem; color: #151B17;">
               How urgent? <span class="required">*</span>
             </legend>
@@ -286,18 +437,20 @@
             </div>
           </fieldset>
 
-          <div class="form-group">
+          <!-- Standard Preferred Service Date (Hidden for Property & Cars) -->
+          <div class="form-group" id="standardDateWrap">
             <label class="form-label" for="preferredDate">
               Preferred Service Date
             </label>
             <input type="date" id="preferredDate" class="form-control">
           </div>
 
-          <div class="form-group">
-            <label class="form-label" for="description">
-              Describe the Issue / Scope of Work <span class="required">*</span>
+          <!-- Description Textarea (Preserved exactly as requested) -->
+          <div class="form-group" id="descriptionWrap">
+            <label class="form-label" for="description" id="descriptionLabel">
+              Describe the Request / Scope of Work <span class="required">*</span>
             </label>
-            <textarea id="description" class="form-control" rows="4" placeholder="Please describe the fault or requirement in detail. Include any specific symptoms or equipment brands." required></textarea>
+            <textarea id="description" class="form-control" rows="4" placeholder="Please describe the requirements in detail (e.g. location, timing, specific preferences)." required></textarea>
           </div>
 
           

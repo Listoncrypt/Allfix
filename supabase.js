@@ -96,6 +96,15 @@ function mapRequestFromDb(row) {
     urgency: row.urgency || 'Medium',
     preferredDate: row.preferred_date || '',
     description: row.description || '',
+    bedrooms: row.bedrooms || '',
+    preferredLocations: Array.isArray(row.preferred_locations) ? row.preferred_locations : [],
+    propertyBudget: row.property_budget || '',
+    propertyTimeline: row.property_timeline || '',
+    carType: row.car_type || '',
+    carModelYear: row.car_model_year || '',
+    isElectricVehicle: row.is_electric_vehicle || '',
+    carColours: Array.isArray(row.car_colours) ? row.car_colours : [],
+    carBudget: row.car_budget || '',
     propertyTypes: Array.isArray(row.property_types) ? row.property_types : [],
     propertyTypeOther: row.property_type_other || '',
     constructionDescription: row.construction_description || '',
@@ -171,7 +180,7 @@ module.exports = {
   async insertRequest(r) {
     const c = client || initClient();
     if (!c) return null;
-    const row = {
+    const baseRow = {
       id: r.id,
       customer_name: r.customerName,
       phone: r.phone,
@@ -180,7 +189,7 @@ module.exports = {
       service: r.service,
       location: r.location,
       urgency: r.urgency || 'Medium',
-      preferred_date: r.preferredDate,
+      preferred_date: r.preferredDate || '',
       description: r.description,
       property_types: r.propertyTypes || [],
       property_type_other: r.propertyTypeOther || '',
@@ -193,9 +202,30 @@ module.exports = {
       agreement_id: r.agreementId,
       terms_version: r.termsVersion || 'v1.0'
     };
-    const { data, error } = await c.from('requests').insert([row]).select();
-    if (error) throw error;
-    return mapRequestFromDb(data[0]);
+
+    const fullRow = {
+      ...baseRow,
+      bedrooms: r.bedrooms || '',
+      preferred_locations: r.preferredLocations || [],
+      property_budget: r.propertyBudget || '',
+      property_timeline: r.propertyTimeline || '',
+      car_type: r.carType || '',
+      car_model_year: r.carModelYear || '',
+      is_electric_vehicle: r.isElectricVehicle || '',
+      car_colours: r.carColours || [],
+      car_budget: r.carBudget || ''
+    };
+
+    try {
+      const { data, error } = await c.from('requests').insert([fullRow]).select();
+      if (error) throw error;
+      return mapRequestFromDb(data[0]);
+    } catch (fullErr) {
+      // Graceful fallback in case new columns are not yet applied via SQL migration
+      const { data, error } = await c.from('requests').insert([baseRow]).select();
+      if (error) throw error;
+      return mapRequestFromDb(data[0]);
+    }
   },
 
   async updateRequest(id, updates) {

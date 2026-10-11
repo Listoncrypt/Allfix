@@ -72,6 +72,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (supabaseIndicatorDot) supabaseIndicatorDot.style.background = '#22C55E';
         if (supabaseBackendLabel) supabaseBackendLabel.textContent = 'Storage: Supabase (Live)';
         if (supabaseUrlInput && json.url) supabaseUrlInput.value = json.url;
+
+        // Initialize Supabase Realtime Channel if not already active
+        initSupabaseRealtimeChannel(json.url, json.key);
       } else {
         if (supabaseIndicatorDot) supabaseIndicatorDot.style.background = '#929B93';
         if (supabaseBackendLabel) supabaseBackendLabel.textContent = 'Storage: Local (Connect Supabase)';
@@ -278,6 +281,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
           if (adminLoginScreen) adminLoginScreen.style.display = 'none';
           if (adminApp) adminApp.style.display = 'block';
           refreshAll();
+          startRealtimeSync();
         } else {
           if (adminLoginAlert) {
             adminLoginAlert.textContent = json.error || 'Invalid credentials. Access denied.';
@@ -304,10 +308,191 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       try {
         await fetch('/api/admin/logout', { method: 'POST' });
       } catch (e) {}
+      stopRealtimeSync();
       if (adminApp) adminApp.style.display = 'none';
       if (adminLoginScreen) adminLoginScreen.style.display = 'flex';
       if (adminPasswordInput) adminPasswordInput.value = '';
     });
+  }
+
+  // ==============================================================================
+  // Admin Toast Notifications
+  // ==============================================================================
+  function showAdminToast(message) {
+    const container = document.getElementById('adminToastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      background: #0C100D;
+      color: #FFFFFF;
+      border: 1px solid #16883D;
+      border-left: 4px solid #22C55E;
+      padding: 0.85rem 1.15rem;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      pointer-events: auto;
+      max-width: 360px;
+      transition: all 0.3s ease;
+    `;
+    toast.innerHTML = `
+      <span style="font-size: 1.15rem;">🔔</span>
+      <div style="flex: 1; line-height: 1.35; font-size: 0.86rem;">${message}</div>
+    `;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(8px)';
+      setTimeout(() => toast.remove(), 400);
+    }, 4500);
+  }
+
+  // ==============================================================================
+  // Live Real-Time Background Synchronization Engine
+  // ==============================================================================
+  let realtimeTimer = null;
+  let lastStatsFingerprint = '';
+  let knownRequestIds = new Set();
+  let supabaseLiveChannel = null;
+
+  function pulseLiveBadge() {
+    const badge = document.getElementById('realtimeLiveBadge');
+    if (!badge) return;
+    badge.style.background = 'rgba(34, 197, 94, 0.35)';
+    badge.style.borderColor = '#22C55E';
+    badge.style.transform = 'scale(1.04)';
+    badge.style.transition = 'all 0.25s ease';
+    setTimeout(() => {
+      badge.style.background = 'rgba(34, 197, 94, 0.18)';
+      badge.style.borderColor = 'rgba(34, 197, 94, 0.45)';
+      badge.style.transform = 'scale(1)';
+    }, 1200);
+  }
+
+  function initSupabaseRealtimeChannel(url, key) {
+    if (supabaseLiveChannel || !url || !key) return;
+    if (typeof window.supabase === 'undefined' || !window.supabase.createClient) return;
+
+    try {
+      const supa = window.supabase.createClient(url, key);
+      supabaseLiveChannel = supa.channel('allfix-admin-live-feed')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, (payload) => {
+          pulseLiveBadge();
+          if (payload.eventType === 'INSERT' && payload.new) {
+            showAdminToast(`New <strong>${escapeHtml(payload.new.category || 'Service')}</strong> request from <strong>${escapeHtml(payload.new.customer_name || 'Customer')}</strong>!`);
+          }
+          silentSyncRequests();
+          loadStats();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+          pulseLiveBadge();
+          loadMessages();
+          loadStats();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'vendors' }, () => {
+          pulseLiveBadge();
+          loadVendors();
+          loadStats();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'properties' }, () => {
+          pulseLiveBadge();
+          loadProperties();
+          loadStats();
+        })
+        .subscribe();
+    } catch (err) {
+      console.warn('Realtime channel fallback to polling:', err.message);
+    }
+  }
+
+  async function silentSyncRequests() {
+    try {
+      const res = await fetch('/api/requests');
+      const json = await res.json();
+      if (!json.success || !Array.isArray(json.data)) return;
+
+      const incomingRequests = json.data;
+      const incomingIds = incomingRequests.map(r => r.id);
+
+      // Check if new requests arrived that weren't known
+      if (knownRequestIds.size > 0) {
+        const brandNewItems = incomingRequests.filter(r => !knownRequestIds.has(r.id));
+        if (brandNewItems.length > 0) {
+          pulseLiveBadge();
+          brandNewItems.forEach(item => {
+            showAdminToast(`New <strong>${escapeHtml(item.category)}</strong> request from <strong>${escapeHtml(item.customerName)}</strong>!`);
+          });
+        }
+      }
+
+      // Update known IDs
+      knownRequestIds = new Set(incomingIds);
+      allRequests = incomingRequests;
+
+      const badgeCount = document.getElementById('badgeRequestsCount');
+      if (badgeCount) badgeCount.textContent = allRequests.length;
+
+      // Re-render requests view seamlessly without disturbing search input or closing modal
+      renderFilteredRequests();
+
+      // If modal is currently open and inspecting a request, refresh its details if modified
+      if (currentModalRequestId && modal && modal.classList.contains('open')) {
+        const activeItem = allRequests.find(r => r.id === currentModalRequestId);
+        if (activeItem) {
+          window.openRequestModal(currentModalRequestId);
+        }
+      }
+    } catch (e) {
+      console.warn('Silent sync error:', e.message);
+    }
+  }
+
+  async function silentCheckForUpdates() {
+    try {
+      const res = await fetch('/api/stats');
+      const json = await res.json();
+      if (!json.success || !json.stats) return;
+
+      const s = json.stats;
+      const currentFingerprint = `${s.totalRequests}_${s.pendingRequests}_${s.verifiedVendors}_${s.totalMessages}_${s.agreementsSigned}_${s.totalProperties}`;
+
+      if (lastStatsFingerprint && currentFingerprint !== lastStatsFingerprint) {
+        // Platform count changed! Sync live
+        pulseLiveBadge();
+        await Promise.all([
+          loadStats(),
+          silentSyncRequests(),
+          loadVendors(),
+          loadMessages(),
+          loadAgreements(),
+          loadProperties()
+        ]);
+      } else if (!lastStatsFingerprint) {
+        // Initial snapshot
+        await silentSyncRequests();
+      }
+
+      lastStatsFingerprint = currentFingerprint;
+    } catch (e) {}
+  }
+
+  function startRealtimeSync() {
+    stopRealtimeSync();
+    silentCheckForUpdates();
+    // Heartbeat every 4.5 seconds
+    realtimeTimer = setInterval(silentCheckForUpdates, 4500);
+  }
+
+  function stopRealtimeSync() {
+    if (realtimeTimer) {
+      clearInterval(realtimeTimer);
+      realtimeTimer = null;
+    }
   }
 
   // Check authentication on initial load
@@ -319,6 +504,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
         if (adminLoginScreen) adminLoginScreen.style.display = 'none';
         if (adminApp) adminApp.style.display = 'block';
         refreshAll();
+        startRealtimeSync();
       } else {
         if (adminLoginScreen) adminLoginScreen.style.display = 'flex';
         if (adminApp) adminApp.style.display = 'none';
@@ -485,9 +671,49 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
               <span class="category-pill">${escapeHtml(r.category)}</span>
               <h3>${escapeHtml(r.service || r.category)}</h3>
               <p class="service-desc-snippet">${escapeHtml(r.description || 'No description provided')}</p>
+              ${r.bedrooms ? `
+                <div style="font-size:0.78rem; color:#166534; margin-top:0.35rem; font-weight:700;">
+                  🛏️ Bedrooms: ${escapeHtml(r.bedrooms)}
+                </div>
+              ` : ''}
+              ${Array.isArray(r.preferredLocations) && r.preferredLocations.length ? `
+                <div style="font-size:0.78rem; color:#166534; margin-top:0.2rem; font-weight:600;">
+                  📍 Preferred Areas: ${escapeHtml(r.preferredLocations.join(', '))}
+                </div>
+              ` : ''}
+              ${r.propertyBudget ? `
+                <div style="font-size:0.78rem; color:#047857; margin-top:0.2rem; font-weight:600;">
+                  💰 Property Budget: ${escapeHtml(r.propertyBudget)}
+                </div>
+              ` : ''}
+              ${r.propertyTimeline ? `
+                <div style="font-size:0.78rem; color:#4B5563; margin-top:0.2rem;">
+                  ⏱️ Timeline: ${escapeHtml(r.propertyTimeline)}
+                </div>
+              ` : ''}
               ${Array.isArray(r.propertyTypes) && r.propertyTypes.length ? `
-                <div style="font-size:0.78rem; color:#166534; margin-top:0.35rem; font-weight:600;">
-                  🏠 Property: ${escapeHtml(r.propertyTypes.join(', '))}${r.propertyTypeOther ? ` (${escapeHtml(r.propertyTypeOther)})` : ''}
+                <div style="font-size:0.78rem; color:#166534; margin-top:0.2rem; font-weight:600;">
+                  🏠 Property Type: ${escapeHtml(r.propertyTypes.join(', '))}${r.propertyTypeOther ? ` (${escapeHtml(r.propertyTypeOther)})` : ''}
+                </div>
+              ` : ''}
+              ${r.carType || r.carModelYear ? `
+                <div style="font-size:0.78rem; color:#1E40AF; margin-top:0.35rem; font-weight:700;">
+                  🚗 Vehicle: ${escapeHtml(r.carType || 'Car')} ${r.carModelYear ? `(${escapeHtml(r.carModelYear)})` : ''}
+                </div>
+              ` : ''}
+              ${r.isElectricVehicle ? `
+                <div style="font-size:0.78rem; color:#0284C7; margin-top:0.2rem;">
+                  ⚡ EV: ${escapeHtml(r.isElectricVehicle)}
+                </div>
+              ` : ''}
+              ${Array.isArray(r.carColours) && r.carColours.length ? `
+                <div style="font-size:0.78rem; color:#4B5563; margin-top:0.2rem;">
+                  🎨 Colours: ${escapeHtml(r.carColours.join(', '))}
+                </div>
+              ` : ''}
+              ${r.carBudget ? `
+                <div style="font-size:0.78rem; color:#047857; margin-top:0.2rem; font-weight:600;">
+                  💰 Car Budget: ${escapeHtml(r.carBudget)}
                 </div>
               ` : ''}
               ${r.constructionDescription ? `
@@ -591,11 +817,108 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     document.getElementById('modalService').textContent = item.service || item.category || '-';
     document.getElementById('modalDescription').textContent = item.description || 'No description provided';
     
-    // Property
+    // Property Fields
     const propVal = Array.isArray(item.propertyTypes) && item.propertyTypes.length 
       ? item.propertyTypes.join(', ') + (item.propertyTypeOther ? ` (${item.propertyTypeOther})` : '')
-      : 'None specified';
+      : (item.category === 'Property Sales & Rentals' ? 'Residential Property' : 'None specified');
     document.getElementById('modalPropertyTypes').textContent = propVal;
+
+    // Bedrooms
+    const bedLabel = document.getElementById('modalBedroomsLabel');
+    const bedVal = document.getElementById('modalBedrooms');
+    if (item.bedrooms) {
+      if (bedLabel) bedLabel.style.display = 'block';
+      if (bedVal) { bedVal.style.display = 'block'; bedVal.textContent = item.bedrooms; }
+    } else {
+      if (bedLabel) bedLabel.style.display = 'none';
+      if (bedVal) bedVal.style.display = 'none';
+    }
+
+    // Preferred Locations
+    const locsLabel = document.getElementById('modalPreferredLocationsLabel');
+    const locsVal = document.getElementById('modalPreferredLocations');
+    const prefLocs = Array.isArray(item.preferredLocations) && item.preferredLocations.length ? item.preferredLocations.join(', ') : '';
+    if (prefLocs) {
+      if (locsLabel) locsLabel.style.display = 'block';
+      if (locsVal) { locsVal.style.display = 'block'; locsVal.textContent = prefLocs; }
+    } else {
+      if (locsLabel) locsLabel.style.display = 'none';
+      if (locsVal) locsVal.style.display = 'none';
+    }
+
+    // Property Budget
+    const propBudLabel = document.getElementById('modalPropertyBudgetLabel');
+    const propBudVal = document.getElementById('modalPropertyBudget');
+    if (item.propertyBudget) {
+      if (propBudLabel) propBudLabel.style.display = 'block';
+      if (propBudVal) { propBudVal.style.display = 'block'; propBudVal.textContent = item.propertyBudget; }
+    } else {
+      if (propBudLabel) propBudLabel.style.display = 'none';
+      if (propBudVal) propBudVal.style.display = 'none';
+    }
+
+    // Property Timeline
+    const propTimeLabel = document.getElementById('modalPropertyTimelineLabel');
+    const propTimeVal = document.getElementById('modalPropertyTimeline');
+    if (item.propertyTimeline) {
+      if (propTimeLabel) propTimeLabel.style.display = 'block';
+      if (propTimeVal) { propTimeVal.style.display = 'block'; propTimeVal.textContent = item.propertyTimeline; }
+    } else {
+      if (propTimeLabel) propTimeLabel.style.display = 'none';
+      if (propTimeVal) propTimeVal.style.display = 'none';
+    }
+
+    // Car Fields
+    const carTypeLabel = document.getElementById('modalCarTypeLabel');
+    const carTypeVal = document.getElementById('modalCarType');
+    if (item.carType) {
+      if (carTypeLabel) carTypeLabel.style.display = 'block';
+      if (carTypeVal) { carTypeVal.style.display = 'block'; carTypeVal.textContent = item.carType; }
+    } else {
+      if (carTypeLabel) carTypeLabel.style.display = 'none';
+      if (carTypeVal) carTypeVal.style.display = 'none';
+    }
+
+    const carModelLabel = document.getElementById('modalCarModelYearLabel');
+    const carModelVal = document.getElementById('modalCarModelYear');
+    if (item.carModelYear) {
+      if (carModelLabel) carModelLabel.style.display = 'block';
+      if (carModelVal) { carModelVal.style.display = 'block'; carModelVal.textContent = item.carModelYear; }
+    } else {
+      if (carModelLabel) carModelLabel.style.display = 'none';
+      if (carModelVal) carModelVal.style.display = 'none';
+    }
+
+    const carEvLabel = document.getElementById('modalCarEvLabel');
+    const carEvVal = document.getElementById('modalCarEv');
+    if (item.isElectricVehicle) {
+      if (carEvLabel) carEvLabel.style.display = 'block';
+      if (carEvVal) { carEvVal.style.display = 'block'; carEvVal.textContent = item.isElectricVehicle; }
+    } else {
+      if (carEvLabel) carEvLabel.style.display = 'none';
+      if (carEvVal) carEvVal.style.display = 'none';
+    }
+
+    const carColLabel = document.getElementById('modalCarColoursLabel');
+    const carColVal = document.getElementById('modalCarColours');
+    const colStr = Array.isArray(item.carColours) && item.carColours.length ? item.carColours.join(', ') : '';
+    if (colStr) {
+      if (carColLabel) carColLabel.style.display = 'block';
+      if (carColVal) { carColVal.style.display = 'block'; carColVal.textContent = colStr; }
+    } else {
+      if (carColLabel) carColLabel.style.display = 'none';
+      if (carColVal) carColVal.style.display = 'none';
+    }
+
+    const carBudLabel = document.getElementById('modalCarBudgetLabel');
+    const carBudVal = document.getElementById('modalCarBudget');
+    if (item.carBudget) {
+      if (carBudLabel) carBudLabel.style.display = 'block';
+      if (carBudVal) { carBudVal.style.display = 'block'; carBudVal.textContent = item.carBudget; }
+    } else {
+      if (carBudLabel) carBudLabel.style.display = 'none';
+      if (carBudVal) carBudVal.style.display = 'none';
+    }
 
     // Construction & Land
     const constrDesc = item.constructionDescription || '';
@@ -623,8 +946,18 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       landDetails.style.display = 'none';
     }
 
-    document.getElementById('modalUrgency').textContent = item.urgency || 'Standard';
-    document.getElementById('modalPreferredDate').textContent = item.preferredDate || 'Flexible / As soon as possible';
+    document.getElementById('modalUrgency').textContent = item.propertyTimeline || item.urgency || 'Standard';
+    
+    const prefDateLabel = document.getElementById('modalPreferredDateLabel');
+    const prefDateVal = document.getElementById('modalPreferredDate');
+    if (item.category === 'Property Sales & Rentals' || item.category === 'Cars & Vehicles') {
+      if (prefDateLabel) prefDateLabel.style.display = 'none';
+      if (prefDateVal) prefDateVal.style.display = 'none';
+    } else {
+      if (prefDateLabel) prefDateLabel.style.display = 'block';
+      if (prefDateVal) { prefDateVal.style.display = 'block'; prefDateVal.textContent = item.preferredDate || 'Flexible / As soon as possible'; }
+    }
+
     document.getElementById('modalLocation').textContent = item.location || 'Not provided';
     document.getElementById('modalPhone').textContent = item.phone || '-';
     document.getElementById('modalEmail').textContent = item.email || 'None provided';

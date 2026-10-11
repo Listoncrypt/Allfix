@@ -1,4 +1,4 @@
-
+// ALLFIX Services Xpress — Customer Request Form Controller
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('serviceRequestForm');
@@ -10,16 +10,49 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeModalBtn = document.getElementById('closeModalBtn');
   const categoryInput = document.getElementById('category');
   const serviceInput = document.getElementById('service');
-  const propertyTypeSection = document.getElementById('propertyTypeSection');
+  const serviceItemWrap = document.getElementById('serviceItemWrap');
+
+  // Conditional Sections
+  const propertySection = document.getElementById('propertySection');
+  const carSection = document.getElementById('carSection');
   const constructionSection = document.getElementById('constructionDetailsSection');
+
+  // Property Custom Toggles
   const propertyOther = document.getElementById('propertyTypeOther');
   const propertyOtherWrap = document.getElementById('propertyTypeOtherWrap');
   const propertyOtherText = document.getElementById('propertyTypeOtherText');
+  const propertyBedroomsCustomRadio = document.getElementById('propertyBedroomsCustomRadio');
+  const propertyBedroomsCustomWrap = document.getElementById('propertyBedroomsCustomWrap');
+  const propertyBedroomsCustomText = document.getElementById('propertyBedroomsCustomText');
+  const propLocationOther = document.getElementById('propLocationOther');
+  const propLocationOtherWrap = document.getElementById('propLocationOtherWrap');
+  const propLocationOtherText = document.getElementById('propLocationOtherText');
+  const propBudgetCustomRadio = document.getElementById('propBudgetCustomRadio');
+  const propBudgetCustomWrap = document.getElementById('propBudgetCustomWrap');
+  const propBudgetCustomText = document.getElementById('propBudgetCustomText');
+
+  // Car Custom Toggles
+  const carTypeOtherRadio = document.getElementById('carTypeOtherRadio');
+  const carTypeOtherWrap = document.getElementById('carTypeOtherWrap');
+  const carTypeOtherText = document.getElementById('carTypeOtherText');
+  const carModelYear = document.getElementById('carModelYear');
+  const carBudgetCustomRadio = document.getElementById('carBudgetCustomRadio');
+  const carBudgetCustomWrap = document.getElementById('carBudgetCustomWrap');
+  const carBudgetCustomText = document.getElementById('carBudgetCustomText');
+
+  // Construction Custom Toggles
   const landSizeOther = document.getElementById('landSizeOther');
   const landSizeOtherWrap = document.getElementById('landSizeOtherWrap');
   const landSizeOtherText = document.getElementById('landSizeOtherText');
+
+  // Standard Wrappers
+  const standardLocationWrap = document.getElementById('standardLocationWrap');
+  const locationInput = document.getElementById('location');
+  const standardUrgencyFieldset = document.getElementById('standardUrgencyFieldset');
+  const standardDateWrap = document.getElementById('standardDateWrap');
+  const preferredDateInput = document.getElementById('preferredDate');
   const generalDescription = document.getElementById('description');
-  const generalDescriptionLabel = form ? form.querySelector('label[for="description"]') : null;
+  const generalDescriptionLabel = document.getElementById('descriptionLabel') || (form ? form.querySelector('label[for="description"]') : null);
 
   if (!form || !checkbox || !submitBtn) return;
 
@@ -27,50 +60,146 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!section) return;
     section.hidden = !isVisible;
     section.setAttribute('aria-hidden', String(!isVisible));
-    section.querySelectorAll('input, textarea').forEach(input => {
+    section.querySelectorAll('input, textarea, select').forEach(input => {
       input.disabled = !isVisible;
     });
   }
 
-  function syncOptionalOther(checkboxInput, wrapper, textInput) {
+  function syncRadioCustomToggle(radioName, customRadio, wrapper, textInput) {
+    if (!form || !customRadio || !wrapper || !textInput) return;
+    const isCustom = customRadio.checked && !customRadio.disabled;
+    wrapper.hidden = !isCustom;
+    textInput.disabled = !isCustom;
+  }
+
+  function syncCheckboxCustomToggle(checkboxInput, wrapper, textInput) {
     if (!checkboxInput || !wrapper || !textInput) return;
-    const isVisible = !checkboxInput.disabled && checkboxInput.checked;
-    wrapper.hidden = !isVisible;
-    textInput.disabled = !isVisible;
+    const isChecked = checkboxInput.checked && !checkboxInput.disabled;
+    wrapper.hidden = !isChecked;
+    textInput.disabled = !isChecked;
   }
 
   function updateServiceDetails() {
     const category = categoryInput.value;
-    const service = serviceInput.value.trim().toLowerCase();
-    const propertyMatch = category === 'Property Sales & Rentals' || category === 'Property Maintenance' || category === 'Construction & Land' ||
-      /property|bungalow|duplex|land|rental|apartment|flat|rent|sale/.test(service);
-    const constructionMatch = category === 'Construction & Land' ||
-      /construct|build(?:ing)?|development|land sourcing|land acquisition/.test(service);
+    const service = (serviceInput ? serviceInput.value.trim().toLowerCase() : '');
 
-    setSectionVisibility(propertyTypeSection, propertyMatch);
-    setSectionVisibility(constructionSection, constructionMatch);
-    generalDescription.required = !constructionMatch;
-    generalDescriptionLabel.innerHTML = constructionMatch
-      ? 'Additional notes or site details <span style="font-size:.8rem;color:#68756B;">(optional)</span>'
-      : 'Describe the Request / Scope of Work <span class="required">*</span>';
-    generalDescription.placeholder = constructionMatch
-      ? 'Add access requirements, timing details, or anything else we should know.'
-      : 'Please describe the requirements in detail (e.g. location, timing, specific service requirements).';
-    syncOptionalOther(propertyOther, propertyOtherWrap, propertyOtherText);
-    syncOptionalOther(landSizeOther, landSizeOtherWrap, landSizeOtherText);
+    const isProperty = category === 'Property Sales & Rentals';
+    const isCar = category === 'Cars & Vehicles';
+    const isConstruction = category === 'Construction & Land' ||
+      /construct|civil building|development project|land sourcing|land acquisition/.test(service);
+
+    // 1. Service Item input (hide for Property & Cars)
+    if (serviceItemWrap) {
+      serviceItemWrap.hidden = isProperty || isCar;
+      if (serviceInput) serviceInput.disabled = isProperty || isCar;
+    }
+
+    // 2. Property Dedicated Section
+    setSectionVisibility(propertySection, isProperty);
+
+    // 3. Car Dedicated Section
+    setSectionVisibility(carSection, isCar);
+
+    // 4. Construction Dedicated Section
+    setSectionVisibility(constructionSection, isConstruction);
+
+    // 5. Standard Location Input
+    if (standardLocationWrap) {
+      // Property uses multi-select locations; Cars & General use standard location
+      standardLocationWrap.hidden = isProperty;
+      if (locationInput) {
+        locationInput.disabled = isProperty;
+        locationInput.required = !isProperty;
+      }
+    }
+
+    // 6. Urgency Fieldset
+    if (standardUrgencyFieldset) {
+      // Property has dedicated timeline, Cars do not use 24h urgency
+      standardUrgencyFieldset.hidden = isProperty || isCar;
+      standardUrgencyFieldset.querySelectorAll('input[name="urgency"]').forEach(inp => {
+        inp.disabled = isProperty || isCar;
+      });
+    }
+
+    // 7. Preferred Service Date
+    if (standardDateWrap) {
+      // Property & Cars do not use service dates (delivery/closing depends on transaction)
+      standardDateWrap.hidden = isProperty || isCar;
+      if (preferredDateInput) preferredDateInput.disabled = isProperty || isCar;
+    }
+
+    // 8. Description Area
+    if (generalDescriptionLabel && generalDescription) {
+      if (isProperty) {
+        generalDescriptionLabel.innerHTML = 'Describe the Request / Preferences <span class="required">*</span>';
+        generalDescription.placeholder = 'Please describe your property preferences in detail (e.g. style, security, specific amenities, intended move-in date)...';
+        generalDescription.required = true;
+      } else if (isCar) {
+        generalDescriptionLabel.innerHTML = 'Describe the Vehicle Specifications & Special Requests <span class="required">*</span>';
+        generalDescription.placeholder = 'Include transmission preference, trim, mileage preference, key features, or delivery instructions...';
+        generalDescription.required = true;
+      } else if (isConstruction) {
+        generalDescriptionLabel.innerHTML = 'Additional notes or site details <span style="font-size:.8rem;color:#68756B;">(optional)</span>';
+        generalDescription.placeholder = 'Add access requirements, timing details, or anything else we should know.';
+        generalDescription.required = false;
+      } else {
+        generalDescriptionLabel.innerHTML = 'Describe the Issue / Scope of Work <span class="required">*</span>';
+        generalDescription.placeholder = 'Please describe the fault or requirement in detail. Include any specific symptoms or equipment brands.';
+        generalDescription.required = true;
+      }
+    }
+
+    // Sync custom toggles
+    syncCheckboxCustomToggle(propertyOther, propertyOtherWrap, propertyOtherText);
+    syncRadioCustomToggle('propertyBedrooms', propertyBedroomsCustomRadio, propertyBedroomsCustomWrap, propertyBedroomsCustomText);
+    syncCheckboxCustomToggle(propLocationOther, propLocationOtherWrap, propLocationOtherText);
+    syncRadioCustomToggle('propBudget', propBudgetCustomRadio, propBudgetCustomWrap, propBudgetCustomText);
+
+    syncRadioCustomToggle('carType', carTypeOtherRadio, carTypeOtherWrap, carTypeOtherText);
+    syncRadioCustomToggle('carBudget', carBudgetCustomRadio, carBudgetCustomWrap, carBudgetCustomText);
+
+    syncRadioCustomToggle('landSize', landSizeOther, landSizeOtherWrap, landSizeOtherText);
   }
 
+  // Event Listeners for Dynamic Toggles
   categoryInput.addEventListener('change', updateServiceDetails);
-  serviceInput.addEventListener('input', updateServiceDetails);
-  propertyOther.addEventListener('change', updateServiceDetails);
-  landSizeOther.addEventListener('change', updateServiceDetails);
+  if (serviceInput) serviceInput.addEventListener('input', updateServiceDetails);
+
+  // Property radio / checkbox change listeners
+  if (propertySection) {
+    propertySection.addEventListener('change', () => {
+      syncCheckboxCustomToggle(propertyOther, propertyOtherWrap, propertyOtherText);
+      syncRadioCustomToggle('propertyBedrooms', propertyBedroomsCustomRadio, propertyBedroomsCustomWrap, propertyBedroomsCustomText);
+      syncCheckboxCustomToggle(propLocationOther, propLocationOtherWrap, propLocationOtherText);
+      syncRadioCustomToggle('propBudget', propBudgetCustomRadio, propBudgetCustomWrap, propBudgetCustomText);
+    });
+  }
+
+  // Car radio change listeners
+  if (carSection) {
+    carSection.addEventListener('change', () => {
+      syncRadioCustomToggle('carType', carTypeOtherRadio, carTypeOtherWrap, carTypeOtherText);
+      syncRadioCustomToggle('carBudget', carBudgetCustomRadio, carBudgetCustomWrap, carBudgetCustomText);
+    });
+  }
+
+  if (constructionSection) {
+    constructionSection.addEventListener('change', () => {
+      syncRadioCustomToggle('landSize', landSizeOther, landSizeOtherWrap, landSizeOtherText);
+    });
+  }
+
+  // URL query parameter support
   const urlParams = new URLSearchParams(window.location.search);
   const catParam = urlParams.get('cat');
   if (catParam) {
     const catMap = {
       'property': 'Property Sales & Rentals',
-      'home': 'Home Services',
+      'realestate': 'Property Sales & Rentals',
       'cars': 'Cars & Vehicles',
+      'car': 'Cars & Vehicles',
+      'home': 'Home Services',
       'beauty': 'Beauty & Personal Grooming',
       'wellness': 'Wellness & Fitness',
       'decor': 'Interior Decoration & Design',
@@ -78,7 +207,6 @@ document.addEventListener('DOMContentLoaded', () => {
       'travel': 'Visa & Travel Assistance',
       'visa': 'Visa & Travel Assistance',
       'medical': 'Medical Virtual Assistance',
-      'mva': 'Medical Virtual Assistance',
       'construction': 'Construction & Land',
       'cleaning': 'Cleaning & Janitorial',
       'appliances': 'Appliance Repairs',
@@ -91,13 +219,18 @@ document.addEventListener('DOMContentLoaded', () => {
       categoryInput.value = matched;
     }
   }
+
   const svcParam = urlParams.get('service');
-  if (svcParam) {
+  if (svcParam && serviceInput) {
     serviceInput.value = svcParam;
   }
+
   updateServiceDetails();
+
+  // Terms and conditions checkbox visual state
   submitBtn.disabled = !checkbox.checked;
   updateTermsVisuals(checkbox.checked);
+
   checkbox.addEventListener('change', () => {
     const isChecked = checkbox.checked;
     submitBtn.disabled = !isChecked;
@@ -115,39 +248,150 @@ document.addEventListener('DOMContentLoaded', () => {
       statusMsg.textContent = '';
     }
   }
+
+  // Form Submission
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+
     if (!checkbox.checked) {
       statusMsg.className = 'terms-status-msg error';
       statusMsg.textContent = 'Please accept the Client Terms & Conditions before submitting your request.';
       checkbox.focus();
       return;
     }
+
+    const category = categoryInput.value;
+    const isProperty = category === 'Property Sales & Rentals';
+    const isCar = category === 'Cars & Vehicles';
+    const isConstruction = !constructionSection.hidden;
+
+    // Collect Property specific data
+    let bedrooms = '';
+    let preferredLocations = [];
+    let propertyBudget = '';
+    let propertyTimeline = '';
+    let propertyTypes = [];
+    let propertyTypeOtherVal = '';
+
+    if (isProperty) {
+      const selectedBedrooms = form.querySelector('input[name="propertyBedrooms"]:checked:not(:disabled)')?.value || '';
+      bedrooms = selectedBedrooms === 'Custom' ? (propertyBedroomsCustomText?.value.trim() || 'Custom') : selectedBedrooms;
+
+      preferredLocations = [...form.querySelectorAll('input[name="propLocations"]:checked:not(:disabled)')].map(i => i.value);
+      if (propLocationOther && propLocationOther.checked && propLocationOtherText?.value.trim()) {
+        preferredLocations.push(propLocationOtherText.value.trim());
+      }
+
+      const selectedPropBudget = form.querySelector('input[name="propBudget"]:checked:not(:disabled)')?.value || '';
+      propertyBudget = selectedPropBudget === 'Custom' ? (propBudgetCustomText?.value.trim() || 'Custom Budget') : selectedPropBudget;
+
+      propertyTimeline = form.querySelector('input[name="propTimeline"]:checked:not(:disabled)')?.value || 'Actively searching (Within 1 month)';
+
+      propertyTypes = [...form.querySelectorAll('input[name="propertyTypes"]:checked:not(:disabled)')].map(i => i.value);
+      propertyTypeOtherVal = propertyOtherText?.value.trim() || '';
+    }
+
+    // Collect Car specific data
+    let carType = '';
+    let carModelYearVal = '';
+    let isElectricVehicle = 'No';
+    let carColours = [];
+    let carBudget = '';
+
+    if (isCar) {
+      const selectedCarType = form.querySelector('input[name="carType"]:checked:not(:disabled)')?.value || '';
+      carType = selectedCarType === 'Other' ? (carTypeOtherText?.value.trim() || 'Other Vehicle') : selectedCarType;
+      carModelYearVal = carModelYear?.value.trim() || '';
+      isElectricVehicle = form.querySelector('input[name="isElectricVehicle"]:checked:not(:disabled)')?.value || 'No (Petrol / Diesel / Hybrid)';
+      carColours = [...form.querySelectorAll('input[name="carColours"]:checked:not(:disabled)')].map(i => i.value);
+      const selectedCarBudget = form.querySelector('input[name="carBudget"]:checked:not(:disabled)')?.value || '';
+      carBudget = selectedCarBudget === 'Custom' ? (carBudgetCustomText?.value.trim() || 'Custom Budget') : selectedCarBudget;
+    }
+
+    // Standard location resolution
+    let finalLocation = '';
+    if (isProperty) {
+      finalLocation = preferredLocations.length ? preferredLocations.join(', ') : 'Abuja';
+    } else {
+      finalLocation = locationInput?.value.trim() || 'Abuja';
+    }
+
+    // Standard urgency resolution
+    let finalUrgency = 'Medium';
+    if (isProperty) {
+      finalUrgency = propertyTimeline.includes('immediately') ? 'High' : (propertyTimeline.includes('1 month') ? 'Medium' : 'Low');
+    } else if (isCar) {
+      finalUrgency = 'Standard';
+    } else {
+      finalUrgency = (form.querySelector('input[name="urgency"]:checked:not(:disabled)')?.value) || 'Medium';
+    }
+
+    // Service label resolution
+    let finalService = '';
+    if (isProperty) {
+      const typeStr = propertyTypes.length ? propertyTypes.join(', ') : 'Property';
+      finalService = `${bedrooms ? bedrooms + ' • ' : ''}${typeStr}`;
+    } else if (isCar) {
+      finalService = `${carType || 'Car'}${carModelYearVal ? ' (' + carModelYearVal + ')' : ''}`;
+    } else {
+      finalService = (serviceInput?.value.trim()) || category;
+    }
+
     const formData = {
       customerName: document.getElementById('customerName').value.trim(),
       phone: document.getElementById('phone').value.trim(),
       email: document.getElementById('email').value.trim(),
-      category: document.getElementById('category').value,
-      service: document.getElementById('service').value.trim(),
-      location: document.getElementById('location').value.trim(),
-      urgency: (form.querySelector('input[name="urgency"]:checked')?.value) || 'Medium',
-      preferredDate: document.getElementById('preferredDate').value,
-      description: generalDescription.value.trim() || (constructionSection.hidden ? '' : document.getElementById('constructionDescription').value.trim()),
-      propertyTypes: [...form.querySelectorAll('input[name="propertyTypes"]:checked:not(:disabled)')].map(input => input.value),
-      propertyTypeOther: propertyTypeSection.hidden ? '' : propertyOtherText.value.trim(),
-      constructionDescription: constructionSection.hidden ? '' : document.getElementById('constructionDescription').value.trim(),
-      landSize: constructionSection.hidden ? '' : form.querySelector('input[name="landSize"]:checked:not(:disabled)')?.value || '',
-      landSizeOther: constructionSection.hidden ? '' : landSizeOtherText.value.trim(),
-      landStatus: constructionSection.hidden ? '' : form.querySelector('input[name="landStatus"]:checked:not(:disabled)')?.value || '',
+      category: category,
+      service: finalService,
+      location: finalLocation,
+      urgency: finalUrgency,
+      preferredDate: (standardDateWrap && !standardDateWrap.hidden) ? preferredDateInput?.value : '',
+      description: generalDescription.value.trim() || (isConstruction ? document.getElementById('constructionDescription')?.value.trim() : ''),
+      // Property Fields
+      bedrooms: bedrooms,
+      preferredLocations: preferredLocations,
+      propertyBudget: propertyBudget,
+      propertyTimeline: propertyTimeline,
+      propertyTypes: propertyTypes,
+      propertyTypeOther: propertyTypeOtherVal,
+      // Car Fields
+      carType: carType,
+      carModelYear: carModelYearVal,
+      isElectricVehicle: isElectricVehicle,
+      carColours: carColours,
+      carBudget: carBudget,
+      // Construction Fields
+      constructionDescription: isConstruction ? document.getElementById('constructionDescription')?.value.trim() : '',
+      landSize: isConstruction ? (form.querySelector('input[name="landSize"]:checked:not(:disabled)')?.value || '') : '',
+      landSizeOther: isConstruction ? landSizeOtherText?.value.trim() : '',
+      landStatus: isConstruction ? (form.querySelector('input[name="landStatus"]:checked:not(:disabled)')?.value || '') : '',
+      // Legal terms
       termsAccepted: true,
       termsVersion: 'v1.0'
     };
+
     if (!formData.customerName || !formData.phone || !formData.category || !formData.description) {
       alert('Please fill in all required fields (Name, Phone, Service Category, and Description).');
       return;
     }
 
-    if (!constructionSection.hidden) {
+    if (isProperty) {
+      if (preferredLocations.length === 0) {
+        alert('Please choose at least one preferred location for the property.');
+        propertySection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+
+    if (isCar) {
+      if (!formData.carModelYear) {
+        alert('Please enter your preferred Car Year / Model (e.g. 2022 Toyota RAV4).');
+        carModelYear.focus();
+        return;
+      }
+    }
+
+    if (isConstruction) {
       if (!formData.constructionDescription) {
         alert('Please describe what you want to construct.');
         document.getElementById('constructionDescription').focus();
@@ -165,11 +409,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    if (formData.propertyTypes.includes('Other') && !formData.propertyTypeOther) {
-      alert('Please tell us the property type.');
-      propertyOtherText.focus();
-      return;
-    }
     const originalBtnText = submitBtn.innerHTML;
     submitBtn.disabled = true;
     submitBtn.innerHTML = `
@@ -192,11 +431,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!response.ok || !result.success) {
         throw new Error(result.error || 'Failed to submit service request.');
       }
+
       document.getElementById('modalReqId').textContent = result.requestId;
       document.getElementById('modalAgrId').textContent = result.agreementId;
       document.getElementById('modalAgrVersion').textContent = 'Client Terms v1.0';
       document.getElementById('modalTimestamp').textContent = new Date().toISOString();
       document.getElementById('modalCustomerName').textContent = formData.customerName;
+
       modal.classList.add('open');
       form.reset();
       updateServiceDetails();
@@ -219,6 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
       modal.classList.remove('open');
     });
   }
+
   window.addEventListener('click', (e) => {
     if (e.target === modal) {
       modal.classList.remove('open');

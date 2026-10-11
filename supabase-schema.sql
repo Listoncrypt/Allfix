@@ -1,5 +1,5 @@
 -- ==============================================================================
--- ALLFIX Services Xpress — Supabase Database Schema
+-- ALLFIX Services Xpress — Supabase Database Schema & Realtime Setup
 -- Run this script in your Supabase Project SQL Editor (https://supabase.com/dashboard)
 -- ==============================================================================
 
@@ -18,6 +18,15 @@ CREATE TABLE IF NOT EXISTS public.requests (
   urgency TEXT DEFAULT 'Medium',
   preferred_date TEXT,
   description TEXT NOT NULL,
+  bedrooms TEXT,
+  preferred_locations JSONB DEFAULT '[]'::jsonb,
+  property_budget TEXT,
+  property_timeline TEXT,
+  car_type TEXT,
+  car_model_year TEXT,
+  is_electric_vehicle TEXT,
+  car_colours JSONB DEFAULT '[]'::jsonb,
+  car_budget TEXT,
   property_types JSONB DEFAULT '[]'::jsonb,
   property_type_other TEXT,
   construction_description TEXT,
@@ -31,6 +40,17 @@ CREATE TABLE IF NOT EXISTS public.requests (
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()),
   updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
+
+-- Upgrade existing requests table with any missing columns (Safe & Non-destructive)
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS bedrooms TEXT;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS preferred_locations JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS property_budget TEXT;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS property_timeline TEXT;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS car_type TEXT;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS car_model_year TEXT;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS is_electric_vehicle TEXT;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS car_colours JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS car_budget TEXT;
 
 -- Index for speedy queries by status and date
 CREATE INDEX IF NOT EXISTS idx_requests_status ON public.requests(status);
@@ -139,3 +159,44 @@ BEGIN
     CREATE POLICY "Allow public operations on properties" ON public.properties FOR ALL USING (true) WITH CHECK (true);
   END IF;
 END $$;
+
+-- ==============================================================================
+-- 7. Supabase Realtime Replication Setup (Instant Admin Portal Updates)
+-- ==============================================================================
+-- Add tables to the supabase_realtime publication so browser clients receive
+-- live websocket event pushes immediately when a new request or message arrives.
+DO $$
+BEGIN
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.requests;
+  EXCEPTION WHEN duplicate_object THEN
+    -- Table already in publication
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.vendors;
+  EXCEPTION WHEN duplicate_object THEN
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.agreements;
+  EXCEPTION WHEN duplicate_object THEN
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+  EXCEPTION WHEN duplicate_object THEN
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.properties;
+  EXCEPTION WHEN duplicate_object THEN
+  END;
+END $$;
+
+-- Set replica identity to full so UPDATE and DELETE events broadcast complete row snapshots
+ALTER TABLE public.requests REPLICA IDENTITY FULL;
+ALTER TABLE public.vendors REPLICA IDENTITY FULL;
+ALTER TABLE public.agreements REPLICA IDENTITY FULL;
+ALTER TABLE public.messages REPLICA IDENTITY FULL;
+ALTER TABLE public.properties REPLICA IDENTITY FULL;

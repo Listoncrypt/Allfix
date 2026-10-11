@@ -818,6 +818,10 @@
         </div>
 
         <div class="admin-header-actions">
+          <div id="realtimeLiveBadge" style="display: inline-flex; align-items: center; gap: 0.45rem; background: rgba(34, 197, 94, 0.18); border: 1px solid rgba(34, 197, 94, 0.45); color: #86EFAC; padding: 0.38rem 0.75rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 700;" title="Real-time background sync active">
+            <span style="width: 8px; height: 8px; background: #22C55E; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px #22C55E;"></span>
+            <span id="realtimeLiveText">Real-Time Sync (Live)</span>
+          </div>
           <button id="supabaseConfigBtn" class="btn btn-outline-white btn-sm" style="font-size: 0.82rem; padding: 0.4rem 0.85rem; display: inline-flex; align-items: center; gap: 0.45rem;">
             <span id="supabaseIndicatorDot" style="width: 8px; height: 8px; background: #E2E7E3; border-radius: 50%;"></span>
             <span id="supabaseBackendLabel">Storage: Local</span>
@@ -1102,8 +1106,35 @@
         <dt>Scope of Work:</dt>
         <dd style="background: #F8FAF8; padding: 0.75rem; border-radius: 8px; border: 1px solid #E2E7E3;" id="modalDescription">-</dd>
 
-        <dt>Property Type:</dt>
+        <dt id="modalPropertyTypesLabel">Property Type:</dt>
         <dd id="modalPropertyTypes">-</dd>
+
+        <dt id="modalBedroomsLabel" style="display: none;">Bedrooms:</dt>
+        <dd id="modalBedrooms" style="display: none;">-</dd>
+
+        <dt id="modalPreferredLocationsLabel" style="display: none;">Preferred Areas:</dt>
+        <dd id="modalPreferredLocations" style="display: none;">-</dd>
+
+        <dt id="modalPropertyBudgetLabel" style="display: none;">Property Budget:</dt>
+        <dd id="modalPropertyBudget" style="display: none;">-</dd>
+
+        <dt id="modalPropertyTimelineLabel" style="display: none;">Timeline:</dt>
+        <dd id="modalPropertyTimeline" style="display: none;">-</dd>
+
+        <dt id="modalCarTypeLabel" style="display: none;">Car Type:</dt>
+        <dd id="modalCarType" style="display: none;">-</dd>
+
+        <dt id="modalCarModelYearLabel" style="display: none;">Year / Model:</dt>
+        <dd id="modalCarModelYear" style="display: none;">-</dd>
+
+        <dt id="modalCarEvLabel" style="display: none;">Electric Vehicle:</dt>
+        <dd id="modalCarEv" style="display: none;">-</dd>
+
+        <dt id="modalCarColoursLabel" style="display: none;">Colours:</dt>
+        <dd id="modalCarColours" style="display: none;">-</dd>
+
+        <dt id="modalCarBudgetLabel" style="display: none;">Car Budget:</dt>
+        <dd id="modalCarBudget" style="display: none;">-</dd>
 
         <dt id="modalConstructionLabel">Construction:</dt>
         <dd id="modalConstructionDetails">-</dd>
@@ -1111,10 +1142,10 @@
         <dt id="modalLandLabel">Land Details:</dt>
         <dd id="modalLandDetails">-</dd>
 
-        <dt>Urgency:</dt>
+        <dt id="modalUrgencyLabel">Urgency / Timeline:</dt>
         <dd id="modalUrgency">-</dd>
 
-        <dt>Preferred Date:</dt>
+        <dt id="modalPreferredDateLabel">Preferred Date:</dt>
         <dd id="modalPreferredDate">-</dd>
 
         <dt>Location Address:</dt>
@@ -1451,7 +1482,11 @@
     })();
   </script>
 
+  <!-- Admin Live Toast Container -->
+  <div id="adminToastContainer" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/main.js?v=2.2"></script>
-  <script src="/js/admin.js?v=2.2"></script>
+  <script src="/js/admin.js?v=2.3"></script>
 </body>
 </html>
