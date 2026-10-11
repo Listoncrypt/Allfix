@@ -128,7 +128,6 @@ CREATE INDEX IF NOT EXISTS idx_properties_created_at ON public.properties(create
 
 -- ==============================================================================
 -- Row Level Security (RLS) Configuration
--- Enable public reads and inserts for operational platform workflows
 -- ==============================================================================
 ALTER TABLE public.requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
@@ -136,7 +135,6 @@ ALTER TABLE public.agreements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
 
--- Allow anon service operations (insert and select for web API)
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public operations on requests') THEN
@@ -161,42 +159,52 @@ BEGIN
 END $$;
 
 -- ==============================================================================
--- 7. Supabase Realtime Replication Setup (Instant Admin Portal Updates)
+-- 7. Supabase Realtime Replication Setup (Fail-Safe & Idempotent)
 -- ==============================================================================
--- Add tables to the supabase_realtime publication so browser clients receive
--- live websocket event pushes immediately when a new request or message arrives.
 DO $$
 BEGIN
-  BEGIN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.requests;
-  EXCEPTION WHEN duplicate_object THEN
-    -- Table already in publication
-  END;
+  -- 1. requests
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'requests') THEN
+    BEGIN
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.requests;
+    EXCEPTION WHEN duplicate_object THEN
+    END;
+    ALTER TABLE public.requests REPLICA IDENTITY FULL;
+  END IF;
 
-  BEGIN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.vendors;
-  EXCEPTION WHEN duplicate_object THEN
-  END;
+  -- 2. vendors
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'vendors') THEN
+    BEGIN
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.vendors;
+    EXCEPTION WHEN duplicate_object THEN
+    END;
+    ALTER TABLE public.vendors REPLICA IDENTITY FULL;
+  END IF;
 
-  BEGIN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.agreements;
-  EXCEPTION WHEN duplicate_object THEN
-  END;
+  -- 3. agreements
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'agreements') THEN
+    BEGIN
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.agreements;
+    EXCEPTION WHEN duplicate_object THEN
+    END;
+    ALTER TABLE public.agreements REPLICA IDENTITY FULL;
+  END IF;
 
-  BEGIN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
-  EXCEPTION WHEN duplicate_object THEN
-  END;
+  -- 4. messages
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'messages') THEN
+    BEGIN
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+    EXCEPTION WHEN duplicate_object THEN
+    END;
+    ALTER TABLE public.messages REPLICA IDENTITY FULL;
+  END IF;
 
-  BEGIN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.properties;
-  EXCEPTION WHEN duplicate_object THEN
-  END;
+  -- 5. properties
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'properties') THEN
+    BEGIN
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.properties;
+    EXCEPTION WHEN duplicate_object THEN
+    END;
+    ALTER TABLE public.properties REPLICA IDENTITY FULL;
+  END IF;
 END $$;
-
--- Set replica identity to full so UPDATE and DELETE events broadcast complete row snapshots
-ALTER TABLE public.requests REPLICA IDENTITY FULL;
-ALTER TABLE public.vendors REPLICA IDENTITY FULL;
-ALTER TABLE public.agreements REPLICA IDENTITY FULL;
-ALTER TABLE public.messages REPLICA IDENTITY FULL;
-ALTER TABLE public.properties REPLICA IDENTITY FULL;
