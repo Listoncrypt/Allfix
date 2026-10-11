@@ -1011,7 +1011,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       propertiesTable.innerHTML = `
         <tr>
           <td colspan="7" style="text-align: center; padding: 2.5rem; color: #68756B;">
-            No properties found matching your filter. Click <strong>➕ Post New Property</strong> to add one.
+            No properties found matching your filter. Click <strong>Post New Property</strong> to add one.
           </td>
         </tr>
       `;
@@ -1046,7 +1046,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
             <strong style="color: #151B17; font-size: 0.92rem;">${escapeHtml(p.title)}</strong>
           </td>
           <td>
-            <span style="font-size: 0.88rem; color: #3E4D42;">📍 ${escapeHtml(p.location || 'Abuja')}</span>
+            <span style="font-size: 0.88rem; color: #3E4D42;">${escapeHtml(p.location || 'Abuja')}</span>
           </td>
           <td>
             <span class="badge badge-green" style="font-size: 0.76rem;">${escapeHtml(p.propertyType || 'Property')}</span>
@@ -1056,20 +1056,20 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
           </td>
           <td>
             <div style="font-size: 0.8rem; color: #56645A;">
-              ${p.size ? `📐 ${escapeHtml(p.size)}<br>` : ''}
-              ${p.titleDocument ? `📜 ${escapeHtml(p.titleDocument)}` : ''}
+              ${p.size ? `Size: ${escapeHtml(p.size)}<br>` : ''}
+              ${p.titleDocument ? `Doc: ${escapeHtml(p.titleDocument)}` : ''}
             </div>
           </td>
           <td>
             <div style="display: flex; gap: 0.45rem; align-items: center;">
-              <button class="btn btn-outline btn-sm btn-edit-property" data-id="${p.id}" style="padding: 0.3rem 0.65rem; font-size: 0.78rem;">
-                ✏️ Edit
+              <button class="btn btn-outline btn-sm btn-edit-property" data-id="${p.id}" style="padding: 0.35rem 0.65rem; font-size: 0.78rem;">
+                Edit
               </button>
-              <a href="${waLink}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="padding: 0.3rem 0.6rem; font-size: 0.78rem; background: #F0FDF4; border-color: #BBF7D0; color: #166534;" title="Test WhatsApp Contact Link">
-                💬 WA
+              <a href="${waLink}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="padding: 0.35rem 0.65rem; font-size: 0.78rem; background: #F0FDF4; border-color: #BBF7D0; color: #166534;" title="Open WhatsApp Buyer Chat">
+                WhatsApp
               </a>
-              <button class="btn btn-outline btn-sm btn-delete-property" data-id="${p.id}" style="padding: 0.3rem 0.55rem; font-size: 0.78rem; color: #DC2626; border-color: #FECACA;" title="Delete Property">
-                🗑️
+              <button class="btn btn-outline btn-sm btn-delete-property" data-id="${p.id}" style="padding: 0.35rem 0.55rem; font-size: 0.78rem; color: #DC2626; border-color: #FECACA; display: inline-flex; align-items: center; justify-content: center;" title="Delete Property">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
               </button>
             </div>
           </td>
