@@ -1967,7 +1967,12 @@ html.motion-enabled { scroll-behavior: smooth; }
   transition-delay: var(--reveal-delay, 0ms);
   will-change: opacity, transform;
 }
-.motion-enabled [data-reveal].is-visible { opacity: 1; transform: none; will-change: auto; }
+.motion-enabled [data-reveal].is-visible,
+.legal-content-container,
+.legal-content-container *,
+.legal-article,
+.legal-sidebar,
+.legal-section-block { opacity: 1 !important; transform: none !important; will-change: auto; visibility: visible !important; }
 
 .home-page .btn { transition: color .2s ease, background-color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
 .home-page .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(20,38,58,.12); }
