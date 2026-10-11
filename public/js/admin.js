@@ -624,6 +624,12 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     document.getElementById('modalPhone').textContent = item.phone || '-';
     document.getElementById('modalEmail').textContent = item.email || 'None provided';
     document.getElementById('modalAgreementId').textContent = item.agreementId || 'AGR-C-RECORDED';
+    const termsAcceptedBadge = document.getElementById('modalTermsAcceptedBadge');
+    if (termsAcceptedBadge) {
+      const v = item.termsVersion || item.version || 'v1.0';
+      const type = item.agreementType || 'Client Terms';
+      termsAcceptedBadge.textContent = `${type} ${v} — Accepted ${formatDate(item.acceptedAt || item.createdAt)}`;
+    }
 
     if (modalStatusSelect) modalStatusSelect.value = item.status || 'pending_matching';
     if (modalAdminNotes) modalAdminNotes.value = item.adminNotes || '';
@@ -925,7 +931,10 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
               ${r.agreementType}
             </span>
           </td>
-          <td><strong style="color: #15803D;">${r.version}</strong></td>
+          <td>
+            <strong style="color: #15803D;">${escapeHtml(r.agreementType)} ${escapeHtml(r.version || 'v1.0')}</strong><br>
+            <span style="font-size: 0.76rem; color: #56645A;">Accepted ${formatDate(r.acceptedAt)}</span>
+          </td>
           <td><span style="font-size: 0.85rem; color: #3E4D42;">${formatDate(r.acceptedAt)}</span></td>
           <td>
             <span style="color: #15803D; font-weight: 700; font-size: 0.85rem;">

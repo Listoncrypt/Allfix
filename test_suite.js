@@ -130,14 +130,26 @@ async function runTests() {
   }
 
   console.log('\n4. Testing Compliance Database Audit Trail (/api/agreements):');
-  const auditRes = await request('/api/agreements');
-  if (auditRes.status === 200 && auditRes.body.success) {
-    console.log(`  [PASS] Total Recorded Agreements: ${auditRes.body.total}`);
-    auditRes.body.data.forEach(a => {
-      console.log(`    - ID: ${a.id} | User: ${a.userName} | Type: ${a.agreementType} | Version: ${a.version} | Timestamp: ${a.acceptedAt} | Status: ${a.status}`);
+  const loginRes = await request('/api/admin/login', { method: 'POST' }, {
+    username: 'admintony',
+    password: 'admintony2026!'
+  });
+  if (loginRes.status === 200 && loginRes.body.success) {
+    console.log('  [PASS] Admin authenticated successfully. Token received.');
+    const token = loginRes.body.token;
+    const auditRes = await request('/api/agreements', {
+      headers: { 'Authorization': `Bearer ${token}` }
     });
+    if (auditRes.status === 200 && auditRes.body.success) {
+      console.log(`  [PASS] Total Recorded Agreements: ${auditRes.body.total}`);
+      auditRes.body.data.slice(0, 5).forEach(a => {
+        console.log(`    - ID: ${a.id} | User: ${a.userName} | Type: ${a.agreementType} | Version: ${a.version} | Timestamp: ${a.acceptedAt} | Status: ${a.status}`);
+      });
+    } else {
+      console.error(`  [FAIL] Failed to fetch agreements audit log:`, auditRes);
+    }
   } else {
-    console.error(`  [FAIL] Failed to fetch agreements audit log:`, auditRes);
+    console.error('  [FAIL] Admin authentication failed:', loginRes);
   }
 
   console.log('\n5. Testing Platform Statistics (/api/stats):');

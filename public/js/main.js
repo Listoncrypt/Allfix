@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Floating WhatsApp Support Button (on public pages)
   if (!window.location.pathname.startsWith('/admin') && !document.querySelector('.floating-whatsapp-btn')) {
     const waBtn = document.createElement('a');
-    waBtn.href = 'https://wa.me/message/DE26QFV3RJF2N1';
+    waBtn.href = 'https://wa.me/2347058099045';
     waBtn.target = '_blank';
     waBtn.rel = 'noopener noreferrer';
     waBtn.className = 'floating-whatsapp-btn';
