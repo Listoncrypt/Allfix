@@ -7,8 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!prefersReducedMotion && 'IntersectionObserver' in window) {
     const revealSelector = [
       '.section-header', '.category-card', '.trust-bar-card', '.steps-grid > *',
-      '.dual-card', '.testimonial-card', '.faq-item', '.legal-page-header',
-      '.legal-content-container > *', '.form-card-container', '.home-trust-grid',
+      '.dual-card', '.testimonial-card', '.faq-item',
+      '.form-card-container', '.home-trust-grid',
       '.home-impact', '.home-section-heading', '.home-service-row', '.process-copy',
       '.process-steps > li', '.home-join-grid', '.stories-grid blockquote',
       '.faq-heading', '.last-call-inner'

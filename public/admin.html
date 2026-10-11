@@ -637,6 +637,12 @@
           <div class="val" id="statAgreements" style="color: #15803D;">0</div>
           <div class="subtext">Client Terms v1.0 & Vendor Terms</div>
         </div>
+
+        <div class="admin-stat-card">
+          <div class="lbl">Available Properties</div>
+          <div class="val" id="statTotalProperties" style="color: #166534;">0</div>
+          <div class="subtext">Listed on website &bull; WhatsApp Buy Active</div>
+        </div>
       </div>
 
       <!-- Navigation Tabs -->
@@ -648,6 +654,10 @@
         <button class="admin-tab-btn" data-tab="tab-vendors">
           <span>👷 Registered Vendors</span>
           <span class="tab-counter-badge" id="badgeVendorsCount">0</span>
+        </button>
+        <button class="admin-tab-btn" data-tab="tab-properties">
+          <span>🏡 Available Properties</span>
+          <span class="tab-counter-badge" id="badgePropertiesCount">0</span>
         </button>
         <button class="admin-tab-btn" data-tab="tab-messages">
           <span>✉️ Contact Inquiries</span>
@@ -773,6 +783,46 @@
         </div>
       </div>
 
+      <!-- TAB 5: AVAILABLE PROPERTIES MANAGEMENT -->
+      <div class="admin-tab-pane" id="tab-properties">
+        <div class="filter-toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div class="filter-group" style="flex: 1; max-width: 600px;">
+            <input type="text" id="propertySearchInput" class="admin-search-input" placeholder="Search property title, location, or type...">
+            <select id="propertyTypeFilter" class="admin-select">
+              <option value="all">All Types</option>
+              <option value="Residential">Residential</option>
+              <option value="Land / Plot">Land / Plot</option>
+              <option value="Commercial">Commercial</option>
+            </select>
+          </div>
+          <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <a href="/properties" target="_blank" class="btn btn-outline btn-sm">👁️ View Public Page</a>
+            <button type="button" class="btn btn-primary btn-sm" id="btnOpenNewPropertyModal">
+              ➕ Post New Property
+            </button>
+          </div>
+        </div>
+
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 70px;">Image</th>
+                <th>Property ID & Title</th>
+                <th>Location</th>
+                <th>Type</th>
+                <th>Price</th>
+                <th>Specs / Title Doc</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="propertiesTableBody">
+              <tr><td colspan="7" style="text-align:center; padding: 2rem;">Loading verified properties...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </main>
 
@@ -859,6 +909,98 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Property Add / Edit Modal -->
+  <div class="admin-modal-overlay" id="propertyEditModal">
+    <div class="admin-modal-card" style="max-width: 620px;">
+      <button class="modal-close-btn" id="closePropertyModalBtn">&times;</button>
+      
+      <div style="display: flex; align-items: center; gap: 0.65rem; margin-bottom: 0.25rem;">
+        <span style="font-size: 1.5rem;">🏡</span>
+        <h2 style="font-size: 1.35rem; color: #151B17; margin: 0;" id="propertyModalHeading">Post Available Property</h2>
+      </div>
+      <p style="color: #68756B; font-size: 0.86rem; margin-bottom: 1.25rem;">
+        Properties appear live on the public <a href="/properties" target="_blank" style="color: #16883D; text-decoration: underline;">/properties</a> page with direct WhatsApp "Contact to buy" integration.
+      </p>
+
+      <form id="propertyEditForm">
+        <input type="hidden" id="propFormId" value="">
+        
+        <div class="form-group" style="margin-bottom: 0.85rem;">
+          <label class="form-label" for="propFormTitle" style="font-size: 0.85rem;">
+            Property Title <span class="required">*</span>
+          </label>
+          <input type="text" id="propFormTitle" class="form-control" placeholder="e.g. 4-Bedroom Semi-Detached Duplex with BQ" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-bottom: 0.85rem;">
+          <div class="form-group">
+            <label class="form-label" for="propFormLocation" style="font-size: 0.85rem;">
+              Location / District <span class="required">*</span>
+            </label>
+            <input type="text" id="propFormLocation" class="form-control" placeholder="e.g. Guzape District, Abuja" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="propFormType" style="font-size: 0.85rem;">
+              Property Type <span class="required">*</span>
+            </label>
+            <select id="propFormType" class="admin-select" style="width: 100%;" required>
+              <option value="Residential">Residential</option>
+              <option value="Land / Plot">Land / Plot</option>
+              <option value="Commercial">Commercial</option>
+              <option value="Industrial">Industrial</option>
+              <option value="Mixed Use">Mixed Use</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-bottom: 0.85rem;">
+          <div class="form-group">
+            <label class="form-label" for="propFormPrice" style="font-size: 0.85rem;">
+              Price (₦) <span style="font-weight: 400; color: #68756B;">(Leave blank for "Price on Request")</span>
+            </label>
+            <input type="text" id="propFormPrice" class="form-control" placeholder="e.g. 85000000 or leave empty">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="propFormSize" style="font-size: 0.85rem;">
+              Size / Specs
+            </label>
+            <input type="text" id="propFormSize" class="form-control" placeholder="e.g. 650 SQM or 4 Bed, 5 Bath">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0.85rem;">
+          <label class="form-label" for="propFormTitleDoc" style="font-size: 0.85rem;">
+            Title Document
+          </label>
+          <input type="text" id="propFormTitleDoc" class="form-control" placeholder="e.g. Certificate of Occupancy (C of O), FCDA R of O">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0.85rem;">
+          <label class="form-label" for="propFormImage" style="font-size: 0.85rem;">
+            Image URL
+          </label>
+          <input type="url" id="propFormImage" class="form-control" placeholder="https://images.unsplash.com/...">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label class="form-label" for="propFormDesc" style="font-size: 0.85rem;">
+            Description
+          </label>
+          <textarea id="propFormDesc" class="form-control" rows="3" placeholder="Provide overview, accessibility, security, power supply, and inspection details..."></textarea>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #E2E7E3; padding-top: 1rem;">
+          <button type="submit" id="savePropertySubmitBtn" class="btn btn-primary btn-sm" style="padding: 0.65rem 1.35rem;">
+            Save & Publish Property
+          </button>
+          <button type="button" id="deletePropBtn" style="display: none; background: none; border: none; color: #DC2626; font-size: 0.84rem; cursor: pointer; text-decoration: underline;">
+            Delete Property
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 

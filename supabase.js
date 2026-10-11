@@ -136,6 +136,24 @@ function mapVendorFromDb(row) {
   };
 }
 
+function mapPropertyFromDb(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    location: row.location,
+    propertyType: row.property_type || 'Residential',
+    price: row.price || '',
+    size: row.size || '',
+    titleDocument: row.title_document || '',
+    description: row.description || '',
+    imageUrl: row.image_url || '',
+    status: row.status || 'available',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
 module.exports = {
   isSupabaseConfigured,
   getSupabaseCredentials,
@@ -322,6 +340,63 @@ module.exports = {
     const c = client || initClient();
     if (!c) return null;
     const { error } = await c.from('messages').delete().eq('id', id);
+    if (error) throw error;
+    return true;
+  },
+
+  async getProperties() {
+    const c = client || initClient();
+    if (!c) return null;
+    const { data, error } = await c.from('properties').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(mapPropertyFromDb);
+  },
+
+  async insertProperty(p) {
+    const c = client || initClient();
+    if (!c) return null;
+    const row = {
+      id: p.id,
+      title: p.title,
+      location: p.location,
+      property_type: p.propertyType || 'Residential',
+      price: p.price || '',
+      size: p.size || '',
+      title_document: p.titleDocument || '',
+      description: p.description || '',
+      image_url: p.imageUrl || '',
+      status: p.status || 'available',
+      created_at: p.createdAt || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    const { data, error } = await c.from('properties').insert([row]).select();
+    if (error) throw error;
+    return mapPropertyFromDb(data[0]);
+  },
+
+  async updateProperty(id, updates) {
+    const c = client || initClient();
+    if (!c) return null;
+    const row = { updated_at: new Date().toISOString() };
+    if (updates.title !== undefined) row.title = updates.title;
+    if (updates.location !== undefined) row.location = updates.location;
+    if (updates.propertyType !== undefined) row.property_type = updates.propertyType;
+    if (updates.price !== undefined) row.price = updates.price;
+    if (updates.size !== undefined) row.size = updates.size;
+    if (updates.titleDocument !== undefined) row.title_document = updates.titleDocument;
+    if (updates.description !== undefined) row.description = updates.description;
+    if (updates.imageUrl !== undefined) row.image_url = updates.imageUrl;
+    if (updates.status !== undefined) row.status = updates.status;
+
+    const { data, error } = await c.from('properties').update(row).eq('id', id).select();
+    if (error) throw error;
+    return mapPropertyFromDb(data[0]);
+  },
+
+  async deleteProperty(id) {
+    const c = client || initClient();
+    if (!c) return null;
+    const { error } = await c.from('properties').delete().eq('id', id);
     if (error) throw error;
     return true;
   }

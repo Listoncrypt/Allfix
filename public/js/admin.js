@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let allVendors = [];
   let allMessages = [];
   let allAgreements = [];
+  let allProperties = [];
   let currentModalRequestId = null;
 
   // DOM Elements
@@ -12,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const vendorsTable = document.getElementById('vendorsTableBody');
   const messagesTable = document.getElementById('messagesTableBody');
   const agreementsTable = document.getElementById('agreementsTableBody');
+  const propertiesTable = document.getElementById('propertiesTableBody');
 
   const requestSearchInput = document.getElementById('requestSearchInput');
   const requestStatusFilter = document.getElementById('requestStatusFilter');
@@ -335,7 +337,8 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       loadRequests(),
       loadVendors(),
       loadMessages(),
-      loadAgreements()
+      loadAgreements(),
+      loadProperties()
     ]);
   }
   window.refreshAll = refreshAll;
@@ -367,6 +370,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       const elVendors = document.getElementById('statVerifiedVendors');
       const elAgreements = document.getElementById('statAgreements');
       const elMessages = document.getElementById('statTotalMessages');
+      const elProperties = document.getElementById('statTotalProperties');
       const elActualReqText = document.getElementById('statActualRequestsText');
 
       if (elPending) elPending.textContent = (s.pendingRequests !== undefined ? s.pendingRequests : 0).toLocaleString();
@@ -375,6 +379,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       if (elVendors) elVendors.textContent = (s.verifiedVendors || 0).toLocaleString();
       if (elAgreements) elAgreements.textContent = (s.agreementsSigned || 0).toLocaleString();
       if (elMessages) elMessages.textContent = (s.totalMessages || 0).toLocaleString();
+      if (elProperties) elProperties.textContent = (s.totalProperties !== undefined ? s.totalProperties : allProperties.length).toLocaleString();
     } catch (e) {
       console.error('Error loading stats:', e);
     }
@@ -950,6 +955,285 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       }
     }
   }
+
+  // ==============================================================================
+  // 5. AVAILABLE PROPERTIES MANAGEMENT
+  // ==============================================================================
+  const propertySearchInput = document.getElementById('propertySearchInput');
+  const propertyTypeFilter = document.getElementById('propertyTypeFilter');
+  const btnOpenNewPropertyModal = document.getElementById('btnOpenNewPropertyModal');
+  const propertyEditModal = document.getElementById('propertyEditModal');
+  const closePropertyModalBtn = document.getElementById('closePropertyModalBtn');
+  const propertyEditForm = document.getElementById('propertyEditForm');
+  const deletePropBtn = document.getElementById('deletePropBtn');
+  const propertyModalHeading = document.getElementById('propertyModalHeading');
+
+  async function loadProperties() {
+    try {
+      const res = await fetch('/api/properties');
+      const json = await res.json();
+      if (!json.success) return;
+
+      allProperties = json.properties || json.data || [];
+      const badgeCount = document.getElementById('badgePropertiesCount');
+      if (badgeCount) badgeCount.textContent = allProperties.length;
+      
+      const elProperties = document.getElementById('statTotalProperties');
+      if (elProperties) elProperties.textContent = allProperties.length;
+
+      renderFilteredProperties();
+    } catch (err) {
+      if (propertiesTable) {
+        propertiesTable.innerHTML = `<tr><td colspan="7" style="color: red; text-align:center;">Failed to load properties: ${escapeHtml(err.message)}</td></tr>`;
+      }
+    }
+  }
+
+  function renderFilteredProperties() {
+    if (!propertiesTable) return;
+
+    const searchTerm = (propertySearchInput?.value || '').toLowerCase().trim();
+    const typeVal = propertyTypeFilter?.value || 'all';
+
+    const filtered = allProperties.filter(p => {
+      const matchesSearch = !searchTerm ||
+        (p.title && p.title.toLowerCase().includes(searchTerm)) ||
+        (p.location && p.location.toLowerCase().includes(searchTerm)) ||
+        (p.propertyType && p.propertyType.toLowerCase().includes(searchTerm)) ||
+        (p.id && p.id.toLowerCase().includes(searchTerm));
+
+      const matchesType = typeVal === 'all' || (p.propertyType && p.propertyType.toLowerCase().includes(typeVal.toLowerCase()));
+
+      return matchesSearch && matchesType;
+    });
+
+    if (filtered.length === 0) {
+      propertiesTable.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 2.5rem; color: #68756B;">
+            No properties found matching your filter. Click <strong>➕ Post New Property</strong> to add one.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    propertiesTable.innerHTML = filtered.map(p => {
+      const imageSrc = p.imageUrl || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80';
+      
+      let priceDisplay = '';
+      if (!p.price || String(p.price).trim() === '') {
+        priceDisplay = '<span style="background: #FEF3C7; color: #B45309; padding: 0.2rem 0.55rem; border-radius: 4px; font-weight: 700; font-size: 0.76rem;">Price on Request</span>';
+      } else {
+        const cleaned = String(p.price).replace(/[^0-9]/g, '');
+        if (cleaned && !isNaN(cleaned)) {
+          priceDisplay = `<strong style="color: #166534; font-size: 0.95rem;">₦${Number(cleaned).toLocaleString('en-NG')}</strong>`;
+        } else {
+          priceDisplay = `<strong>${escapeHtml(p.price)}</strong>`;
+        }
+      }
+
+      const waMsg = `Hello ALLFIX Services Xpress! I am interested in purchasing: ${p.title} (${p.location || 'Abuja'}, Ref: ${p.id}). Price: ${p.price || 'Price on Request'}. Please share title documents.`;
+      const waLink = `https://wa.me/2347058099045?text=${encodeURIComponent(waMsg)}`;
+
+      return `
+        <tr id="prop-row-${p.id}">
+          <td style="width: 70px;">
+            <img src="${imageSrc}" alt="${escapeHtml(p.title)}" style="width: 58px; height: 42px; object-fit: cover; border-radius: 6px; border: 1px solid #E2E7E3;" onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=200&q=80'">
+          </td>
+          <td>
+            <div style="font-size: 0.75rem; font-family: monospace; color: #68756B;">${escapeHtml(p.id)}</div>
+            <strong style="color: #151B17; font-size: 0.92rem;">${escapeHtml(p.title)}</strong>
+          </td>
+          <td>
+            <span style="font-size: 0.88rem; color: #3E4D42;">📍 ${escapeHtml(p.location || 'Abuja')}</span>
+          </td>
+          <td>
+            <span class="badge badge-green" style="font-size: 0.76rem;">${escapeHtml(p.propertyType || 'Property')}</span>
+          </td>
+          <td>
+            ${priceDisplay}
+          </td>
+          <td>
+            <div style="font-size: 0.8rem; color: #56645A;">
+              ${p.size ? `📐 ${escapeHtml(p.size)}<br>` : ''}
+              ${p.titleDocument ? `📜 ${escapeHtml(p.titleDocument)}` : ''}
+            </div>
+          </td>
+          <td>
+            <div style="display: flex; gap: 0.45rem; align-items: center;">
+              <button class="btn btn-outline btn-sm btn-edit-property" data-id="${p.id}" style="padding: 0.3rem 0.65rem; font-size: 0.78rem;">
+                ✏️ Edit
+              </button>
+              <a href="${waLink}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="padding: 0.3rem 0.6rem; font-size: 0.78rem; background: #F0FDF4; border-color: #BBF7D0; color: #166534;" title="Test WhatsApp Contact Link">
+                💬 WA
+              </a>
+              <button class="btn btn-outline btn-sm btn-delete-property" data-id="${p.id}" style="padding: 0.3rem 0.55rem; font-size: 0.78rem; color: #DC2626; border-color: #FECACA;" title="Delete Property">
+                🗑️
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Attach row button events
+    document.querySelectorAll('.btn-edit-property').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const propId = btn.getAttribute('data-id');
+        const found = allProperties.find(p => p.id === propId);
+        if (found) openEditPropertyModal(found);
+      });
+    });
+
+    document.querySelectorAll('.btn-delete-property').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const propId = btn.getAttribute('data-id');
+        confirmDeleteProperty(propId);
+      });
+    });
+  }
+
+  function openNewPropertyModal() {
+    if (!propertyEditModal) return;
+    propertyEditForm.reset();
+    document.getElementById('propFormId').value = '';
+    if (propertyModalHeading) propertyModalHeading.textContent = 'Post Available Property';
+    if (deletePropBtn) deletePropBtn.style.display = 'none';
+    propertyEditModal.classList.add('open');
+  }
+
+  function openEditPropertyModal(prop) {
+    if (!propertyEditModal) return;
+    document.getElementById('propFormId').value = prop.id;
+    document.getElementById('propFormTitle').value = prop.title || '';
+    document.getElementById('propFormLocation').value = prop.location || '';
+    document.getElementById('propFormType').value = prop.propertyType || 'Residential';
+    document.getElementById('propFormPrice').value = prop.price || '';
+    document.getElementById('propFormSize').value = prop.size || '';
+    document.getElementById('propFormTitleDoc').value = prop.titleDocument || '';
+    document.getElementById('propFormImage').value = prop.imageUrl || '';
+    document.getElementById('propFormDesc').value = prop.description || '';
+    
+    if (propertyModalHeading) propertyModalHeading.textContent = `Edit Property: ${prop.title}`;
+    if (deletePropBtn) deletePropBtn.style.display = 'inline-block';
+    propertyEditModal.classList.add('open');
+  }
+
+  function closePropertyModal() {
+    if (propertyEditModal) propertyEditModal.classList.remove('open');
+  }
+
+  async function confirmDeleteProperty(propId) {
+    if (!confirm('Are you sure you want to delete this property listing? It will be removed from the public website.')) return;
+    try {
+      const res = await fetch('/api/properties/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: propId })
+      });
+      const json = await res.json();
+      if (json.success) {
+        closePropertyModal();
+        await loadProperties();
+      } else {
+        alert('Failed to delete property: ' + (json.error || 'Unknown error'));
+      }
+    } catch (e) {
+      alert('Network error while deleting: ' + e.message);
+    }
+  }
+
+  if (btnOpenNewPropertyModal) {
+    btnOpenNewPropertyModal.addEventListener('click', openNewPropertyModal);
+  }
+
+  if (closePropertyModalBtn) {
+    closePropertyModalBtn.addEventListener('click', closePropertyModal);
+  }
+
+  if (deletePropBtn) {
+    deletePropBtn.addEventListener('click', () => {
+      const propId = document.getElementById('propFormId').value;
+      if (propId) confirmDeleteProperty(propId);
+    });
+  }
+
+  if (propertySearchInput) {
+    propertySearchInput.addEventListener('input', renderFilteredProperties);
+  }
+
+  if (propertyTypeFilter) {
+    propertyTypeFilter.addEventListener('change', renderFilteredProperties);
+  }
+
+  if (propertyEditForm) {
+    propertyEditForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById('savePropertySubmitBtn');
+      const propId = document.getElementById('propFormId').value.trim();
+      const title = document.getElementById('propFormTitle').value.trim();
+      const location = document.getElementById('propFormLocation').value.trim();
+      const propertyType = document.getElementById('propFormType').value;
+      const price = document.getElementById('propFormPrice').value.trim();
+      const size = document.getElementById('propFormSize').value.trim();
+      const titleDocument = document.getElementById('propFormTitleDoc').value.trim();
+      const imageUrl = document.getElementById('propFormImage').value.trim();
+      const description = document.getElementById('propFormDesc').value.trim();
+
+      if (!title || !location) {
+        alert('Please provide at least a property title and location.');
+        return;
+      }
+
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving Property...';
+      }
+
+      try {
+        const payload = {
+          title,
+          location,
+          propertyType,
+          price, // Can be blank -> will display as "Price on Request"
+          size,
+          titleDocument,
+          imageUrl,
+          description
+        };
+
+        const endpoint = propId ? '/api/properties/update' : '/api/properties';
+        if (propId) payload.id = propId;
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        if (json.success) {
+          closePropertyModal();
+          await loadProperties();
+        } else {
+          alert('Failed to save property: ' + (json.error || 'Server error'));
+        }
+      } catch (err) {
+        alert('Network error: ' + err.message);
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save & Publish Property';
+        }
+      }
+    });
+  }
+
+  window.addEventListener('click', (e) => {
+    if (e.target === propertyEditModal) {
+      closePropertyModal();
+    }
+  });
 
   // Utility Functions
   function cleanPhoneNumber(phone) {

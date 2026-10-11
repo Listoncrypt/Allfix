@@ -765,6 +765,8 @@ const server = http.createServer(async (req, res) => {
         const pendingCount = (requests || []).filter(r => r.status === 'pending_matching' || r.status === 'pending').length;
         const contactedCount = (requests || []).filter(r => r.status === 'contacted').length;
         const completedCount = (requests || []).filter(r => r.status === 'completed').length;
+        const dbFallback = readDb();
+        const propertiesCount = (dbFallback.properties || []).length;
 
         return sendJson(res, 200, {
           success: true,
@@ -776,9 +778,136 @@ const server = http.createServer(async (req, res) => {
             verifiedVendors: (vendors || []).length,
             agreementsSigned: (agreements || []).length,
             totalMessages: (messages || []).length,
+            totalProperties: propertiesCount,
             storageBackend: supabase.isSupabaseConfigured() ? 'Supabase Database' : 'Local Storage',
             supabaseConfigured: supabase.isSupabaseConfigured()
           }
+        });
+      }
+
+      // Available Properties Endpoints
+      if (pathname === '/api/properties' && method === 'GET') {
+        let properties = [];
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            properties = await supabase.getProperties();
+          } catch (e) {
+            const db = readDb();
+            properties = db.properties || [];
+          }
+        } else {
+          const db = readDb();
+          properties = db.properties || [];
+        }
+        return sendJson(res, 200, {
+          success: true,
+          total: (properties || []).length,
+          properties: properties || [],
+          data: properties || []
+        });
+      }
+
+      if (pathname === '/api/properties' && method === 'POST') {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const { title, location, propertyType, price, size, titleDocument, description, imageUrl, status } = body;
+        if (!title || !location) {
+          return sendJson(res, 400, { success: false, error: 'Property title and location are required.' });
+        }
+        const db = readDb();
+        const propId = 'PROP-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+        const isoNow = new Date().toISOString();
+        const propRecord = {
+          id: propId,
+          title: title.trim(),
+          location: location.trim(),
+          propertyType: (propertyType || 'Residential House').trim(),
+          price: (price || '').trim(),
+          size: (size || '').trim(),
+          titleDocument: (titleDocument || '').trim(),
+          description: (description || '').trim(),
+          imageUrl: (imageUrl || '').trim(),
+          status: status || 'available',
+          createdAt: isoNow,
+          updatedAt: isoNow
+        };
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.insertProperty(propRecord);
+          } catch (supaErr) {
+            console.error('Failed to insert property to Supabase:', supaErr);
+          }
+        }
+        db.properties = db.properties || [];
+        db.properties.unshift(propRecord);
+        writeDb(db);
+        return sendJson(res, 201, {
+          success: true,
+          propertyId: propId,
+          message: 'Property posted successfully!'
+        });
+      }
+
+      if (pathname === '/api/properties/update' && method === 'POST') {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const { id, title, location, propertyType, price, size, titleDocument, description, imageUrl, status } = body;
+        if (!id) {
+          return sendJson(res, 400, { success: false, error: 'Property ID is required.' });
+        }
+        const db = readDb();
+        db.properties = db.properties || [];
+        const index = db.properties.findIndex(p => p.id === id);
+        if (index === -1) {
+          return sendJson(res, 404, { success: false, error: 'Property not found.' });
+        }
+        const updates = { updatedAt: new Date().toISOString() };
+        if (title !== undefined) updates.title = title.trim();
+        if (location !== undefined) updates.location = location.trim();
+        if (propertyType !== undefined) updates.propertyType = propertyType.trim();
+        if (price !== undefined) updates.price = price.trim();
+        if (size !== undefined) updates.size = size.trim();
+        if (titleDocument !== undefined) updates.titleDocument = titleDocument.trim();
+        if (description !== undefined) updates.description = description.trim();
+        if (imageUrl !== undefined) updates.imageUrl = imageUrl.trim();
+        if (status !== undefined) updates.status = status.trim();
+
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.updateProperty(id, updates);
+          } catch (supaErr) {
+            console.error('Failed to update property in Supabase:', supaErr);
+          }
+        }
+        db.properties[index] = { ...db.properties[index], ...updates };
+        writeDb(db);
+        return sendJson(res, 200, {
+          success: true,
+          message: 'Property updated successfully!'
+        });
+      }
+
+      if (pathname === '/api/properties/delete' && method === 'POST') {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const { id } = body;
+        if (!id) {
+          return sendJson(res, 400, { success: false, error: 'Property ID is required.' });
+        }
+        const db = readDb();
+        db.properties = db.properties || [];
+        db.properties = db.properties.filter(p => p.id !== id);
+        writeDb(db);
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.deleteProperty(id);
+          } catch (supaErr) {
+            console.error('Failed to delete property in Supabase:', supaErr);
+          }
+        }
+        return sendJson(res, 200, {
+          success: true,
+          message: 'Property deleted successfully.'
         });
       }
 
@@ -795,6 +924,8 @@ const server = http.createServer(async (req, res) => {
     filePath = path.join(PUBLIC_DIR, 'request-service.html');
   } else if (pathname === '/become-vendor' || pathname === '/vendors') {
     filePath = path.join(PUBLIC_DIR, 'become-vendor.html');
+  } else if (pathname === '/properties' || pathname === '/available-properties') {
+    filePath = path.join(PUBLIC_DIR, 'properties.html');
   } else if (pathname === '/client-terms') {
     filePath = path.join(PUBLIC_DIR, 'client-terms.html');
   } else if (pathname === '/vendor-terms') {

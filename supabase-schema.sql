@@ -87,6 +87,25 @@ CREATE TABLE IF NOT EXISTS public.messages (
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
 
+-- 6. Available Properties & Land Table
+CREATE TABLE IF NOT EXISTS public.properties (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  location TEXT NOT NULL,
+  property_type TEXT DEFAULT 'Residential',
+  price TEXT,
+  size TEXT,
+  title_document TEXT,
+  description TEXT,
+  image_url TEXT,
+  status TEXT DEFAULT 'available',
+  created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()),
+  updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
+);
+
+CREATE INDEX IF NOT EXISTS idx_properties_status ON public.properties(status);
+CREATE INDEX IF NOT EXISTS idx_properties_created_at ON public.properties(created_at DESC);
+
 -- ==============================================================================
 -- Row Level Security (RLS) Configuration
 -- Enable public reads and inserts for operational platform workflows
@@ -95,6 +114,7 @@ ALTER TABLE public.requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agreements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
 
 -- Allow anon service operations (insert and select for web API)
 DO $$
@@ -113,5 +133,9 @@ BEGIN
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public operations on messages') THEN
     CREATE POLICY "Allow public operations on messages" ON public.messages FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public operations on properties') THEN
+    CREATE POLICY "Allow public operations on properties" ON public.properties FOR ALL USING (true) WITH CHECK (true);
   END IF;
 END $$;

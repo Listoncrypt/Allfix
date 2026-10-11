@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <title>Available Properties & Land | ALLFIX Services Xpress</title>
+  <meta name="description" content="Explore verified Abuja land, commercial spaces, and premium residential properties with vetted title documents from ALLFIX Services Xpress.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .property-card {
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .property-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+    }
+    .filter-active {
+      background: var(--brand-600) !important;
+      color: #fff !important;
+      border-color: var(--brand-600) !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container nav-inner">
+      <a href="/" class="logo-wrapper" aria-label="ALLFIX Services Xpress Home">
+        <img class="brand-logo" src="/allfix-xpress-green.png" alt="ALLFIX Services Xpress">
+      </a>
+
+      <nav aria-label="Main navigation">
+        <ul class="nav-links">
+          <li class="nav-item"><a href="/">Home</a></li>
+          <li class="nav-item"><a href="/properties" class="active" style="color: var(--brand-600); font-weight: 700;">Properties</a></li>
+          <li class="nav-item"><a href="/about">How It Works</a></li>
+          <li class="nav-item"><a href="/request-service">Services</a></li>
+          <li class="nav-item"><a href="/become-vendor">For Vendors</a></li>
+          <li class="nav-item"><a href="/contact">Contact</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        <a href="/request-service?cat=property" class="btn btn-outline btn-sm">Request Custom Property</a>
+        <a href="https://wa.me/2347058099045" target="_blank" rel="noopener" class="btn btn-primary btn-sm">WhatsApp Desk</a>
+        <button class="mobile-menu-btn" aria-label="Toggle navigation menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Nav -->
+  <div class="mobile-nav">
+    <ul class="nav-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="/properties" style="color: var(--brand-600); font-weight: 700;">Available Properties</a></li>
+      <li><a href="/about">How It Works</a></li>
+      <li><a href="/request-service">Request a Service</a></li>
+      <li><a href="/become-vendor">Become a Vendor</a></li>
+      <li><a href="/client-terms">Client Terms (v1.0)</a></li>
+      <li><a href="/vendor-terms">Vendor Terms (v1.0)</a></li>
+      <li><a href="/contact">Contact Us</a></li>
+      <li><a href="/admin">Audit Portal</a></li>
+    </ul>
+    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
+      <a href="/request-service?cat=property" class="btn btn-primary" style="width: 100%;">Submit Property Request</a>
+      <a href="https://wa.me/2347058099045" class="btn btn-outline" style="width: 100%;">Direct WhatsApp Desk</a>
+    </div>
+  </div>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="properties-hero">
+      <div class="container">
+        <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(22, 136, 59, 0.1); border: 1px solid rgba(22, 136, 59, 0.25); color: var(--brand-700); padding: 0.35rem 0.95rem; border-radius: 999px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1.25rem;">
+          <span>🏡 Verified Real Estate Division</span>
+        </div>
+        <h1>Available Properties & <span class="text-highlight">Verified Land</span></h1>
+        <p>
+          Every plot and development listed below has undergone title verification, site validation, and inspection by the ALLFIX Property & Construction Desk.
+        </p>
+
+        <!-- Filters -->
+        <div class="properties-filter-wrap">
+          <button class="property-filter-pill filter-active" data-filter="all">All Listings</button>
+          <button class="property-filter-pill" data-filter="Residential">Residential</button>
+          <button class="property-filter-pill" data-filter="Land / Plot">Land / Plots</button>
+          <button class="property-filter-pill" data-filter="Commercial">Commercial</button>
+          <button class="property-filter-pill" data-filter="Price on Request">Price on Request</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Properties Grid Section -->
+    <section style="padding: 1rem 0 5rem;">
+      <div class="container">
+        <div class="properties-grid" id="propertiesContainer">
+          <!-- Dynamically populated by JS -->
+          <div style="text-align: center; grid-column: 1 / -1; padding: 4rem 1rem; color: var(--gray-500);">
+            <div style="width: 38px; height: 38px; border: 3px solid var(--gray-200); border-top-color: var(--brand-600); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem;"></div>
+            <p>Loading available verified properties...</p>
+          </div>
+        </div>
+
+        <!-- Custom Request Banner -->
+        <div style="background: linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%); border: 1px solid var(--brand-300); border-radius: var(--radius-xl); padding: 2.75rem 2rem; margin-top: 3rem; display: flex; align-items: center; justify-content: space-between; gap: 2rem; flex-wrap: wrap;">
+          <div style="max-width: 650px;">
+            <div style="font-size: 0.8rem; font-weight: 700; color: var(--brand-700); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">Can't find your exact specification?</div>
+            <h3 style="font-size: 1.55rem; color: var(--navy-900); margin-bottom: 0.5rem; letter-spacing: -0.02em;">Submit Your Custom Property Request</h3>
+            <p style="color: var(--navy-600); font-size: 0.95rem; margin: 0;">Tell us your desired district in Abuja, budget, plot size, or building type. Our construction & property team will source, vet, and inspect verified matches for you.</p>
+          </div>
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <a href="/request-service?cat=property" class="btn btn-primary">Submit Property Request 📝</a>
+            <a href="https://wa.me/2347058099045?text=Hello%20ALLFIX%2C%20I%20want%20to%20consult%20on%20available%20properties%20and%20construction%20in%20Abuja." target="_blank" rel="noopener" class="btn btn-outline">Chat with Property Desk</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <a href="/" class="footer-logo">
+          <img class="brand-logo" src="/allfix-xpress-green.png" alt="ALLFIX Services Xpress">
+        </a>
+        <p class="footer-desc">
+          “ALLFIX — not just selling you products and services, but selling you peace of mind.”
+        </p>
+        <div class="footer-contact">
+          <p>📍 Office: Garki 2, Abuja, FCT, Nigeria</p>
+          <p>📞 Phone: +234 705 809 9045</p>
+          <p>💬 WhatsApp: <a href="https://wa.me/2347058099045" target="_blank" style="color: #42E94D; text-decoration: underline;">Direct Chat</a></p>
+        </div>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-title">Explore</h4>
+        <ul class="footer-links">
+          <li><a href="/">Home</a></li>
+          <li><a href="/properties">Available Properties</a></li>
+          <li><a href="/about">How It Works</a></li>
+          <li><a href="/request-service">Request a Service</a></li>
+          <li><a href="/become-vendor">Join as a Vendor</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-title">Legal & Security</h4>
+        <ul class="footer-links">
+          <li><a href="/client-terms">Client Terms (v1.0)</a></li>
+          <li><a href="/vendor-terms">Vendor Agreement (v1.0)</a></li>
+          <li><a href="/admin">Admin Portal</a></li>
+          <li><a href="/contact">Support Desk</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <p>&copy; 2026 ALLFIX Services Xpress. All rights reserved. Registered under Nigerian Corporate Law.</p>
+    </div>
+  </footer>
+
+  <script src="/js/main.js"></script>
+  <script>
+    (function() {
+      const container = document.getElementById('propertiesContainer');
+      const filterPills = document.querySelectorAll('.property-filter-pill');
+      let allProperties = [];
+
+      function formatPriceDisplay(rawPrice) {
+        if (!rawPrice || String(rawPrice).trim() === '') {
+          return `<span class="property-price-val price-on-request">Price on Request</span>`;
+        }
+        const cleaned = String(rawPrice).replace(/[^0-9]/g, '');
+        if (cleaned && !isNaN(cleaned) && Number(cleaned) > 0) {
+          return `<span class="property-price-val">₦${Number(cleaned).toLocaleString('en-NG')}</span>`;
+        }
+        return `<span class="property-price-val">${rawPrice}</span>`;
+      }
+
+      function buildWhatsAppLink(prop) {
+        const phone = '2347058099045';
+        let priceText = 'Price on Request';
+        if (prop.price && String(prop.price).trim() !== '') {
+          const cleaned = String(prop.price).replace(/[^0-9]/g, '');
+          priceText = cleaned ? `₦${Number(cleaned).toLocaleString('en-NG')}` : prop.price;
+        }
+
+        const msg = `Hello ALLFIX Services Xpress! I am interested in purchasing this property:
+• Title: ${prop.title}
+• Location: ${prop.location || 'Abuja'}
+• Ref ID: ${prop.id || 'N/A'}
+• Price: ${priceText}
+• Specs: ${prop.size || 'Standard'} / ${prop.titleDocument || 'Verified Title'}
+
+Please share title documents and schedule an inspection.`;
+
+        return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+      }
+
+      function renderProperties(list) {
+        if (!list || list.length === 0) {
+          container.innerHTML = `
+            <div class="property-empty-state">
+              <h3>No Properties Found</h3>
+              <p>There are currently no listings matching this filter. Check back shortly or submit a custom property request.</p>
+              <a href="/request-service?cat=property" class="btn btn-primary btn-sm">Submit Property Request</a>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = list.map(prop => {
+          const imageSrc = prop.imageUrl || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80';
+          const typeBadge = prop.propertyType || 'Property';
+          const waLink = buildWhatsAppLink(prop);
+          const priceHtml = formatPriceDisplay(prop.price);
+
+          return `
+            <article class="property-card" data-type="${prop.propertyType || ''}" data-hasprice="${prop.price && String(prop.price).trim() !== '' ? 'yes' : 'no'}">
+              <div class="property-image-wrap">
+                <img src="${imageSrc}" alt="${prop.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80'">
+                <span class="property-type-tag">${typeBadge}</span>
+                <span class="property-verified-tag">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  Verified
+                </span>
+              </div>
+              <div class="property-content">
+                <h3 class="property-title">${prop.title}</h3>
+                <div class="property-location">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                  <span>${prop.location || 'Abuja, Nigeria'}</span>
+                </div>
+                
+                <div class="property-specs-chips">
+                  ${prop.size ? `<span class="property-spec-chip">📐 ${prop.size}</span>` : ''}
+                  ${prop.titleDocument ? `<span class="property-spec-chip">📜 ${prop.titleDocument}</span>` : ''}
+                </div>
+
+                <p class="property-description">${prop.description || 'Verified property ready for inspection. Contact desk for complete title documentation.'}</p>
+
+                <div class="property-footer-row">
+                  <div class="property-price-box">
+                    <span class="property-price-label">Price</span>
+                    ${priceHtml}
+                  </div>
+                  <a href="${waLink}" target="_blank" rel="noopener" class="btn-contact-buy">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                    Contact to buy
+                  </a>
+                </div>
+              </div>
+            </article>
+          `;
+        }).join('');
+      }
+
+      // Fetch from API
+      fetch('/api/properties')
+        .then(res => res.json())
+        .then(data => {
+          const list = (data && (data.properties || data.data)) || [];
+          allProperties = list;
+          renderProperties(allProperties);
+        })
+        .catch(err => {
+          console.warn('Using local fallback listings:', err);
+          renderProperties([]);
+        });
+
+      // Filter handling
+      filterPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+          filterPills.forEach(p => p.classList.remove('filter-active'));
+          pill.classList.add('filter-active');
+          const filter = pill.getAttribute('data-filter');
+
+          if (filter === 'all') {
+            renderProperties(allProperties);
+          } else if (filter === 'Price on Request') {
+            const filtered = allProperties.filter(p => !p.price || String(p.price).trim() === '');
+            renderProperties(filtered);
+          } else {
+            const filtered = allProperties.filter(p => (p.propertyType || '').toLowerCase().includes(filter.toLowerCase()));
+            renderProperties(filtered);
+          }
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
