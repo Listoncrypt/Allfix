@@ -136,8 +136,28 @@ document.addEventListener('DOMContentLoaded', () => {
           updateStat(statAgreements, json.stats.agreementsSigned);
         }
       })
-      .catch(() => {
-      });
+      .catch(() => {});
+  }
+
+  // Interactive "Already have an artisan/vendor" objection toggle
+  const toggleObjectionBtn = document.getElementById('toggleObjectionMsgBtn');
+  const objectionMsg = document.getElementById('objectionDetailedMsg');
+  if (toggleObjectionBtn && objectionMsg) {
+    toggleObjectionBtn.addEventListener('click', () => {
+      const isCurrentlyHidden = objectionMsg.hidden;
+      objectionMsg.hidden = !isCurrentlyHidden;
+      toggleObjectionBtn.classList.toggle('open', isCurrentlyHidden);
+      toggleObjectionBtn.setAttribute('aria-expanded', String(isCurrentlyHidden));
+      const btnSpan = toggleObjectionBtn.querySelector('span');
+      if (btnSpan) {
+        btnSpan.textContent = isCurrentlyHidden 
+          ? 'Hide explanation' 
+          : 'Here is why ALLFIX is still for you';
+      }
+      if (isCurrentlyHidden) {
+        objectionMsg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
   }
 
   // Floating WhatsApp Support Button (on public pages)
