@@ -16,9 +16,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const catParam = urlParams.get('cat');
     if (catParam) {
       const catMap = {
+        'property': 'Property Sales & Rentals',
         'home': 'Home Services',
         'cars': 'Cars & Vehicles',
-        'property': 'Property Maintenance',
+        'beauty': 'Beauty & Personal Grooming',
+        'wellness': 'Wellness & Fitness',
+        'decor': 'Interior Decoration & Design',
+        'events': 'Events & Catering',
+        'travel': 'Visa & Travel Assistance',
+        'visa': 'Visa & Travel Assistance',
+        'medical': 'Medical Virtual Assistance',
+        'mva': 'Medical Virtual Assistance',
+        'construction': 'Construction & Land',
         'cleaning': 'Cleaning & Janitorial',
         'appliances': 'Appliance Repairs',
         'products': 'Products & Spare Parts',

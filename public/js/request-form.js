@@ -42,8 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateServiceDetails() {
     const category = categoryInput.value;
     const service = serviceInput.value.trim().toLowerCase();
-    const propertyMatch = category === 'Property Maintenance' || category === 'Construction & Land' ||
-      /property|bungalow|duplex|land/.test(service);
+    const propertyMatch = category === 'Property Sales & Rentals' || category === 'Property Maintenance' || category === 'Construction & Land' ||
+      /property|bungalow|duplex|land|rental|apartment|flat|rent|sale/.test(service);
     const constructionMatch = category === 'Construction & Land' ||
       /construct|build(?:ing)?|development|land sourcing|land acquisition/.test(service);
 
@@ -52,10 +52,10 @@ document.addEventListener('DOMContentLoaded', () => {
     generalDescription.required = !constructionMatch;
     generalDescriptionLabel.innerHTML = constructionMatch
       ? 'Additional notes or site details <span style="font-size:.8rem;color:#68756B;">(optional)</span>'
-      : 'Describe the Issue / Scope of Work <span class="required">*</span>';
+      : 'Describe the Request / Scope of Work <span class="required">*</span>';
     generalDescription.placeholder = constructionMatch
       ? 'Add access requirements, timing details, or anything else we should know.'
-      : 'Please describe the fault or requirement in detail. Include any specific symptoms or equipment brands.';
+      : 'Please describe the requirements in detail (e.g. location, timing, specific service requirements).';
     syncOptionalOther(propertyOther, propertyOtherWrap, propertyOtherText);
     syncOptionalOther(landSizeOther, landSizeOtherWrap, landSizeOtherText);
   }
@@ -68,9 +68,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const catParam = urlParams.get('cat');
   if (catParam) {
     const catMap = {
+      'property': 'Property Sales & Rentals',
       'home': 'Home Services',
       'cars': 'Cars & Vehicles',
-      'property': 'Property Maintenance',
+      'beauty': 'Beauty & Personal Grooming',
+      'wellness': 'Wellness & Fitness',
+      'decor': 'Interior Decoration & Design',
+      'events': 'Events & Catering',
+      'travel': 'Visa & Travel Assistance',
+      'visa': 'Visa & Travel Assistance',
+      'medical': 'Medical Virtual Assistance',
+      'mva': 'Medical Virtual Assistance',
       'construction': 'Construction & Land',
       'cleaning': 'Cleaning & Janitorial',
       'appliances': 'Appliance Repairs',

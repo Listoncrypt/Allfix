@@ -127,13 +127,20 @@
               </label>
               <select id="category" class="form-control" required>
                 <option value="">Select Service Category</option>
-                <option value="Home Services">Home Services (Plumbing, Electrical, Carpentry)</option>
+                <option value="Property Sales & Rentals">Property Sales & Rentals (Apartments, Duplexes, Land, Commercial)</option>
+                <option value="Beauty & Personal Grooming">Beauty & Personal Grooming (Barber, Nail Tech, Hair Braiding, Frontal Installation)</option>
+                <option value="Wellness & Fitness">Wellness & Fitness (Home Massage, Online Fitness Coaching)</option>
+                <option value="Interior Decoration & Design">Interior Decoration & Design (Home & Office Styling, Furniture Decor)</option>
+                <option value="Events & Catering">Events & Catering (Event Planning, Sound/Decor, Catering & Personal Cook)</option>
+                <option value="Visa & Travel Assistance">Visa & Travel Assistance (Visa Application Support, Document Advisory)</option>
+                <option value="Medical Virtual Assistance">Medical Virtual Assistance (Clinic Admin, Patient Intake, Telehealth Scheduling)</option>
+                <option value="Home Services">Home Services (Plumbing, Electrical, Carpentry, Painting)</option>
                 <option value="Cars & Vehicles">Cars & Vehicles (Mechanic, AC, Diagnostics)</option>
+                <option value="Construction & Land">Construction & Land (Civil Building, Development, Verified Land)</option>
                 <option value="Property Maintenance">Property Maintenance (Roofing, Borehole, Solar)</option>
-                <option value="Construction & Land">Construction & Land (Building, Development, Verified Land)</option>
                 <option value="Cleaning & Janitorial">Cleaning & Janitorial (Residential, Office, Fumigation)</option>
                 <option value="Appliance Repairs">Appliance Repairs (AC, Fridge, Generator, Washer)</option>
-                <option value="Products & Spare Parts">Products & Spare Parts (Hardware, Certified Parts)</option>
+                <option value="Products & Spare Parts">Products & Certified Spare Parts (Hardware, Materials)</option>
                 <option value="Other Specialist Services">Other Specialist Services</option>
               </select>
             </div>
@@ -142,12 +149,43 @@
               <label class="form-label" for="service">
                 Specific Service Item
               </label>
-                <input type="text" id="service" class="form-control" list="serviceSuggestions" placeholder="e.g. Water heater pipe replacement">
+                <input type="text" id="service" class="form-control" list="serviceSuggestions" placeholder="e.g. Barber home visit, Frontal install, Property purchase...">
                 <datalist id="serviceSuggestions">
-                  <option value="House construction"></option>
-                  <option value="Building renovation"></option>
-                  <option value="Property development"></option>
-                  <option value="Land sourcing"></option>
+                  <!-- Property Sales & Rentals -->
+                  <option value="Property sales (Duplex, Bungalow, Apartment)"></option>
+                  <option value="Property rentals (Residential / Commercial)"></option>
+                  <option value="Land scouting & purchase"></option>
+                  <!-- Beauty & Grooming -->
+                  <option value="Barber & Men's grooming (Home / Studio)"></option>
+                  <option value="Nail tech (Acrylics, Gel, Manicure & Pedicure)"></option>
+                  <option value="Hair braiding (Knotless, Box Braids, Cornrows)"></option>
+                  <option value="Frontal installation & wig revamp/styling"></option>
+                  <!-- Wellness & Fitness -->
+                  <option value="Home massage & relaxation therapy"></option>
+                  <option value="Online fitness coaching & workout plan"></option>
+                  <!-- Interior Decor -->
+                  <option value="Interior decoration & space styling"></option>
+                  <option value="Curtains, wallpaper & wall panel styling"></option>
+                  <!-- Events & Catering -->
+                  <option value="Event planning, decor & management"></option>
+                  <option value="Catering & personal cook / private chef"></option>
+                  <!-- Travel & Visa -->
+                  <option value="Visa application assistance & advisory"></option>
+                  <!-- Medical Virtual Assistance -->
+                  <option value="Medical virtual assistant (Patient intake & records)"></option>
+                  <option value="Telehealth consultation scheduling"></option>
+                  <option value="Clinical calendar & admin support"></option>
+                  <!-- Construction & Building -->
+                  <option value="House construction & civil building"></option>
+                  <option value="Building renovation & remodeling"></option>
+                  <option value="Property development project"></option>
+                  <!-- Home & Vehicles -->
+                  <option value="Plumbing installation & leak repair"></option>
+                  <option value="Electrical installation & inverter setup"></option>
+                  <option value="Car mechanic & computer diagnostics"></option>
+                  <option value="Air conditioner servicing & gas refill"></option>
+                  <option value="Generator repair & servicing"></option>
+                  <option value="Deep home cleaning & fumigation"></option>
                 </datalist>
             </div>
           </div>
