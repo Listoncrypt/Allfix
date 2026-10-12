@@ -211,7 +211,7 @@
             <fieldset class="choice-subgroup">
               <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">Number of Bedrooms</legend>
               <p class="choice-help">Choose your desired bedroom count or specify custom.</p>
-              <div class="choice-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+              <div class="choice-grid choice-grid-3">
                 <label class="choice-option"><input type="radio" name="propertyBedrooms" value="1 Bedroom"><span>1 Bedroom</span></label>
                 <label class="choice-option"><input type="radio" name="propertyBedrooms" value="2 Bedrooms"><span>2 Bedrooms</span></label>
                 <label class="choice-option"><input type="radio" name="propertyBedrooms" value="3 Bedrooms"><span>3 Bedrooms</span></label>
@@ -229,7 +229,7 @@
             <fieldset class="choice-subgroup">
               <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">Preferred location(s) for the property</legend>
               <p class="choice-help">Choose all areas you are open to (multi-select friendly).</p>
-              <div class="choice-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+              <div class="choice-grid choice-grid-3">
                 <label class="choice-option"><input type="checkbox" name="propLocations" value="Lugbe"><span>Lugbe</span></label>
                 <label class="choice-option"><input type="checkbox" name="propLocations" value="Lokogoma"><span>Lokogoma</span></label>
                 <label class="choice-option"><input type="checkbox" name="propLocations" value="Guzape"><span>Guzape</span></label>
@@ -253,7 +253,7 @@
             <fieldset class="choice-subgroup">
               <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">Budget Range for the Property</legend>
               <p class="choice-help">Indicate your budget expectation to help us present the right options.</p>
-              <div class="choice-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+              <div class="choice-grid choice-grid-3">
                 <label class="choice-option"><input type="radio" name="propBudget" value="Under ₦30 Million"><span>Under ₦30M</span></label>
                 <label class="choice-option"><input type="radio" name="propBudget" value="₦30M – ₦70 Million"><span>₦30M – ₦70M</span></label>
                 <label class="choice-option"><input type="radio" name="propBudget" value="₦70M – ₦150 Million"><span>₦70M – ₦150M</span></label>
@@ -271,7 +271,7 @@
             <fieldset class="choice-subgroup">
               <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">When do you plan to acquire or rent this property?</legend>
               <p class="choice-help">Select your timeline so our property desk can prioritize inspections.</p>
-              <div class="choice-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+              <div class="choice-grid choice-grid-timeline">
                 <label class="choice-option"><input type="radio" name="propTimeline" value="Ready immediately (1–2 weeks)"><span>⚡ Ready immediately (1–2 weeks)</span></label>
                 <label class="choice-option"><input type="radio" name="propTimeline" value="Actively searching (Within 1 month)" checked><span>🔍 Actively searching (Within 1 month)</span></label>
                 <label class="choice-option"><input type="radio" name="propTimeline" value="Planning ahead (1–3 months)"><span>📅 Planning ahead (1–3 months)</span></label>
@@ -286,7 +286,7 @@
             <fieldset class="choice-subgroup" style="margin-top: 0; padding-top: 0; border-top: none;">
               <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">What type of car are you looking for?</legend>
               <p class="choice-help">Select the category of vehicle you want.</p>
-              <div class="choice-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+              <div class="choice-grid choice-grid-3">
                 <label class="choice-option"><input type="radio" name="carType" value="Sedan / Saloon"><span>Sedan / Saloon</span></label>
                 <label class="choice-option"><input type="radio" name="carType" value="SUV / Jeep" checked><span>SUV / Jeep</span></label>
                 <label class="choice-option"><input type="radio" name="carType" value="Pickup Truck"><span>Pickup Truck</span></label>
@@ -314,7 +314,7 @@
             <fieldset class="choice-subgroup">
               <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">Electric Vehicle?</legend>
               <p class="choice-help">Select whether you want a full electric car (EV) or petrol/diesel/hybrid.</p>
-              <div class="choice-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+              <div class="choice-grid choice-grid-2">
                 <label class="choice-option"><input type="radio" name="isElectricVehicle" value="No (Petrol / Diesel / Hybrid)" checked><span>No (Petrol / Diesel / Hybrid)</span></label>
                 <label class="choice-option"><input type="radio" name="isElectricVehicle" value="Yes (100% Electric EV)"><span>⚡ Yes (100% Electric EV)</span></label>
               </div>
@@ -324,7 +324,7 @@
             <fieldset class="choice-subgroup">
               <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">Preferred Colour(s)</legend>
               <p class="choice-help">Choose all colours you would consider (multi-select).</p>
-              <div class="choice-grid" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
+              <div class="choice-grid choice-grid-4">
                 <label class="choice-option"><input type="checkbox" name="carColours" value="Black"><span>Black</span></label>
                 <label class="choice-option"><input type="checkbox" name="carColours" value="White"><span>White</span></label>
                 <label class="choice-option"><input type="checkbox" name="carColours" value="Silver"><span>Silver</span></label>
@@ -340,7 +340,7 @@
             <fieldset class="choice-subgroup">
               <legend class="choice-legend" style="font-size: 1.05rem; font-weight: 700; color: #151B17;">Budget Range for the Car</legend>
               <p class="choice-help">Select your target price bracket or type your custom budget.</p>
-              <div class="choice-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+              <div class="choice-grid choice-grid-3">
                 <label class="choice-option"><input type="radio" name="carBudget" value="Under ₦15 Million"><span>Under ₦15M</span></label>
                 <label class="choice-option"><input type="radio" name="carBudget" value="₦15M – ₦30 Million"><span>₦15M – ₦30M</span></label>
                 <label class="choice-option"><input type="radio" name="carBudget" value="₦30M – ₦60 Million"><span>₦30M – ₦60M</span></label>
@@ -395,13 +395,13 @@
             <input type="text" id="location" class="form-control" placeholder="e.g. Wuse 2, Abuja or Garki" required>
           </div>
 
-          <!-- Standard Urgency Fieldset (Used for General Services) -->
-          <fieldset class="choice-fieldset urgency-fieldset" id="standardUrgencyFieldset" style="margin: 1.5rem 0; padding: 1.25rem;">
-            <legend class="form-label" style="font-weight: 700; margin-bottom: 0.35rem; display: block; font-size: 1rem; color: #151B17;">
+          <!-- Standard Urgency Section (Used for General Services) -->
+          <section class="choice-fieldset urgency-fieldset" id="standardUrgencyFieldset" aria-labelledby="urgencyHeading" style="margin: 1.5rem 0; padding: 1.25rem;">
+            <div class="choice-legend" id="urgencyHeading" style="font-weight: 700; margin-bottom: 0.35rem; display: block; font-size: 1rem; color: #151B17;">
               How urgent? <span class="required">*</span>
-            </legend>
+            </div>
             <p class="choice-help" style="margin-bottom: 0.85rem;">Select how quickly you need a specialist dispatched.</p>
-            <div class="choice-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem;">
+            <div class="choice-grid urgency-choice-grid">
               <label class="choice-option urgency-option-high">
                 <input type="radio" name="urgency" value="High" required>
                 <div>
@@ -409,7 +409,7 @@
                     <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #DC2626;"></span>
                     High
                   </strong>
-                  <span style="font-size: 0.8rem; color: #68756B; display: block; margin-top: 0.15rem;">Immediate / Emergency</span>
+                  <span class="urgency-desc">Immediate / Emergency</span>
                 </div>
               </label>
 
@@ -420,7 +420,7 @@
                     <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #D97706;"></span>
                     Medium
                   </strong>
-                  <span style="font-size: 0.8rem; color: #68756B; display: block; margin-top: 0.15rem;">Within 24–48 hours</span>
+                  <span class="urgency-desc">Within 24–48 hours</span>
                 </div>
               </label>
 
@@ -431,11 +431,11 @@
                     <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #16883D;"></span>
                     Low
                   </strong>
-                  <span style="font-size: 0.8rem; color: #68756B; display: block; margin-top: 0.15rem;">Flexible schedule</span>
+                  <span class="urgency-desc">Flexible schedule</span>
                 </div>
               </label>
             </div>
-          </fieldset>
+          </section>
 
           <!-- Standard Preferred Service Date (Hidden for Property & Cars) -->
           <div class="form-group" id="standardDateWrap">

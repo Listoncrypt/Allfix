@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           };
           updateStat(statRequests, json.stats.totalRequests);
-          updateStat(statVendors, json.stats.verifiedVendors);
+          updateStat(statVendors, Math.max(1, json.stats.verifiedVendors || 1));
           updateStat(statAgreements, json.stats.agreementsSigned);
         }
       })

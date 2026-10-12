@@ -813,7 +813,7 @@ const server = http.createServer(async (req, res) => {
             pendingRequests: pendingCount,
             contactedRequests: contactedCount,
             completedRequests: completedCount,
-            verifiedVendors: (vendors || []).length,
+            verifiedVendors: Math.max(1, (vendors || []).length),
             agreementsSigned: (agreements || []).length,
             totalMessages: (messages || []).length,
             totalProperties: propertiesCount,
