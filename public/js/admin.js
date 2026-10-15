@@ -308,6 +308,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       try {
         await fetch('/api/admin/logout', { method: 'POST' });
       } catch (e) {}
+      localStorage.removeItem('allfix_admin_token');
       stopRealtimeSync();
       if (adminApp) adminApp.style.display = 'none';
       if (adminLoginScreen) adminLoginScreen.style.display = 'flex';
@@ -459,7 +460,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       if (!json.success || !json.stats) return;
 
       const s = json.stats;
-      const currentFingerprint = `${s.totalRequests}_${s.pendingRequests}_${s.verifiedVendors}_${s.totalMessages}_${s.agreementsSigned}_${s.totalProperties}`;
+      const currentFingerprint = `${s.totalRequests}_${s.pendingRequests}_${s.verifiedVendors}_${s.totalMessages}_${s.agreementsSigned}_${s.totalProperties}_${s.totalVehicles || 0}`;
 
       if (lastStatsFingerprint && currentFingerprint !== lastStatsFingerprint) {
         // Platform count changed! Sync live
@@ -470,7 +471,8 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
           loadVendors(),
           loadMessages(),
           loadAgreements(),
-          loadProperties()
+          loadProperties(),
+          loadVehicles()
         ]);
       } else if (!lastStatsFingerprint) {
         // Initial snapshot
@@ -524,7 +526,8 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       loadVendors(),
       loadMessages(),
       loadAgreements(),
-      loadProperties()
+      loadProperties(),
+      loadVehicles()
     ]);
   }
   window.refreshAll = refreshAll;
@@ -557,6 +560,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       const elAgreements = document.getElementById('statAgreements');
       const elMessages = document.getElementById('statTotalMessages');
       const elProperties = document.getElementById('statTotalProperties');
+      const elVehicles = document.getElementById('statTotalVehicles');
       const elActualReqText = document.getElementById('statActualRequestsText');
 
       if (elPending) elPending.textContent = (s.pendingRequests !== undefined ? s.pendingRequests : 0).toLocaleString();
@@ -566,6 +570,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       if (elAgreements) elAgreements.textContent = (s.agreementsSigned || 0).toLocaleString();
       if (elMessages) elMessages.textContent = (s.totalMessages || 0).toLocaleString();
       if (elProperties) elProperties.textContent = (s.totalProperties !== undefined ? s.totalProperties : allProperties.length).toLocaleString();
+      if (elVehicles) elVehicles.textContent = (s.totalVehicles !== undefined ? s.totalVehicles : allVehicles.length).toLocaleString();
     } catch (e) {
       console.error('Error loading stats:', e);
     }
@@ -1427,42 +1432,142 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     });
   }
 
-  // Property Image Upload & Preview Handling (from device or camera)
+  // Multi-Image Compression Utility (Canvas-based)
+  function compressImageFile(file, maxDim = 1280, quality = 0.82) {
+    return new Promise((resolve, reject) => {
+      if (!file || !file.type || !file.type.startsWith('image/')) {
+        return reject(new Error('Invalid image file'));
+      }
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ==============================================================================
+  // Property Multi-Image Gallery (Up to 10 photos)
+  // ==============================================================================
+  let propertyImagesList = [];
   const propFileInput = document.getElementById('propFormFileInput');
   const propUploadZone = document.getElementById('propImageUploadZone');
   const propUploadPrompt = document.getElementById('propImageUploadPrompt');
-  const propPreviewWrap = document.getElementById('propImagePreviewWrap');
-  const propPreviewImg = document.getElementById('propImagePreviewImg');
-  const propPreviewMeta = document.getElementById('propImagePreviewMeta');
+  const propGalleryGrid = document.getElementById('propGalleryGrid');
+  const propPhotoCountBadge = document.getElementById('propPhotoCountBadge');
   const propImageInput = document.getElementById('propFormImage');
-  const propRemoveBtn = document.getElementById('propImageRemoveBtn');
+  const btnAddPropUrl = document.getElementById('btnAddPropUrlBtn');
 
-  function showPropertyImagePreview(src, metaText) {
-    if (!propPreviewWrap || !propPreviewImg) return;
-    propPreviewImg.src = src;
-    if (propPreviewMeta) propPreviewMeta.textContent = metaText || '✓ Photo Selected';
-    if (propUploadPrompt) propUploadPrompt.style.display = 'none';
-    propPreviewWrap.style.display = 'block';
-  }
+  function renderPropertyGallery() {
+    if (propPhotoCountBadge) {
+      propPhotoCountBadge.textContent = `${propertyImagesList.length} / 10 photos selected`;
+    }
+    if (!propGalleryGrid || !propUploadPrompt) return;
 
-  function clearPropertyImagePreview() {
-    if (propPreviewImg) propPreviewImg.src = '';
-    if (propImageInput) propImageInput.value = '';
-    if (propFileInput) propFileInput.value = '';
-    if (propPreviewWrap) propPreviewWrap.style.display = 'none';
-    if (propUploadPrompt) propUploadPrompt.style.display = 'block';
-  }
+    if (propertyImagesList.length === 0) {
+      propGalleryGrid.style.display = 'none';
+      propGalleryGrid.innerHTML = '';
+      propUploadPrompt.style.display = 'block';
+      return;
+    }
 
-  if (propRemoveBtn) {
-    propRemoveBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      clearPropertyImagePreview();
+    propUploadPrompt.style.display = 'none';
+    propGalleryGrid.style.display = 'grid';
+
+    let html = propertyImagesList.map((src, index) => {
+      const isCover = index === 0;
+      return `
+        <div class="photo-thumb-card ${isCover ? 'is-cover' : ''}">
+          <img src="${src}" alt="Property Photo ${index + 1}">
+          <span class="photo-thumb-badge">${isCover ? '★ Cover' : `#${index + 1}`}</span>
+          <button type="button" class="photo-thumb-del" data-index="${index}" title="Remove photo">&times;</button>
+        </div>
+      `;
+    }).join('');
+
+    if (propertyImagesList.length < 10) {
+      html += `
+        <div class="photo-add-more-card" id="btnPropAddMorePhotos">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>Add More</span>
+        </div>
+      `;
+    }
+
+    propGalleryGrid.innerHTML = html;
+
+    propGalleryGrid.querySelectorAll('.photo-thumb-del').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.getAttribute('data-index'), 10);
+        propertyImagesList.splice(idx, 1);
+        renderPropertyGallery();
+      });
     });
+
+    const addMoreBtn = document.getElementById('btnPropAddMorePhotos');
+    if (addMoreBtn) {
+      addMoreBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (propFileInput) propFileInput.click();
+      });
+    }
+  }
+
+  async function handlePropertyFilesSelected(files) {
+    if (!files || files.length === 0) return;
+    const remaining = 10 - propertyImagesList.length;
+    if (remaining <= 0) {
+      alert('Maximum 10 pictures reached per listing.');
+      return;
+    }
+    const toProcess = Array.from(files).slice(0, remaining);
+    for (const f of toProcess) {
+      try {
+        const compressed = await compressImageFile(f);
+        if (propertyImagesList.length < 10) {
+          propertyImagesList.push(compressed);
+        }
+      } catch (err) {
+        console.warn('Property image skipped:', err);
+      }
+    }
+    if (files.length > remaining) {
+      alert(`Only ${remaining} photo(s) added because maximum limit is 10 pictures.`);
+    }
+    renderPropertyGallery();
+    if (propFileInput) propFileInput.value = '';
   }
 
   if (propUploadZone && propFileInput) {
     propUploadZone.addEventListener('click', (e) => {
-      if (e.target.closest('#propImageRemoveBtn')) return;
+      if (e.target.closest('.photo-thumb-del') || e.target.closest('#btnPropAddMorePhotos')) return;
+      if (propertyImagesList.length >= 10) {
+        alert('Maximum of 10 pictures reached.');
+        return;
+      }
       propFileInput.click();
     });
 
@@ -1478,76 +1583,39 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     propUploadZone.addEventListener('drop', (e) => {
       e.preventDefault();
       propUploadZone.classList.remove('dragover');
-      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
-        processSelectedImageFile(e.dataTransfer.files[0]);
+      if (e.dataTransfer && e.dataTransfer.files) {
+        handlePropertyFilesSelected(e.dataTransfer.files);
       }
     });
   }
 
   if (propFileInput) {
     propFileInput.addEventListener('change', () => {
-      if (propFileInput.files && propFileInput.files[0]) {
-        processSelectedImageFile(propFileInput.files[0]);
+      if (propFileInput.files && propFileInput.files.length > 0) {
+        handlePropertyFilesSelected(propFileInput.files);
       }
     });
   }
 
-  if (propImageInput) {
-    propImageInput.addEventListener('input', () => {
-      const val = propImageInput.value.trim();
-      if (val) {
-        showPropertyImagePreview(val, '✓ External Image URL');
-      } else {
-        clearPropertyImagePreview();
+  if (btnAddPropUrl) {
+    btnAddPropUrl.addEventListener('click', () => {
+      const val = (propImageInput?.value || '').trim();
+      if (!val) return;
+      if (propertyImagesList.length >= 10) {
+        alert('Maximum of 10 pictures reached.');
+        return;
       }
+      propertyImagesList.push(val);
+      if (propImageInput) propImageInput.value = '';
+      renderPropertyGallery();
     });
-  }
-
-  function processSelectedImageFile(file) {
-    if (!file.type.startsWith('image/')) {
-      alert('Please select a valid image file (JPG, PNG, WEBP, etc.).');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const img = new Image();
-      img.onload = function() {
-        const maxDim = 1280;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.84);
-        const approxKb = Math.round((dataUrl.length * 3 / 4) / 1024);
-
-        if (propImageInput) propImageInput.value = dataUrl;
-        showPropertyImagePreview(dataUrl, `✓ Photo Loaded (${width}x${height} • ~${approxKb} KB)`);
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
   }
 
   function openNewPropertyModal() {
     if (!propertyEditModal) return;
     propertyEditForm.reset();
-    clearPropertyImagePreview();
+    propertyImagesList = [];
+    renderPropertyGallery();
     document.getElementById('propFormId').value = '';
     if (propertyModalHeading) propertyModalHeading.textContent = 'Post Available Property';
     if (deletePropBtn) deletePropBtn.style.display = 'none';
@@ -1563,14 +1631,17 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     document.getElementById('propFormPrice').value = prop.price || '';
     document.getElementById('propFormSize').value = prop.size || '';
     document.getElementById('propFormTitleDoc').value = prop.titleDocument || '';
-    document.getElementById('propFormImage').value = prop.imageUrl || '';
+    if (propImageInput) propImageInput.value = '';
     document.getElementById('propFormDesc').value = prop.description || '';
     
-    if (prop.imageUrl) {
-      showPropertyImagePreview(prop.imageUrl, '✓ Current Property Photo');
+    if (Array.isArray(prop.images) && prop.images.length > 0) {
+      propertyImagesList = [...prop.images];
+    } else if (prop.imageUrl) {
+      propertyImagesList = [prop.imageUrl];
     } else {
-      clearPropertyImagePreview();
+      propertyImagesList = [];
     }
+    renderPropertyGallery();
 
     if (propertyModalHeading) propertyModalHeading.textContent = `Edit Property: ${prop.title}`;
     if (deletePropBtn) deletePropBtn.style.display = 'inline-block';
@@ -1635,7 +1706,6 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       const price = document.getElementById('propFormPrice').value.trim();
       const size = document.getElementById('propFormSize').value.trim();
       const titleDocument = document.getElementById('propFormTitleDoc').value.trim();
-      const imageUrl = document.getElementById('propFormImage').value.trim();
       const description = document.getElementById('propFormDesc').value.trim();
 
       if (!title || !location) {
@@ -1653,10 +1723,11 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
           title,
           location,
           propertyType,
-          price, // Can be blank -> will display as "Price on Request"
+          price,
           size,
           titleDocument,
-          imageUrl,
+          images: propertyImagesList,
+          imageUrl: propertyImagesList[0] || '',
           description
         };
 
@@ -1690,7 +1761,470 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     if (e.target === propertyEditModal) {
       closePropertyModal();
     }
+    if (typeof vehicleEditModal !== 'undefined' && e.target === vehicleEditModal) {
+      closeVehicleModal();
+    }
   });
+
+  // ==============================================================================
+  // 6. AUTOMOBILE & VEHICLE MANAGEMENT
+  // ==============================================================================
+  let allVehicles = [];
+  let vehicleImagesList = [];
+
+  const vehiclesTable = document.getElementById('vehiclesTableBody');
+  const vehicleSearchInput = document.getElementById('vehicleSearchInput');
+  const vehicleTypeFilter = document.getElementById('vehicleTypeFilter');
+  const vehicleConditionFilter = document.getElementById('vehicleConditionFilter');
+  const btnOpenNewVehicleModal = document.getElementById('btnOpenNewVehicleModal');
+  const vehicleEditModal = document.getElementById('vehicleEditModal');
+  const closeVehicleModalBtn = document.getElementById('closeVehicleModalBtn');
+  const vehicleEditForm = document.getElementById('vehicleEditForm');
+  const deleteVehBtn = document.getElementById('deleteVehBtn');
+  const vehicleModalHeading = document.getElementById('vehicleModalHeading');
+  const vehFileInput = document.getElementById('vehFormFileInput');
+  const vehUploadZone = document.getElementById('vehImageUploadZone');
+  const vehUploadPrompt = document.getElementById('vehImageUploadPrompt');
+  const vehGalleryGrid = document.getElementById('vehGalleryGrid');
+  const vehPhotoCountBadge = document.getElementById('vehPhotoCountBadge');
+  const vehImageInput = document.getElementById('vehFormImage');
+  const btnAddVehUrl = document.getElementById('btnAddVehUrlBtn');
+
+  async function loadVehicles() {
+    try {
+      const res = await fetch('/api/vehicles');
+      const json = await res.json();
+      if (!json.success) return;
+
+      allVehicles = json.vehicles || json.data || [];
+      const badgeCount = document.getElementById('badgeVehiclesCount');
+      if (badgeCount) badgeCount.textContent = allVehicles.length;
+
+      const elVehicles = document.getElementById('statTotalVehicles');
+      if (elVehicles) elVehicles.textContent = allVehicles.length;
+
+      renderFilteredVehicles();
+    } catch (err) {
+      if (vehiclesTable) {
+        vehiclesTable.innerHTML = `<tr><td colspan="8" style="color: red; text-align:center;">Failed to load vehicles: ${escapeHtml(err.message)}</td></tr>`;
+      }
+    }
+  }
+
+  function renderFilteredVehicles() {
+    if (!vehiclesTable) return;
+
+    const searchTerm = (vehicleSearchInput?.value || '').toLowerCase().trim();
+    const typeVal = vehicleTypeFilter?.value || 'all';
+    const condVal = vehicleConditionFilter?.value || 'all';
+
+    const filtered = allVehicles.filter(v => {
+      const matchesSearch = !searchTerm ||
+        (v.title && v.title.toLowerCase().includes(searchTerm)) ||
+        (v.make && v.make.toLowerCase().includes(searchTerm)) ||
+        (v.model && v.model.toLowerCase().includes(searchTerm)) ||
+        (v.location && v.location.toLowerCase().includes(searchTerm)) ||
+        (v.year && String(v.year).includes(searchTerm)) ||
+        (v.id && v.id.toLowerCase().includes(searchTerm));
+
+      const matchesType = typeVal === 'all' || (v.vehicleType && v.vehicleType.toLowerCase().includes(typeVal.toLowerCase()));
+      const matchesCond = condVal === 'all' || (v.condition && v.condition.toLowerCase().includes(condVal.toLowerCase()));
+
+      return matchesSearch && matchesType && matchesCond;
+    });
+
+    if (filtered.length === 0) {
+      vehiclesTable.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 2.5rem; color: #68756B;">
+            No vehicles found matching your filter. Click <strong>Post New Vehicle</strong> to add one.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    vehiclesTable.innerHTML = filtered.map(v => {
+      const firstImg = (v.images && v.images[0]) || v.imageUrl || 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=400&q=80';
+      const imgCount = (v.images && v.images.length) || (v.imageUrl ? 1 : 0);
+
+      let priceDisplay = '';
+      if (!v.price || String(v.price).trim() === '') {
+        priceDisplay = '<span style="background: #FEF3C7; color: #B45309; padding: 0.2rem 0.55rem; border-radius: 4px; font-weight: 700; font-size: 0.76rem;">On Request</span>';
+      } else {
+        const cleaned = String(v.price).replace(/[^0-9]/g, '');
+        if (cleaned && !isNaN(cleaned)) {
+          priceDisplay = `<strong style="color: #166534; font-size: 0.95rem;">₦${Number(cleaned).toLocaleString('en-NG')}</strong>`;
+        } else {
+          priceDisplay = `<strong>${escapeHtml(v.price)}</strong>`;
+        }
+      }
+
+      const waMsg = `Hello ALLFIX Services Xpress! I am interested in inspecting/purchasing this vehicle: ${v.title} (Year: ${v.year || 'N/A'}, Condition: ${v.condition || 'Verified'}, Ref: ${v.id}). Price: ${v.price || 'On Request'}. Please confirm availability.`;
+      const waLink = `https://wa.me/2347058099045?text=${encodeURIComponent(waMsg)}`;
+
+      return `
+        <tr id="veh-row-${v.id}">
+          <td style="width: 70px;">
+            <div style="position: relative;">
+              <img src="${firstImg}" alt="${escapeHtml(v.title)}" style="width: 58px; height: 42px; object-fit: cover; border-radius: 6px; border: 1px solid #E2E7E3;" onerror="this.src='https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=200&q=80'">
+              ${imgCount > 1 ? `<span style="position:absolute; bottom:2px; right:2px; background:rgba(0,0,0,0.75); color:white; font-size:0.6rem; font-weight:700; padding:1px 3px; border-radius:3px;">${imgCount} 📷</span>` : ''}
+            </div>
+          </td>
+          <td>
+            <div style="font-size: 0.75rem; font-family: monospace; color: #68756B;">${escapeHtml(v.id)}</div>
+            <strong style="color: #151B17; font-size: 0.92rem;">${escapeHtml(v.title)}</strong>
+          </td>
+          <td>
+            <span class="badge ${v.condition === 'Brand New' ? 'badge-green' : 'badge-blue'}" style="font-size: 0.76rem;">${escapeHtml(v.condition || 'Verified')}</span>
+          </td>
+          <td>
+            <span style="font-size: 0.85rem; color: #374151;">${escapeHtml(v.vehicleType || 'Vehicle')}</span>
+          </td>
+          <td>
+            <div style="font-size: 0.8rem; color: #56645A;">
+              Year: ${escapeHtml(v.year || '-')}<br>
+              ${v.transmission ? escapeHtml(v.transmission) : ''} ${v.fuelType ? '&bull; ' + escapeHtml(v.fuelType) : ''}
+            </div>
+          </td>
+          <td>
+            ${priceDisplay}
+          </td>
+          <td>
+            <span style="font-size: 0.85rem; color: #3E4D42;">${escapeHtml(v.location || 'Abuja')}</span>
+          </td>
+          <td>
+            <div style="display: flex; gap: 0.45rem; align-items: center;">
+              <button class="btn btn-outline btn-sm btn-edit-vehicle" data-id="${v.id}" style="padding: 0.35rem 0.65rem; font-size: 0.78rem;">
+                Edit
+              </button>
+              <a href="${waLink}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="padding: 0.35rem 0.65rem; font-size: 0.78rem; background: #EFF6FF; border-color: #BFDBFE; color: #1E40AF;" title="Open WhatsApp Buyer Chat">
+                WhatsApp
+              </a>
+              <button class="btn btn-outline btn-sm btn-delete-vehicle" data-id="${v.id}" style="padding: 0.35rem 0.55rem; font-size: 0.78rem; color: #DC2626; border-color: #FECACA; display: inline-flex; align-items: center; justify-content: center;" title="Delete Vehicle">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Attach vehicle row button events
+    document.querySelectorAll('.btn-edit-vehicle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const vehId = btn.getAttribute('data-id');
+        const found = allVehicles.find(v => v.id === vehId);
+        if (found) openEditVehicleModal(found);
+      });
+    });
+
+    document.querySelectorAll('.btn-delete-vehicle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const vehId = btn.getAttribute('data-id');
+        confirmDeleteVehicle(vehId);
+      });
+    });
+  }
+
+  function renderVehicleGallery() {
+    if (vehPhotoCountBadge) {
+      vehPhotoCountBadge.textContent = `${vehicleImagesList.length} / 10 photos selected`;
+    }
+    if (!vehGalleryGrid || !vehUploadPrompt) return;
+
+    if (vehicleImagesList.length === 0) {
+      vehGalleryGrid.style.display = 'none';
+      vehGalleryGrid.innerHTML = '';
+      vehUploadPrompt.style.display = 'block';
+      return;
+    }
+
+    vehUploadPrompt.style.display = 'none';
+    vehGalleryGrid.style.display = 'grid';
+
+    let html = vehicleImagesList.map((src, index) => {
+      const isCover = index === 0;
+      return `
+        <div class="photo-thumb-card ${isCover ? 'is-cover' : ''}">
+          <img src="${src}" alt="Vehicle Photo ${index + 1}">
+          <span class="photo-thumb-badge">${isCover ? '★ Cover' : `#${index + 1}`}</span>
+          <button type="button" class="photo-thumb-del" data-index="${index}" title="Remove photo">&times;</button>
+        </div>
+      `;
+    }).join('');
+
+    if (vehicleImagesList.length < 10) {
+      html += `
+        <div class="photo-add-more-card" id="btnVehAddMorePhotos">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>Add More</span>
+        </div>
+      `;
+    }
+
+    vehGalleryGrid.innerHTML = html;
+
+    vehGalleryGrid.querySelectorAll('.photo-thumb-del').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.getAttribute('data-index'), 10);
+        vehicleImagesList.splice(idx, 1);
+        renderVehicleGallery();
+      });
+    });
+
+    const addMoreBtn = document.getElementById('btnVehAddMorePhotos');
+    if (addMoreBtn) {
+      addMoreBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (vehFileInput) vehFileInput.click();
+      });
+    }
+  }
+
+  async function handleVehicleFilesSelected(files) {
+    if (!files || files.length === 0) return;
+    const remaining = 10 - vehicleImagesList.length;
+    if (remaining <= 0) {
+      alert('Maximum 10 pictures reached per vehicle listing.');
+      return;
+    }
+    const toProcess = Array.from(files).slice(0, remaining);
+    for (const f of toProcess) {
+      try {
+        const compressed = await compressImageFile(f);
+        if (vehicleImagesList.length < 10) {
+          vehicleImagesList.push(compressed);
+        }
+      } catch (err) {
+        console.warn('Vehicle image skipped:', err);
+      }
+    }
+    if (files.length > remaining) {
+      alert(`Only ${remaining} photo(s) added because maximum limit is 10 pictures.`);
+    }
+    renderVehicleGallery();
+    if (vehFileInput) vehFileInput.value = '';
+  }
+
+  if (vehUploadZone && vehFileInput) {
+    vehUploadZone.addEventListener('click', (e) => {
+      if (e.target.closest('.photo-thumb-del') || e.target.closest('#btnVehAddMorePhotos')) return;
+      if (vehicleImagesList.length >= 10) {
+        alert('Maximum of 10 pictures reached.');
+        return;
+      }
+      vehFileInput.click();
+    });
+
+    vehUploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      vehUploadZone.classList.add('dragover');
+    });
+
+    vehUploadZone.addEventListener('dragleave', () => {
+      vehUploadZone.classList.remove('dragover');
+    });
+
+    vehUploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      vehUploadZone.classList.remove('dragover');
+      if (e.dataTransfer && e.dataTransfer.files) {
+        handleVehicleFilesSelected(e.dataTransfer.files);
+      }
+    });
+  }
+
+  if (vehFileInput) {
+    vehFileInput.addEventListener('change', () => {
+      if (vehFileInput.files && vehFileInput.files.length > 0) {
+        handleVehicleFilesSelected(vehFileInput.files);
+      }
+    });
+  }
+
+  if (btnAddVehUrl) {
+    btnAddVehUrl.addEventListener('click', () => {
+      const val = (vehImageInput?.value || '').trim();
+      if (!val) return;
+      if (vehicleImagesList.length >= 10) {
+        alert('Maximum of 10 pictures reached.');
+        return;
+      }
+      vehicleImagesList.push(val);
+      if (vehImageInput) vehImageInput.value = '';
+      renderVehicleGallery();
+    });
+  }
+
+  function openNewVehicleModal() {
+    if (!vehicleEditModal) return;
+    vehicleEditForm.reset();
+    vehicleImagesList = [];
+    renderVehicleGallery();
+    document.getElementById('vehFormId').value = '';
+    if (vehicleModalHeading) vehicleModalHeading.textContent = 'Post Available Vehicle / Car';
+    if (deleteVehBtn) deleteVehBtn.style.display = 'none';
+    vehicleEditModal.classList.add('open');
+  }
+
+  function openEditVehicleModal(veh) {
+    if (!vehicleEditModal) return;
+    document.getElementById('vehFormId').value = veh.id;
+    document.getElementById('vehFormTitle').value = veh.title || '';
+    document.getElementById('vehFormMake').value = veh.make || '';
+    document.getElementById('vehFormModel').value = veh.model || '';
+    document.getElementById('vehFormYear').value = veh.year || '';
+    document.getElementById('vehFormType').value = veh.vehicleType || 'SUV';
+    document.getElementById('vehFormCondition').value = veh.condition || 'Foreign Used (Tokunbo)';
+    document.getElementById('vehFormTransmission').value = veh.transmission || 'Automatic';
+    document.getElementById('vehFormFuel').value = veh.fuelType || 'Petrol';
+    document.getElementById('vehFormMileage').value = veh.mileage || '';
+    document.getElementById('vehFormPrice').value = veh.price || '';
+    document.getElementById('vehFormColor').value = veh.color || '';
+    document.getElementById('vehFormLocation').value = veh.location || '';
+    if (vehImageInput) vehImageInput.value = '';
+    document.getElementById('vehFormDesc').value = veh.description || '';
+
+    if (Array.isArray(veh.images) && veh.images.length > 0) {
+      vehicleImagesList = [...veh.images];
+    } else if (veh.imageUrl) {
+      vehicleImagesList = [veh.imageUrl];
+    } else {
+      vehicleImagesList = [];
+    }
+    renderVehicleGallery();
+
+    if (vehicleModalHeading) vehicleModalHeading.textContent = `Edit Vehicle: ${veh.title}`;
+    if (deleteVehBtn) deleteVehBtn.style.display = 'inline-block';
+    vehicleEditModal.classList.add('open');
+  }
+
+  function closeVehicleModal() {
+    if (vehicleEditModal) vehicleEditModal.classList.remove('open');
+  }
+
+  async function confirmDeleteVehicle(vehId) {
+    if (!confirm('Are you sure you want to delete this vehicle listing? It will be removed from the public website.')) return;
+    try {
+      const res = await fetch('/api/vehicles/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: vehId })
+      });
+      const json = await res.json();
+      if (json.success) {
+        closeVehicleModal();
+        await loadVehicles();
+      } else {
+        alert('Failed to delete vehicle: ' + (json.error || 'Unknown error'));
+      }
+    } catch (e) {
+      alert('Network error while deleting: ' + e.message);
+    }
+  }
+
+  if (btnOpenNewVehicleModal) {
+    btnOpenNewVehicleModal.addEventListener('click', openNewVehicleModal);
+  }
+
+  if (closeVehicleModalBtn) {
+    closeVehicleModalBtn.addEventListener('click', closeVehicleModal);
+  }
+
+  if (deleteVehBtn) {
+    deleteVehBtn.addEventListener('click', () => {
+      const vehId = document.getElementById('vehFormId').value;
+      if (vehId) confirmDeleteVehicle(vehId);
+    });
+  }
+
+  if (vehicleSearchInput) {
+    vehicleSearchInput.addEventListener('input', renderFilteredVehicles);
+  }
+
+  if (vehicleTypeFilter) {
+    vehicleTypeFilter.addEventListener('change', renderFilteredVehicles);
+  }
+
+  if (vehicleConditionFilter) {
+    vehicleConditionFilter.addEventListener('change', renderFilteredVehicles);
+  }
+
+  if (vehicleEditForm) {
+    vehicleEditForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById('saveVehicleSubmitBtn');
+      const vehId = document.getElementById('vehFormId').value.trim();
+      const title = document.getElementById('vehFormTitle').value.trim();
+      const make = document.getElementById('vehFormMake').value.trim();
+      const model = document.getElementById('vehFormModel').value.trim();
+      const year = document.getElementById('vehFormYear').value.trim();
+      const vehicleType = document.getElementById('vehFormType').value;
+      const condition = document.getElementById('vehFormCondition').value;
+      const transmission = document.getElementById('vehFormTransmission').value;
+      const fuelType = document.getElementById('vehFormFuel').value;
+      const mileage = document.getElementById('vehFormMileage').value.trim();
+      const price = document.getElementById('vehFormPrice').value.trim();
+      const color = document.getElementById('vehFormColor').value.trim();
+      const location = document.getElementById('vehFormLocation').value.trim();
+      const description = document.getElementById('vehFormDesc').value.trim();
+
+      if (!title || !make) {
+        alert('Please provide at least a vehicle title and brand/make.');
+        return;
+      }
+
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving Vehicle...';
+      }
+
+      try {
+        const payload = {
+          title,
+          make,
+          model,
+          year,
+          vehicleType,
+          condition,
+          transmission,
+          fuelType,
+          mileage,
+          price,
+          color,
+          location,
+          images: vehicleImagesList,
+          imageUrl: vehicleImagesList[0] || '',
+          description
+        };
+
+        const endpoint = vehId ? '/api/vehicles/update' : '/api/vehicles';
+        if (vehId) payload.id = vehId;
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        if (json.success) {
+          closeVehicleModal();
+          await loadVehicles();
+        } else {
+          alert('Failed to save vehicle: ' + (json.error || 'Server error'));
+        }
+      } catch (err) {
+        alert('Network error: ' + err.message);
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save & Publish Vehicle';
+        }
+      }
+    });
+  }
 
   // Utility Functions
   function cleanPhoneNumber(phone) {

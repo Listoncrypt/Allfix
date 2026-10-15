@@ -129,6 +129,14 @@ function getCookie(req, name) {
   return null;
 }
 
+const ADMIN_SECRET = process.env.ADMIN_SESSION_SECRET || 'allfix-secret-session-auth-token-key-2026';
+
+function createAdminToken(username) {
+  const payload = Buffer.from(JSON.stringify({ u: username, ts: Date.now() })).toString('base64url');
+  const hmac = crypto.createHmac('sha256', ADMIN_SECRET).update(payload).digest('hex');
+  return `${payload}.${hmac}`;
+}
+
 function verifyAdminSession(req) {
   const authHeader = req.headers.authorization;
   let token = null;
@@ -138,14 +146,34 @@ function verifyAdminSession(req) {
     token = getCookie(req, 'allfix_admin_session');
   }
   if (!token) return null;
-  const session = activeSessions.get(token);
-  if (!session) return null;
-  // 12 hours expiration
-  if (Date.now() - session.createdAt > 12 * 60 * 60 * 1000) {
-    activeSessions.delete(token);
-    return null;
+
+  // 1. Verify stateless HMAC-SHA256 signed token
+  const dotIdx = token.indexOf('.');
+  if (dotIdx > 0) {
+    const payload = token.substring(0, dotIdx);
+    const sig = token.substring(dotIdx + 1);
+    const expectedSig = crypto.createHmac('sha256', ADMIN_SECRET).update(payload).digest('hex');
+    if (sig === expectedSig) {
+      try {
+        const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf-8'));
+        // 7 days expiration
+        if (Date.now() - data.ts < 7 * 24 * 60 * 60 * 1000) {
+          return { username: data.u || ADMIN_USERNAME, createdAt: data.ts };
+        }
+      } catch (e) {}
+    }
   }
-  return session;
+
+  // 2. Fallback to activeSessions Map
+  const session = activeSessions.get(token);
+  if (session) {
+    if (Date.now() - session.createdAt > 7 * 24 * 60 * 60 * 1000) {
+      activeSessions.delete(token);
+      return null;
+    }
+    return session;
+  }
+  return null;
 }
 
 function requireAdminAuth(req, res) {
@@ -468,7 +496,7 @@ const server = http.createServer(async (req, res) => {
 
         // Successful login: reset failed attempts
         failedLoginAttempts.delete(ip);
-        const sessionToken = crypto.randomBytes(32).toString('hex');
+        const sessionToken = createAdminToken(ADMIN_USERNAME);
         activeSessions.set(sessionToken, {
           username: ADMIN_USERNAME,
           createdAt: now,
@@ -477,7 +505,7 @@ const server = http.createServer(async (req, res) => {
 
         res.writeHead(200, {
           'Content-Type': 'application/json; charset=utf-8',
-          'Set-Cookie': `allfix_admin_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=43200`,
+          'Set-Cookie': `allfix_admin_session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`,
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization'
         });
@@ -805,6 +833,7 @@ const server = http.createServer(async (req, res) => {
         const completedCount = (requests || []).filter(r => r.status === 'completed').length;
         const dbFallback = readDb();
         const propertiesCount = (dbFallback.properties || []).length;
+        const vehiclesCount = (dbFallback.vehicles || []).length;
 
         return sendJson(res, 200, {
           success: true,
@@ -817,6 +846,7 @@ const server = http.createServer(async (req, res) => {
             agreementsSigned: (agreements || []).length,
             totalMessages: (messages || []).length,
             totalProperties: propertiesCount,
+            totalVehicles: vehiclesCount,
             storageBackend: supabase.isSupabaseConfigured() ? 'Supabase Database' : 'Local Storage',
             supabaseConfigured: supabase.isSupabaseConfigured()
           }
@@ -848,13 +878,16 @@ const server = http.createServer(async (req, res) => {
       if (pathname === '/api/properties' && method === 'POST') {
         if (!requireAdminAuth(req, res)) return;
         const body = await parseJsonBody(req);
-        const { title, location, propertyType, price, size, titleDocument, description, imageUrl, status } = body;
+        const { title, location, propertyType, price, size, titleDocument, description, imageUrl, images, status } = body;
         if (!title || !location) {
           return sendJson(res, 400, { success: false, error: 'Property title and location are required.' });
         }
         const db = readDb();
         const propId = 'PROP-' + crypto.randomBytes(4).toString('hex').toUpperCase();
         const isoNow = new Date().toISOString();
+        const imagesList = Array.isArray(images) && images.length > 0 ? images.slice(0, 10) : (imageUrl ? [imageUrl] : []);
+        const primaryImage = (imageUrl && imageUrl.trim()) || (imagesList.length > 0 ? imagesList[0] : '');
+
         const propRecord = {
           id: propId,
           title: title.trim(),
@@ -864,7 +897,8 @@ const server = http.createServer(async (req, res) => {
           size: (size || '').trim(),
           titleDocument: (titleDocument || '').trim(),
           description: (description || '').trim(),
-          imageUrl: (imageUrl || '').trim(),
+          imageUrl: primaryImage,
+          images: imagesList,
           status: status || 'available',
           createdAt: isoNow,
           updatedAt: isoNow
@@ -889,7 +923,7 @@ const server = http.createServer(async (req, res) => {
       if (pathname === '/api/properties/update' && method === 'POST') {
         if (!requireAdminAuth(req, res)) return;
         const body = await parseJsonBody(req);
-        const { id, title, location, propertyType, price, size, titleDocument, description, imageUrl, status } = body;
+        const { id, title, location, propertyType, price, size, titleDocument, description, imageUrl, images, status } = body;
         if (!id) {
           return sendJson(res, 400, { success: false, error: 'Property ID is required.' });
         }
@@ -907,6 +941,10 @@ const server = http.createServer(async (req, res) => {
         if (size !== undefined) updates.size = size.trim();
         if (titleDocument !== undefined) updates.titleDocument = titleDocument.trim();
         if (description !== undefined) updates.description = description.trim();
+        if (images !== undefined) {
+          updates.images = Array.isArray(images) ? images.slice(0, 10) : [];
+          if (!imageUrl && updates.images.length > 0) updates.imageUrl = updates.images[0];
+        }
         if (imageUrl !== undefined) updates.imageUrl = imageUrl.trim();
         if (status !== undefined) updates.status = status.trim();
 
@@ -949,6 +987,161 @@ const server = http.createServer(async (req, res) => {
         });
       }
 
+      // ==============================================================================
+      // Automobiles & Vehicles Endpoints
+      // ==============================================================================
+      if (pathname === '/api/vehicles' && method === 'GET') {
+        let vehicles = [];
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            vehicles = await supabase.getVehicles();
+          } catch (e) {
+            const db = readDb();
+            vehicles = db.vehicles || [];
+          }
+        } else {
+          const db = readDb();
+          vehicles = db.vehicles || [];
+        }
+        return sendJson(res, 200, {
+          success: true,
+          total: (vehicles || []).length,
+          vehicles: vehicles || [],
+          data: vehicles || []
+        });
+      }
+
+      if (pathname === '/api/vehicles' && method === 'POST') {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const {
+          title, make, model, year, vehicleType, price, mileage, transmission,
+          fuelType, condition, color, location, description, imageUrl, images, status
+        } = body;
+        if (!title || !location) {
+          return sendJson(res, 400, { success: false, error: 'Vehicle title and location are required.' });
+        }
+        const db = readDb();
+        const vehId = 'CAR-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+        const isoNow = new Date().toISOString();
+        const imagesList = Array.isArray(images) && images.length > 0 ? images.slice(0, 10) : (imageUrl ? [imageUrl] : []);
+        const primaryImage = (imageUrl && imageUrl.trim()) || (imagesList.length > 0 ? imagesList[0] : '');
+
+        const vehRecord = {
+          id: vehId,
+          title: title.trim(),
+          make: (make || '').trim(),
+          model: (model || '').trim(),
+          year: (year || '').trim(),
+          vehicleType: (vehicleType || 'SUV / Jeep').trim(),
+          price: (price || '').trim(),
+          mileage: (mileage || '').trim(),
+          transmission: (transmission || 'Automatic').trim(),
+          fuelType: (fuelType || 'Petrol').trim(),
+          condition: (condition || 'Foreign Used (Tokunbo)').trim(),
+          color: (color || '').trim(),
+          location: location.trim(),
+          description: (description || '').trim(),
+          imageUrl: primaryImage,
+          images: imagesList,
+          status: status || 'available',
+          createdAt: isoNow,
+          updatedAt: isoNow
+        };
+
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.insertVehicle(vehRecord);
+          } catch (supaErr) {
+            console.error('Failed to insert vehicle to Supabase:', supaErr);
+          }
+        }
+        db.vehicles = db.vehicles || [];
+        db.vehicles.unshift(vehRecord);
+        writeDb(db);
+        return sendJson(res, 201, {
+          success: true,
+          vehicleId: vehId,
+          message: 'Vehicle posted successfully!'
+        });
+      }
+
+      if (pathname === '/api/vehicles/update' && method === 'POST') {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const {
+          id, title, make, model, year, vehicleType, price, mileage, transmission,
+          fuelType, condition, color, location, description, imageUrl, images, status
+        } = body;
+        if (!id) {
+          return sendJson(res, 400, { success: false, error: 'Vehicle ID is required.' });
+        }
+        const db = readDb();
+        db.vehicles = db.vehicles || [];
+        const index = db.vehicles.findIndex(v => v.id === id);
+        if (index === -1) {
+          return sendJson(res, 404, { success: false, error: 'Vehicle not found.' });
+        }
+        const updates = { updatedAt: new Date().toISOString() };
+        if (title !== undefined) updates.title = title.trim();
+        if (make !== undefined) updates.make = make.trim();
+        if (model !== undefined) updates.model = model.trim();
+        if (year !== undefined) updates.year = year.trim();
+        if (vehicleType !== undefined) updates.vehicleType = vehicleType.trim();
+        if (price !== undefined) updates.price = price.trim();
+        if (mileage !== undefined) updates.mileage = mileage.trim();
+        if (transmission !== undefined) updates.transmission = transmission.trim();
+        if (fuelType !== undefined) updates.fuelType = fuelType.trim();
+        if (condition !== undefined) updates.condition = condition.trim();
+        if (color !== undefined) updates.color = color.trim();
+        if (location !== undefined) updates.location = location.trim();
+        if (description !== undefined) updates.description = description.trim();
+        if (images !== undefined) {
+          updates.images = Array.isArray(images) ? images.slice(0, 10) : [];
+          if (!imageUrl && updates.images.length > 0) updates.imageUrl = updates.images[0];
+        }
+        if (imageUrl !== undefined) updates.imageUrl = imageUrl.trim();
+        if (status !== undefined) updates.status = status.trim();
+
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.updateVehicle(id, updates);
+          } catch (supaErr) {
+            console.error('Failed to update vehicle in Supabase:', supaErr);
+          }
+        }
+        db.vehicles[index] = { ...db.vehicles[index], ...updates };
+        writeDb(db);
+        return sendJson(res, 200, {
+          success: true,
+          message: 'Vehicle updated successfully!'
+        });
+      }
+
+      if (pathname === '/api/vehicles/delete' && method === 'POST') {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const { id } = body;
+        if (!id) {
+          return sendJson(res, 400, { success: false, error: 'Vehicle ID is required.' });
+        }
+        const db = readDb();
+        db.vehicles = db.vehicles || [];
+        db.vehicles = db.vehicles.filter(v => v.id !== id);
+        writeDb(db);
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.deleteVehicle(id);
+          } catch (supaErr) {
+            console.error('Failed to delete vehicle from Supabase:', supaErr);
+          }
+        }
+        return sendJson(res, 200, {
+          success: true,
+          message: 'Vehicle deleted successfully!'
+        });
+      }
+
       return sendJson(res, 404, { success: false, error: 'API route not found' });
     } catch (apiErr) {
       console.error('API Error:', apiErr);
@@ -964,6 +1157,8 @@ const server = http.createServer(async (req, res) => {
     filePath = path.join(PUBLIC_DIR, 'become-vendor.html');
   } else if (pathname === '/properties' || pathname === '/available-properties') {
     filePath = path.join(PUBLIC_DIR, 'properties.html');
+  } else if (pathname === '/cars' || pathname === '/vehicles' || pathname === '/automobiles') {
+    filePath = path.join(PUBLIC_DIR, 'cars.html');
   } else if (pathname === '/client-terms') {
     filePath = path.join(PUBLIC_DIR, 'client-terms.html');
   } else if (pathname === '/vendor-terms') {

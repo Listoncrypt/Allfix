@@ -588,6 +588,90 @@
       z-index: 10;
     }
 
+    /* Multi-Photo Grid (up to 10 photos) */
+    .admin-photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+      gap: 0.65rem;
+      margin-top: 0.75rem;
+    }
+    .photo-thumb-card {
+      position: relative;
+      aspect-ratio: 4/3;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid #E2E7E3;
+      background: #111;
+    }
+    .photo-thumb-card.is-cover {
+      border-color: #16883D;
+      box-shadow: 0 0 0 2px rgba(22, 136, 59, 0.25);
+    }
+    .photo-thumb-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .photo-thumb-badge {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      background: rgba(12, 16, 13, 0.85);
+      color: #86EFAC;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 4px;
+      letter-spacing: 0.02em;
+    }
+    .photo-thumb-card.is-cover .photo-thumb-badge {
+      background: #16883D;
+      color: white;
+    }
+    .photo-thumb-del {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(220, 38, 38, 0.9);
+      color: white;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: bold;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+    .photo-thumb-del:hover {
+      background: #DC2626;
+      transform: scale(1.1);
+    }
+    .photo-add-more-card {
+      aspect-ratio: 4/3;
+      border-radius: 8px;
+      border: 2px dashed #B8D8C0;
+      background: #F8FAF8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #16883D;
+      font-size: 0.75rem;
+      font-weight: 700;
+      gap: 0.25rem;
+      transition: all 0.2s ease;
+    }
+    .photo-add-more-card:hover {
+      background: #F0FDF4;
+      border-color: #16883D;
+    }
+
     /* Mobile Responsive Overrides - Solves Cutoff & Overflow */
     html, body {
       max-width: 100vw;
@@ -883,6 +967,12 @@
           <div class="val" id="statTotalProperties" style="color: #166534;">0</div>
           <div class="subtext">Listed on website &bull; WhatsApp Buy Active</div>
         </div>
+
+        <div class="admin-stat-card">
+          <div class="lbl">Automobiles & Cars</div>
+          <div class="val" id="statTotalVehicles" style="color: #2563EB;">0</div>
+          <div class="subtext">Showroom listings &bull; WhatsApp Buy Active</div>
+        </div>
       </div>
 
       <!-- Navigation Tabs -->
@@ -901,6 +991,11 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
           <span>Available Properties</span>
           <span class="tab-counter-badge" id="badgePropertiesCount">0</span>
+        </button>
+        <button class="admin-tab-btn" data-tab="tab-vehicles">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9C2.1 11.1 2 11.5 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><path d="M9 17h6"></path><circle cx="17" cy="17" r="2"></circle></svg>
+          <span>Automobiles & Cars</span>
+          <span class="tab-counter-badge" id="badgeVehiclesCount">0</span>
         </button>
         <button class="admin-tab-btn" data-tab="tab-messages">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
@@ -1067,6 +1162,60 @@
             </thead>
             <tbody id="propertiesTableBody">
               <tr><td colspan="7" style="text-align:center; padding: 2rem;">Loading verified properties...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 6: AUTOMOBILE & VEHICLE MANAGEMENT -->
+      <div class="admin-tab-pane" id="tab-vehicles">
+        <div class="filter-toolbar vehicle-filter-toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div class="filter-group vehicle-search-group" style="flex: 1; max-width: 600px;">
+            <input type="text" id="vehicleSearchInput" class="admin-search-input" placeholder="Search car title, make, model, or year...">
+            <select id="vehicleTypeFilter" class="admin-select">
+              <option value="all">All Body Types</option>
+              <option value="SUV">SUV</option>
+              <option value="Sedan">Sedan</option>
+              <option value="Pickup / Truck">Pickup / Truck</option>
+              <option value="Hatchback">Hatchback</option>
+              <option value="Coupe">Coupe</option>
+              <option value="Bus / Van">Bus / Van</option>
+            </select>
+            <select id="vehicleConditionFilter" class="admin-select">
+              <option value="all">All Conditions</option>
+              <option value="Foreign Used (Tokunbo)">Foreign Used (Tokunbo)</option>
+              <option value="Brand New">Brand New</option>
+              <option value="Nigerian Used">Nigerian Used</option>
+            </select>
+          </div>
+          <div class="vehicle-toolbar-actions">
+            <a href="/cars" target="_blank" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              <span>View Public Showroom</span>
+            </a>
+            <button type="button" class="btn btn-primary btn-sm" id="btnOpenNewVehicleModal" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>Post New Vehicle</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 70px;">Image</th>
+                <th>Vehicle ID & Title</th>
+                <th>Condition</th>
+                <th>Body Type</th>
+                <th>Specs / Year</th>
+                <th>Price</th>
+                <th>Location</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="vehiclesTableBody">
+              <tr><td colspan="8" style="text-align:center; padding: 2rem;">Loading verified vehicles...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1256,38 +1405,39 @@
           <input type="text" id="propFormTitleDoc" class="form-control" placeholder="e.g. Certificate of Occupancy (C of O), FCDA R of O">
         </div>
 
-        <!-- Property / Land Image Uploader (Direct from Device) -->
+        <!-- Property / Land Photo Gallery (Up to 10 Pictures) -->
         <div class="form-group" style="margin-bottom: 0.85rem;">
-          <label class="form-label" style="font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
-            <span>Property & Land Photo</span>
-            <span style="font-size: 0.74rem; color: #16883D; font-weight: 700;">Direct Gallery & Camera Upload</span>
-          </label>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+            <label class="form-label" style="font-size: 0.85rem; margin: 0;">
+              Property & Land Photos <span class="required">*</span>
+            </label>
+            <span id="propPhotoCountBadge" style="font-size: 0.76rem; color: #16883D; font-weight: 700;">
+              0 / 10 photos selected
+            </span>
+          </div>
           
-          <!-- Hidden file input for device picker / camera -->
-          <input type="file" id="propFormFileInput" accept="image/*" style="display: none;">
+          <!-- Hidden multi-file input -->
+          <input type="file" id="propFormFileInput" accept="image/*" multiple style="display: none;">
           
           <div class="image-uploader-card" id="propImageUploadZone">
             <div id="propImageUploadPrompt">
               <span style="width: 44px; height: 44px; background: #DCFCE7; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #16883D; margin-bottom: 0.5rem;">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
               </span>
-              <strong style="font-size: 0.92rem; color: #151B17; display: block;">Tap to select photo from device or take photo</strong>
-              <span style="font-size: 0.78rem; color: #68756B;">JPG, PNG, WEBP (auto-compressed for high-speed browsing)</span>
+              <strong style="font-size: 0.92rem; color: #151B17; display: block;">Tap to select up to 10 pictures (Gallery or Camera)</strong>
+              <span style="font-size: 0.78rem; color: #68756B;">JPG, PNG, WEBP (auto-compressed for blazing speed)</span>
             </div>
             
-            <div id="propImagePreviewWrap" style="display: none;">
-              <div class="image-preview-box">
-                <img id="propImagePreviewImg" src="" alt="Property Preview">
-                <span class="image-preview-badge" id="propImagePreviewMeta">✓ Photo Selected</span>
-                <button type="button" class="image-remove-btn" id="propImageRemoveBtn" title="Remove photo">&times;</button>
-              </div>
-            </div>
+            <div id="propGalleryGrid" class="admin-photo-grid" style="display: none;"></div>
           </div>
 
           <div style="margin-top: 0.45rem;">
             <details style="font-size: 0.8rem; color: #68756B;">
-              <summary style="cursor: pointer; color: #16883D; font-weight: 600;">Or enter an online Image URL</summary>
-              <input type="text" id="propFormImage" class="form-control" placeholder="https://images.unsplash.com/... or data:image/..." style="margin-top: 0.35rem; font-size: 0.82rem;">
+              <summary style="cursor: pointer; color: #16883D; font-weight: 600;">Or add an online Image URL</summary>
+              <div style="display: flex; gap: 0.5rem; margin-top: 0.35rem;">
+                <input type="text" id="propFormImage" class="form-control" placeholder="https://images.unsplash.com/... or data:image/..." style="font-size: 0.82rem; flex: 1;">
+                <button type="button" id="btnAddPropUrlBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 0.78rem;">+ Add URL</button>
+              </div>
             </details>
           </div>
         </div>
@@ -1305,6 +1455,183 @@
           </button>
           <button type="button" id="deletePropBtn" style="display: none; background: none; border: none; color: #DC2626; font-size: 0.84rem; cursor: pointer; text-decoration: underline;">
             Delete Property
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Vehicle Add / Edit Modal -->
+  <div class="admin-modal-overlay" id="vehicleEditModal">
+    <div class="admin-modal-card" style="max-width: 660px;">
+      <button class="modal-close-btn" id="closeVehicleModalBtn">&times;</button>
+      
+      <div style="display: flex; align-items: center; gap: 0.65rem; margin-bottom: 0.25rem;">
+        <span style="width: 32px; height: 32px; background: #DBEAFE; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: #2563EB;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9C2.1 11.1 2 11.5 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><path d="M9 17h6"></path><circle cx="17" cy="17" r="2"></circle></svg>
+        </span>
+        <h2 style="font-size: 1.35rem; color: #151B17; margin: 0;" id="vehicleModalHeading">Post Available Vehicle / Car</h2>
+      </div>
+      <p style="color: #68756B; font-size: 0.86rem; margin-bottom: 1.25rem;">
+        Cars appear live on the public <a href="/cars" target="_blank" style="color: #2563EB; text-decoration: underline;">/cars</a> automotive showroom with direct WhatsApp "Contact to buy / inspect" integration.
+      </p>
+
+      <form id="vehicleEditForm">
+        <input type="hidden" id="vehFormId" value="">
+        
+        <div class="form-group" style="margin-bottom: 0.85rem;">
+          <label class="form-label" for="vehFormTitle" style="font-size: 0.85rem;">
+            Listing Title <span class="required">*</span>
+          </label>
+          <input type="text" id="vehFormTitle" class="form-control" placeholder="e.g. 2022 Toyota Land Cruiser Prado TX-L" required>
+        </div>
+
+        <div class="grid-cols-2-mobile" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-bottom: 0.85rem;">
+          <div class="form-group">
+            <label class="form-label" for="vehFormMake" style="font-size: 0.85rem;">
+              Make / Brand <span class="required">*</span>
+            </label>
+            <input type="text" id="vehFormMake" class="form-control" placeholder="e.g. Toyota, Mercedes, Lexus" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="vehFormModel" style="font-size: 0.85rem;">
+              Model <span class="required">*</span>
+            </label>
+            <input type="text" id="vehFormModel" class="form-control" placeholder="e.g. Land Cruiser Prado, C300, RX350" required>
+          </div>
+        </div>
+
+        <div class="grid-cols-2-mobile" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.85rem; margin-bottom: 0.85rem;">
+          <div class="form-group">
+            <label class="form-label" for="vehFormYear" style="font-size: 0.85rem;">
+              Year <span class="required">*</span>
+            </label>
+            <input type="number" id="vehFormYear" class="form-control" placeholder="e.g. 2022" min="1990" max="2027" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="vehFormType" style="font-size: 0.85rem;">
+              Body Type <span class="required">*</span>
+            </label>
+            <select id="vehFormType" class="admin-select" style="width: 100%;" required>
+              <option value="SUV">SUV</option>
+              <option value="Sedan">Sedan</option>
+              <option value="Pickup / Truck">Pickup / Truck</option>
+              <option value="Hatchback">Hatchback</option>
+              <option value="Coupe">Coupe</option>
+              <option value="Bus / Van">Bus / Van</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="vehFormCondition" style="font-size: 0.85rem;">
+              Condition <span class="required">*</span>
+            </label>
+            <select id="vehFormCondition" class="admin-select" style="width: 100%;" required>
+              <option value="Foreign Used (Tokunbo)">Foreign Used (Tokunbo)</option>
+              <option value="Brand New">Brand New</option>
+              <option value="Nigerian Used">Nigerian Used</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-cols-2-mobile" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.85rem; margin-bottom: 0.85rem;">
+          <div class="form-group">
+            <label class="form-label" for="vehFormTransmission" style="font-size: 0.85rem;">
+              Transmission
+            </label>
+            <select id="vehFormTransmission" class="admin-select" style="width: 100%;">
+              <option value="Automatic">Automatic</option>
+              <option value="Manual">Manual</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="vehFormFuel" style="font-size: 0.85rem;">
+              Fuel / Engine
+            </label>
+            <select id="vehFormFuel" class="admin-select" style="width: 100%;">
+              <option value="Petrol">Petrol</option>
+              <option value="Diesel">Diesel</option>
+              <option value="Hybrid">Hybrid</option>
+              <option value="Electric">Electric (EV)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="vehFormMileage" style="font-size: 0.85rem;">
+              Mileage
+            </label>
+            <input type="text" id="vehFormMileage" class="form-control" placeholder="e.g. 34,000 km">
+          </div>
+        </div>
+
+        <div class="grid-cols-2-mobile" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.85rem; margin-bottom: 0.85rem;">
+          <div class="form-group">
+            <label class="form-label" for="vehFormPrice" style="font-size: 0.85rem;">
+              Price (₦) <span style="font-weight: 400; color: #68756B;">(Blank = "On Request")</span>
+            </label>
+            <input type="text" id="vehFormPrice" class="form-control" placeholder="e.g. 62000000">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="vehFormColor" style="font-size: 0.85rem;">
+              Color
+            </label>
+            <input type="text" id="vehFormColor" class="form-control" placeholder="e.g. Pearl White / Black">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="vehFormLocation" style="font-size: 0.85rem;">
+              Location / Lot
+            </label>
+            <input type="text" id="vehFormLocation" class="form-control" placeholder="e.g. Central Area, Abuja">
+          </div>
+        </div>
+
+        <!-- Vehicle Photo Gallery (Up to 10 Pictures) -->
+        <div class="form-group" style="margin-bottom: 0.85rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+            <label class="form-label" style="font-size: 0.85rem; margin: 0;">
+              Vehicle Photos <span class="required">*</span>
+            </label>
+            <span id="vehPhotoCountBadge" style="font-size: 0.76rem; color: #2563EB; font-weight: 700;">
+              0 / 10 photos selected
+            </span>
+          </div>
+          
+          <input type="file" id="vehFormFileInput" accept="image/*" multiple style="display: none;">
+          
+          <div class="image-uploader-card" id="vehImageUploadZone">
+            <div id="vehImageUploadPrompt">
+              <span style="width: 44px; height: 44px; background: #DBEAFE; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #2563EB; margin-bottom: 0.5rem;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+              </span>
+              <strong style="font-size: 0.92rem; color: #151B17; display: block;">Tap to select up to 10 vehicle pictures (Gallery or Camera)</strong>
+              <span style="font-size: 0.78rem; color: #68756B;">JPG, PNG, WEBP (auto-compressed for showroom viewing)</span>
+            </div>
+            
+            <div id="vehGalleryGrid" class="admin-photo-grid" style="display: none;"></div>
+          </div>
+
+          <div style="margin-top: 0.45rem;">
+            <details style="font-size: 0.8rem; color: #68756B;">
+              <summary style="cursor: pointer; color: #2563EB; font-weight: 600;">Or add an online Image URL</summary>
+              <div style="display: flex; gap: 0.5rem; margin-top: 0.35rem;">
+                <input type="text" id="vehFormImage" class="form-control" placeholder="https://images.unsplash.com/... or data:image/..." style="font-size: 0.82rem; flex: 1;">
+                <button type="button" id="btnAddVehUrlBtn" class="btn btn-outline btn-sm" style="white-space: nowrap; font-size: 0.78rem;">+ Add URL</button>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label class="form-label" for="vehFormDesc" style="font-size: 0.85rem;">
+            Description & Key Features
+          </label>
+          <textarea id="vehFormDesc" class="form-control" rows="3" placeholder="Engine condition, interior finish, duty paid status, reverse camera, sunroof, keyless entry..."></textarea>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #E2E7E3; padding-top: 1rem;">
+          <button type="submit" id="saveVehicleSubmitBtn" class="btn btn-primary btn-sm" style="padding: 0.65rem 1.35rem; background: #2563EB; border-color: #2563EB;">
+            Save & Publish Vehicle
+          </button>
+          <button type="button" id="deleteVehBtn" style="display: none; background: none; border: none; color: #DC2626; font-size: 0.84rem; cursor: pointer; text-decoration: underline;">
+            Delete Vehicle
           </button>
         </div>
       </form>
@@ -1398,6 +1725,20 @@
       }
     }
 
+    // Central token interceptor for all fetch requests
+    const _nativeFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+      const token = localStorage.getItem('allfix_admin_token');
+      if (token && typeof url === 'string' && (url.startsWith('/api/') || url.includes('/api/'))) {
+        options = options || {};
+        options.headers = {
+          'Authorization': 'Bearer ' + token,
+          ...(options.headers || {})
+        };
+      }
+      return _nativeFetch.call(this, url, options);
+    };
+
     async function handleAdminLogin(e) {
       if (e) e.preventDefault();
       const usernameInput = document.getElementById('adminUsernameInput');
@@ -1432,6 +1773,9 @@
         });
         const json = await res.json();
         if (json.success) {
+          if (json.token) {
+            localStorage.setItem('allfix_admin_token', json.token);
+          }
           if (loginScreen) loginScreen.style.display = 'none';
           if (adminApp) adminApp.style.display = 'block';
           if (typeof window.refreshAll === 'function') {
@@ -1461,7 +1805,9 @@
 
     (async function initAdminAuth() {
       try {
-        const res = await fetch('/api/admin/auth-check');
+        const token = localStorage.getItem('allfix_admin_token');
+        const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+        const res = await fetch('/api/admin/auth-check', { headers });
         const json = await res.json();
         const loginScreen = document.getElementById('adminLoginScreen');
         const adminApp = document.getElementById('adminApp');
@@ -1470,6 +1816,7 @@
           if (adminApp) adminApp.style.display = 'block';
           if (typeof window.refreshAll === 'function') window.refreshAll();
         } else {
+          localStorage.removeItem('allfix_admin_token');
           if (loginScreen) loginScreen.style.display = 'flex';
           if (adminApp) adminApp.style.display = 'none';
         }

@@ -147,6 +147,7 @@ function mapVendorFromDb(row) {
 
 function mapPropertyFromDb(row) {
   if (!row) return null;
+  const images = Array.isArray(row.images) ? row.images : (row.image_url ? [row.image_url] : []);
   return {
     id: row.id,
     title: row.title,
@@ -156,7 +157,34 @@ function mapPropertyFromDb(row) {
     size: row.size || '',
     titleDocument: row.title_document || '',
     description: row.description || '',
-    imageUrl: row.image_url || '',
+    imageUrl: row.image_url || (images.length > 0 ? images[0] : ''),
+    images: images,
+    status: row.status || 'available',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function mapVehicleFromDb(row) {
+  if (!row) return null;
+  const images = Array.isArray(row.images) ? row.images : (row.image_url ? [row.image_url] : []);
+  return {
+    id: row.id,
+    title: row.title,
+    make: row.make || '',
+    model: row.model || '',
+    year: row.year || '',
+    vehicleType: row.vehicle_type || 'SUV / Jeep',
+    price: row.price || '',
+    mileage: row.mileage || '',
+    transmission: row.transmission || 'Automatic',
+    fuelType: row.fuel_type || 'Petrol',
+    condition: row.condition || 'Foreign Used (Tokunbo)',
+    color: row.color || '',
+    location: row.location || 'Abuja',
+    description: row.description || '',
+    imageUrl: row.image_url || (images.length > 0 ? images[0] : ''),
+    images: images,
     status: row.status || 'available',
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -385,6 +413,7 @@ module.exports = {
   async insertProperty(p) {
     const c = client || initClient();
     if (!c) return null;
+    const imagesList = Array.isArray(p.images) ? p.images : (p.imageUrl ? [p.imageUrl] : []);
     const row = {
       id: p.id,
       title: p.title,
@@ -394,14 +423,24 @@ module.exports = {
       size: p.size || '',
       title_document: p.titleDocument || '',
       description: p.description || '',
-      image_url: p.imageUrl || '',
+      image_url: p.imageUrl || (imagesList[0] || ''),
+      images: imagesList,
       status: p.status || 'available',
       created_at: p.createdAt || new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    const { data, error } = await c.from('properties').insert([row]).select();
-    if (error) throw error;
-    return mapPropertyFromDb(data[0]);
+    try {
+      const { data, error } = await c.from('properties').insert([row]).select();
+      if (error) throw error;
+      return mapPropertyFromDb(data[0]);
+    } catch (err) {
+      // Fallback without images column if not yet migrated
+      const fallbackRow = { ...row };
+      delete fallbackRow.images;
+      const { data, error } = await c.from('properties').insert([fallbackRow]).select();
+      if (error) throw error;
+      return mapPropertyFromDb(data[0]);
+    }
   },
 
   async updateProperty(id, updates) {
@@ -416,11 +455,20 @@ module.exports = {
     if (updates.titleDocument !== undefined) row.title_document = updates.titleDocument;
     if (updates.description !== undefined) row.description = updates.description;
     if (updates.imageUrl !== undefined) row.image_url = updates.imageUrl;
+    if (updates.images !== undefined) row.images = updates.images;
     if (updates.status !== undefined) row.status = updates.status;
 
-    const { data, error } = await c.from('properties').update(row).eq('id', id).select();
-    if (error) throw error;
-    return mapPropertyFromDb(data[0]);
+    try {
+      const { data, error } = await c.from('properties').update(row).eq('id', id).select();
+      if (error) throw error;
+      return mapPropertyFromDb(data[0]);
+    } catch (err) {
+      const fallbackRow = { ...row };
+      delete fallbackRow.images;
+      const { data, error } = await c.from('properties').update(fallbackRow).eq('id', id).select();
+      if (error) throw error;
+      return mapPropertyFromDb(data[0]);
+    }
   },
 
   async deleteProperty(id) {
@@ -429,5 +477,100 @@ module.exports = {
     const { error } = await c.from('properties').delete().eq('id', id);
     if (error) throw error;
     return true;
+  },
+
+  // ==============================================================================
+  // Vehicles / Automobiles CRUD
+  // ==============================================================================
+  async getVehicles() {
+    const c = client || initClient();
+    if (!c) return null;
+    try {
+      const { data, error } = await c.from('vehicles').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(mapVehicleFromDb);
+    } catch (e) {
+      console.warn('Supabase getVehicles warning:', e.message);
+      return [];
+    }
+  },
+
+  async insertVehicle(v) {
+    const c = client || initClient();
+    if (!c) return null;
+    const imagesList = Array.isArray(v.images) ? v.images : (v.imageUrl ? [v.imageUrl] : []);
+    const row = {
+      id: v.id,
+      title: v.title,
+      make: v.make || '',
+      model: v.model || '',
+      year: v.year || '',
+      vehicle_type: v.vehicleType || 'SUV / Jeep',
+      price: v.price || '',
+      mileage: v.mileage || '',
+      transmission: v.transmission || 'Automatic',
+      fuel_type: v.fuelType || 'Petrol',
+      condition: v.condition || 'Foreign Used (Tokunbo)',
+      color: v.color || '',
+      location: v.location || 'Abuja',
+      description: v.description || '',
+      image_url: v.imageUrl || (imagesList[0] || ''),
+      images: imagesList,
+      status: v.status || 'available',
+      created_at: v.createdAt || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    try {
+      const { data, error } = await c.from('vehicles').insert([row]).select();
+      if (error) throw error;
+      return mapVehicleFromDb(data[0]);
+    } catch (err) {
+      console.error('Supabase insertVehicle error:', err.message);
+      return null;
+    }
+  },
+
+  async updateVehicle(id, updates) {
+    const c = client || initClient();
+    if (!c) return null;
+    const row = { updated_at: new Date().toISOString() };
+    if (updates.title !== undefined) row.title = updates.title;
+    if (updates.make !== undefined) row.make = updates.make;
+    if (updates.model !== undefined) row.model = updates.model;
+    if (updates.year !== undefined) row.year = updates.year;
+    if (updates.vehicleType !== undefined) row.vehicle_type = updates.vehicleType;
+    if (updates.price !== undefined) row.price = updates.price;
+    if (updates.mileage !== undefined) row.mileage = updates.mileage;
+    if (updates.transmission !== undefined) row.transmission = updates.transmission;
+    if (updates.fuelType !== undefined) row.fuel_type = updates.fuelType;
+    if (updates.condition !== undefined) row.condition = updates.condition;
+    if (updates.color !== undefined) row.color = updates.color;
+    if (updates.location !== undefined) row.location = updates.location;
+    if (updates.description !== undefined) row.description = updates.description;
+    if (updates.imageUrl !== undefined) row.image_url = updates.imageUrl;
+    if (updates.images !== undefined) row.images = updates.images;
+    if (updates.status !== undefined) row.status = updates.status;
+
+    try {
+      const { data, error } = await c.from('vehicles').update(row).eq('id', id).select();
+      if (error) throw error;
+      return mapVehicleFromDb(data[0]);
+    } catch (err) {
+      console.error('Supabase updateVehicle error:', err.message);
+      return null;
+    }
+  },
+
+  async deleteVehicle(id) {
+    const c = client || initClient();
+    if (!c) return null;
+    try {
+      const { error } = await c.from('vehicles').delete().eq('id', id);
+      if (error) throw error;
+      return true;
+    } catch (e) {
+      console.error('Supabase deleteVehicle error:', e.message);
+      return false;
+    }
   }
 };

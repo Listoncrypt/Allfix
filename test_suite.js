@@ -158,6 +158,86 @@ async function runTests() {
     console.log(`  [PASS] Stats:`, statsRes.body.stats);
   }
 
+  console.log('\n6. Testing Multi-Image Property Posting & Auth Protection:');
+  // Without token -> must be 401 Unauthorized
+  const unauthProp = await request('/api/properties', { method: 'POST' }, {
+    title: 'Unauthorized Test Property',
+    location: 'Maitama, Abuja'
+  });
+  if (unauthProp.status === 401) {
+    console.log(`  [PASS] Unauthenticated property post correctly rejected with 401 Unauthorized`);
+  } else {
+    console.error(`  [FAIL] Unauthenticated post was not rejected with 401:`, unauthProp);
+  }
+
+  // With token -> 10 photos supported!
+  const adminToken = loginRes.body ? loginRes.body.token : '';
+  const multiImages = Array.from({ length: 5 }, (_, i) => `https://images.unsplash.com/photo-${1600585154340 + i}?auto=format&fit=crop&w=800&q=80`);
+  const authProp = await request('/api/properties', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${adminToken}` }
+  }, {
+    title: '5-Bedroom Luxury Villa with Pool',
+    location: 'Guzape District, Abuja',
+    propertyType: 'Residential',
+    price: '250000000',
+    size: '1200 SQM',
+    titleDocument: 'Certificate of Occupancy (C of O)',
+    images: multiImages,
+    imageUrl: multiImages[0],
+    description: 'Ultra-modern 5 bedroom luxury villa with automated swimming pool, smart home automation, and 24/7 security.'
+  });
+  if (authProp.status === 201 && authProp.body.success) {
+    console.log(`  [PASS] Authenticated property post with ${multiImages.length} photos succeeded: ID ${authProp.body.property.id}`);
+  } else {
+    console.error(`  [FAIL] Authenticated property post failed:`, authProp);
+  }
+
+  console.log('\n7. Testing Vehicle & Automobile API (/api/vehicles):');
+  const vehicleImages = [
+    'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80'
+  ];
+  const authVeh = await request('/api/vehicles', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${adminToken}` }
+  }, {
+    title: '2023 Lexus LX 600 F-Sport',
+    make: 'Lexus',
+    model: 'LX 600',
+    year: 2023,
+    vehicleType: 'SUV',
+    condition: 'Foreign Used (Tokunbo)',
+    transmission: 'Automatic',
+    fuelType: 'Petrol',
+    mileage: '12,500 km',
+    price: '185000000',
+    color: 'Sonic Titanium',
+    location: 'Central Area, Abuja',
+    images: vehicleImages,
+    imageUrl: vehicleImages[0],
+    description: 'Fully loaded 2023 Lexus LX 600 F-Sport. Clean carfax, custom duty fully paid, reverse 360 camera, rear entertainment.'
+  });
+  if (authVeh.status === 201 && authVeh.body.success) {
+    console.log(`  [PASS] Vehicle post with ${vehicleImages.length} photos succeeded: ID ${authVeh.body.vehicle.id}`);
+  } else {
+    console.error(`  [FAIL] Vehicle post failed:`, authVeh);
+  }
+
+  const getVehs = await request('/api/vehicles');
+  if (getVehs.status === 200 && getVehs.body.success) {
+    console.log(`  [PASS] Public /api/vehicles returned ${getVehs.body.vehicles.length} listings`);
+  } else {
+    console.error(`  [FAIL] /api/vehicles failed:`, getVehs);
+  }
+
+  const carsPage = await request('/cars');
+  if (carsPage.status === 200) {
+    console.log(`  [PASS] /cars showroom route -> HTTP 200 OK (${carsPage.body.length} bytes)`);
+  } else {
+    console.error(`  [FAIL] /cars showroom route failed with status ${carsPage.status}`);
+  }
+
   console.log('\n--- VERIFICATION SUITE COMPLETE: ALL TESTS PASSED! ---');
 }
 

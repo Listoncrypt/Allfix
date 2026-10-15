@@ -118,13 +118,44 @@ CREATE TABLE IF NOT EXISTS public.properties (
   title_document TEXT,
   description TEXT,
   image_url TEXT,
+  images JSONB DEFAULT '[]'::jsonb,
   status TEXT DEFAULT 'available',
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()),
   updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
 
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
+
 CREATE INDEX IF NOT EXISTS idx_properties_status ON public.properties(status);
 CREATE INDEX IF NOT EXISTS idx_properties_created_at ON public.properties(created_at DESC);
+
+-- 7. Available Automobiles & Vehicles Table
+CREATE TABLE IF NOT EXISTS public.vehicles (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  make TEXT,
+  model TEXT,
+  year TEXT,
+  vehicle_type TEXT DEFAULT 'SUV / Jeep',
+  price TEXT,
+  mileage TEXT,
+  transmission TEXT DEFAULT 'Automatic',
+  fuel_type TEXT DEFAULT 'Petrol',
+  condition TEXT DEFAULT 'Foreign Used (Tokunbo)',
+  color TEXT,
+  location TEXT NOT NULL,
+  description TEXT,
+  image_url TEXT,
+  images JSONB DEFAULT '[]'::jsonb,
+  status TEXT DEFAULT 'available',
+  created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()),
+  updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
+);
+
+ALTER TABLE public.vehicles ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
+
+CREATE INDEX IF NOT EXISTS idx_vehicles_status ON public.vehicles(status);
+CREATE INDEX IF NOT EXISTS idx_vehicles_created_at ON public.vehicles(created_at DESC);
 
 -- ==============================================================================
 -- Row Level Security (RLS) Configuration
@@ -134,6 +165,7 @@ ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agreements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vehicles ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
@@ -155,6 +187,10 @@ BEGIN
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public operations on properties') THEN
     CREATE POLICY "Allow public operations on properties" ON public.properties FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public operations on vehicles') THEN
+    CREATE POLICY "Allow public operations on vehicles" ON public.vehicles FOR ALL USING (true) WITH CHECK (true);
   END IF;
 END $$;
 
@@ -206,5 +242,14 @@ BEGIN
     EXCEPTION WHEN duplicate_object THEN
     END;
     ALTER TABLE public.properties REPLICA IDENTITY FULL;
+  END IF;
+
+  -- 6. vehicles
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'vehicles') THEN
+    BEGIN
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.vehicles;
+    EXCEPTION WHEN duplicate_object THEN
+    END;
+    ALTER TABLE public.vehicles REPLICA IDENTITY FULL;
   END IF;
 END $$;

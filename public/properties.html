@@ -38,6 +38,7 @@
         <ul class="nav-links">
           <li class="nav-item"><a href="/">Home</a></li>
           <li class="nav-item"><a href="/properties" class="active" style="color: var(--brand-600); font-weight: 700;">Properties</a></li>
+          <li class="nav-item"><a href="/cars">Cars</a></li>
           <li class="nav-item"><a href="/about">How It Works</a></li>
           <li class="nav-item"><a href="/request-service">Services</a></li>
           <li class="nav-item"><a href="/become-vendor">For Vendors</a></li>
@@ -64,6 +65,7 @@
     <ul class="nav-links">
       <li><a href="/">Home</a></li>
       <li><a href="/properties" style="color: var(--brand-600); font-weight: 700;">Available Properties</a></li>
+      <li><a href="/cars">Automobiles & Cars</a></li>
       <li><a href="/about">How It Works</a></li>
       <li><a href="/request-service">Request a Service</a></li>
       <li><a href="/become-vendor">Become a Vendor</a></li>
@@ -182,12 +184,106 @@
     </div>
   </footer>
 
+  <!-- Property Image Lightbox Modal -->
+  <div class="image-lightbox" id="propertyLightbox">
+    <button class="lightbox-close" id="closePropLightboxBtn">&times;</button>
+    <button class="lightbox-nav-btn lightbox-prev" id="prevPropLightboxBtn">&#10094;</button>
+    <img id="propLightboxImg" src="" alt="Property photo">
+    <button class="lightbox-nav-btn lightbox-next" id="nextPropLightboxBtn">&#10095;</button>
+    <div class="lightbox-caption" id="propLightboxCaption"></div>
+  </div>
+
   <script src="/js/main.js"></script>
   <script>
     (function() {
       const container = document.getElementById('propertiesContainer');
       const filterPills = document.querySelectorAll('.property-filter-pill');
       let allProperties = [];
+      const cardImageIndices = {};
+
+      // Lightbox state
+      let currentGallery = [];
+      let currentGalleryIndex = 0;
+      const lightbox = document.getElementById('propertyLightbox');
+      const lightboxImg = document.getElementById('propLightboxImg');
+      const lightboxCaption = document.getElementById('propLightboxCaption');
+      const closeLightboxBtn = document.getElementById('closePropLightboxBtn');
+      const prevLightboxBtn = document.getElementById('prevPropLightboxBtn');
+      const nextLightboxBtn = document.getElementById('nextPropLightboxBtn');
+
+      function openLightbox(images, startIndex, title) {
+        if (!images || images.length === 0) return;
+        currentGallery = images;
+        currentGalleryIndex = startIndex || 0;
+        updateLightboxView(title);
+        if (lightbox) lightbox.classList.add('open');
+      }
+
+      function updateLightboxView(title) {
+        if (!currentGallery.length || !lightboxImg) return;
+        lightboxImg.src = currentGallery[currentGalleryIndex];
+        if (lightboxCaption) {
+          lightboxCaption.textContent = `${title || 'Property Photo'} (${currentGalleryIndex + 1} of ${currentGallery.length})`;
+        }
+      }
+
+      function closeLightbox() {
+        if (lightbox) lightbox.classList.remove('open');
+      }
+
+      if (closeLightboxBtn) closeLightboxBtn.addEventListener('click', closeLightbox);
+      if (lightbox) {
+        lightbox.addEventListener('click', (e) => {
+          if (e.target === lightbox) closeLightbox();
+        });
+      }
+
+      if (prevLightboxBtn) {
+        prevLightboxBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (!currentGallery.length) return;
+          currentGalleryIndex = (currentGalleryIndex - 1 + currentGallery.length) % currentGallery.length;
+          updateLightboxView();
+        });
+      }
+
+      if (nextLightboxBtn) {
+        nextLightboxBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (!currentGallery.length) return;
+          currentGalleryIndex = (currentGalleryIndex + 1) % currentGallery.length;
+          updateLightboxView();
+        });
+      }
+
+      window.viewPropGallery = function(cardIdx, imgIdx) {
+        const prop = allProperties[cardIdx];
+        if (!prop) return;
+        const images = (Array.isArray(prop.images) && prop.images.length > 0)
+          ? prop.images
+          : (prop.imageUrl ? [prop.imageUrl] : []);
+        openLightbox(images, imgIdx || 0, prop.title);
+      };
+
+      window.stepPropImage = function(e, cardIdx, delta) {
+        e.stopPropagation();
+        const prop = allProperties[cardIdx];
+        if (!prop) return;
+        const images = (Array.isArray(prop.images) && prop.images.length > 0)
+          ? prop.images
+          : (prop.imageUrl ? [prop.imageUrl] : []);
+        if (images.length <= 1) return;
+
+        const cur = cardImageIndices[cardIdx] || 0;
+        const next = (cur + delta + images.length) % images.length;
+        cardImageIndices[cardIdx] = next;
+
+        const imgEl = document.getElementById(`propImg_${cardIdx}`);
+        if (imgEl) imgEl.src = images[next];
+
+        const counterEl = document.getElementById(`propCounter_${cardIdx}`);
+        if (counterEl) counterEl.textContent = `📷 ${next + 1} / ${images.length}`;
+      };
 
       function formatPriceDisplay(rawPrice) {
         if (!rawPrice || String(rawPrice).trim() === '') {
@@ -232,21 +328,29 @@ Please share title documents and schedule an inspection.`;
           return;
         }
 
-        container.innerHTML = list.map(prop => {
-          const imageSrc = prop.imageUrl || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80';
+        container.innerHTML = list.map((prop, cardIdx) => {
+          const images = (Array.isArray(prop.images) && prop.images.length > 0)
+            ? prop.images
+            : (prop.imageUrl ? [prop.imageUrl] : ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80']);
+          const primaryImg = images[0];
           const typeBadge = prop.propertyType || 'Property';
           const waLink = buildWhatsAppLink(prop);
           const priceHtml = formatPriceDisplay(prop.price);
 
           return `
             <article class="property-card" data-type="${prop.propertyType || ''}" data-hasprice="${prop.price && String(prop.price).trim() !== '' ? 'yes' : 'no'}">
-              <div class="property-image-wrap">
-                <img src="${imageSrc}" alt="${prop.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80'">
+              <div class="property-image-wrap card-image-gallery" onclick="window.viewPropGallery(${cardIdx}, cardImageIndices[${cardIdx}] || 0)">
+                <img id="propImg_${cardIdx}" src="${primaryImg}" alt="${prop.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80'">
                 <span class="property-type-tag">${typeBadge}</span>
                 <span class="property-verified-tag">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
                   Verified
                 </span>
+                ${images.length > 1 ? `<span class="gallery-counter-tag" id="propCounter_${cardIdx}">📷 1 / ${images.length}</span>` : ''}
+                ${images.length > 1 ? `
+                  <button type="button" class="gallery-nav-btn gallery-nav-prev" onclick="window.stepPropImage(event, ${cardIdx}, -1)">&lsaquo;</button>
+                  <button type="button" class="gallery-nav-btn gallery-nav-next" onclick="window.stepPropImage(event, ${cardIdx}, 1)">&rsaquo;</button>
+                ` : ''}
               </div>
               <div class="property-content">
                 <h3 class="property-title">${prop.title}</h3>
