@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isChecked) {
       termsBox.classList.add('terms-accepted');
       statusMsg.className = 'terms-status-msg success';
-      statusMsg.textContent = '✓ Client Terms & Conditions v1.0 accepted. You can now submit your request.';
+      statusMsg.textContent = ' Client Terms & Conditions v1.0 accepted. You can now submit your request.';
     } else {
       termsBox.classList.remove('terms-accepted');
       statusMsg.className = 'terms-status-msg';

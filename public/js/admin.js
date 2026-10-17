@@ -6,7 +6,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let allMessages = [];
   let allAgreements = [];
   let allProperties = [];
+  let allWorks = [];
+  let allMarketingRequests = [];
   let currentModalRequestId = null;
+  let currentModalMarketingId = null;
+  let currentModalWorkId = null;
 
   // DOM Elements
   const requestsContainer = document.getElementById('requestsContainer');
@@ -14,11 +18,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const messagesTable = document.getElementById('messagesTableBody');
   const agreementsTable = document.getElementById('agreementsTableBody');
   const propertiesTable = document.getElementById('propertiesTableBody');
+  const marketingContainer = document.getElementById('marketingRequestsContainer');
 
   const requestSearchInput = document.getElementById('requestSearchInput');
   const requestStatusFilter = document.getElementById('requestStatusFilter');
   const requestUrgencyFilter = document.getElementById('requestUrgencyFilter');
   const requestResultsCount = document.getElementById('requestResultsCount');
+
+  const marketingSearchInput = document.getElementById('marketingSearchInput');
+  const marketingTypeFilter = document.getElementById('marketingTypeFilter');
+  const marketingStatusFilter = document.getElementById('marketingStatusFilter');
+  const marketingResultsCount = document.getElementById('marketingResultsCount');
 
   const vendorSearchInput = document.getElementById('vendorSearchInput');
   const vendorStatusFilter = document.getElementById('vendorStatusFilter');
@@ -120,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const json = await res.json();
         if (json.success) {
           supabaseSaveStatus.style.color = '#16883D';
-          supabaseSaveStatus.textContent = '✓ Connected to Supabase!';
+          supabaseSaveStatus.textContent = ' Connected to Supabase!';
           checkSupabaseStatus();
           refreshAll();
           setTimeout(() => {
@@ -224,7 +234,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
 
       navigator.clipboard.writeText(sql).then(() => {
         if (copySqlStatus) {
-          copySqlStatus.textContent = '✓ Copied to clipboard!';
+          copySqlStatus.textContent = ' Copied to clipboard!';
           setTimeout(() => { copySqlStatus.textContent = ''; }, 3000);
         }
       }).catch(() => {
@@ -251,7 +261,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     togglePasswordVisibilityBtn.addEventListener('click', () => {
       const isPass = adminPasswordInput.type === 'password';
       adminPasswordInput.type = isPass ? 'text' : 'password';
-      togglePasswordVisibilityBtn.textContent = isPass ? '🔒' : '👁️';
+      togglePasswordVisibilityBtn.textContent = isPass ? '' : '';
     });
   }
 
@@ -341,7 +351,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       transition: all 0.3s ease;
     `;
     toast.innerHTML = `
-      <span style="font-size: 1.15rem;">🔔</span>
+      <span style="font-size: 1.15rem;"></span>
       <div style="flex: 1; line-height: 1.35; font-size: 0.86rem;">${message}</div>
     `;
     container.appendChild(toast);
@@ -403,6 +413,11 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
         .on('postgres_changes', { event: '*', schema: 'public', table: 'properties' }, () => {
           pulseLiveBadge();
           loadProperties();
+          loadStats();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'vendor_works' }, () => {
+          pulseLiveBadge();
+          loadVendorWorks();
           loadStats();
         })
         .subscribe();
@@ -523,11 +538,13 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       checkSupabaseStatus(),
       loadStats(),
       loadRequests(),
+      loadVendorWorks(),
       loadVendors(),
       loadMessages(),
       loadAgreements(),
       loadProperties(),
-      loadVehicles()
+      loadVehicles(),
+      loadMarketingRequests()
     ]);
   }
   window.refreshAll = refreshAll;
@@ -561,6 +578,11 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       const elMessages = document.getElementById('statTotalMessages');
       const elProperties = document.getElementById('statTotalProperties');
       const elVehicles = document.getElementById('statTotalVehicles');
+      const elWorks = document.getElementById('statVendorWorks');
+      const badgeWorks = document.getElementById('badgeWorksCount');
+      const elMarketing = document.getElementById('statMarketingRequests');
+      const elPendingMarketing = document.getElementById('statPendingMarketing');
+      const badgeMarketing = document.getElementById('badgeMarketingCount');
       const elActualReqText = document.getElementById('statActualRequestsText');
 
       if (elPending) elPending.textContent = (s.pendingRequests !== undefined ? s.pendingRequests : 0).toLocaleString();
@@ -571,6 +593,11 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       if (elMessages) elMessages.textContent = (s.totalMessages || 0).toLocaleString();
       if (elProperties) elProperties.textContent = (s.totalProperties !== undefined ? s.totalProperties : allProperties.length).toLocaleString();
       if (elVehicles) elVehicles.textContent = (s.totalVehicles !== undefined ? s.totalVehicles : allVehicles.length).toLocaleString();
+      if (elWorks) elWorks.textContent = (s.totalVendorWorks !== undefined ? s.totalVendorWorks : allWorks.length).toLocaleString();
+      if (badgeWorks) badgeWorks.textContent = (s.totalVendorWorks !== undefined ? s.totalVendorWorks : allWorks.length).toLocaleString();
+      if (elMarketing) elMarketing.textContent = (s.totalMarketingRequests !== undefined ? s.totalMarketingRequests : allMarketingRequests.length).toLocaleString();
+      if (elPendingMarketing) elPendingMarketing.textContent = (s.pendingMarketingRequests !== undefined ? s.pendingMarketingRequests : 0).toLocaleString();
+      if (badgeMarketing) badgeMarketing.textContent = (s.pendingMarketingRequests !== undefined ? s.pendingMarketingRequests : 0).toLocaleString();
     } catch (e) {
       console.error('Error loading stats:', e);
     }
@@ -645,7 +672,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
           <div class="card-top-row">
             <div class="req-meta">
               <span class="req-id-badge">#${escapeHtml(r.id)}</span>
-              <span class="req-time">📅 ${formattedDate}</span>
+              <span class="req-time"> ${formattedDate}</span>
               ${r.preferredDate ? `<span class="req-time" style="background:#F2F4F2; padding:0.15rem 0.5rem; border-radius:4px;">Preferred: ${escapeHtml(r.preferredDate)}</span>` : ''}
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -659,14 +686,14 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
             <div class="cust-info">
               <strong>${escapeHtml(r.customerName)}</strong>
               <div class="cust-contact-line">
-                <span>📞</span>
+                <span></span>
                 <a href="${callLink}" style="color: #16883D; font-weight: 700; text-decoration: underline;">
                   ${escapeHtml(r.phone)}
                 </a>
               </div>
-              ${r.email ? `<div class="cust-contact-line" style="font-size:0.82rem; color:#68756B;"><span>✉️</span> ${escapeHtml(r.email)}</div>` : ''}
+              ${r.email ? `<div class="cust-contact-line" style="font-size:0.82rem; color:#68756B;"><span></span> ${escapeHtml(r.email)}</div>` : ''}
               <div class="cust-location">
-                <span>📍</span>
+                <span></span>
                 <span>${escapeHtml(r.location || 'Location Not Specified')}</span>
               </div>
             </div>
@@ -678,57 +705,57 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
               <p class="service-desc-snippet">${escapeHtml(r.description || 'No description provided')}</p>
               ${r.bedrooms ? `
                 <div style="font-size:0.78rem; color:#166534; margin-top:0.35rem; font-weight:700;">
-                  🛏️ Bedrooms: ${escapeHtml(r.bedrooms)}
+                   Bedrooms: ${escapeHtml(r.bedrooms)}
                 </div>
               ` : ''}
               ${Array.isArray(r.preferredLocations) && r.preferredLocations.length ? `
                 <div style="font-size:0.78rem; color:#166534; margin-top:0.2rem; font-weight:600;">
-                  📍 Preferred Areas: ${escapeHtml(r.preferredLocations.join(', '))}
+                   Preferred Areas: ${escapeHtml(r.preferredLocations.join(', '))}
                 </div>
               ` : ''}
               ${r.propertyBudget ? `
                 <div style="font-size:0.78rem; color:#047857; margin-top:0.2rem; font-weight:600;">
-                  💰 Property Budget: ${escapeHtml(r.propertyBudget)}
+                   Property Budget: ${escapeHtml(r.propertyBudget)}
                 </div>
               ` : ''}
               ${r.propertyTimeline ? `
                 <div style="font-size:0.78rem; color:#4B5563; margin-top:0.2rem;">
-                  ⏱️ Timeline: ${escapeHtml(r.propertyTimeline)}
+                  ⏱ Timeline: ${escapeHtml(r.propertyTimeline)}
                 </div>
               ` : ''}
               ${Array.isArray(r.propertyTypes) && r.propertyTypes.length ? `
                 <div style="font-size:0.78rem; color:#166534; margin-top:0.2rem; font-weight:600;">
-                  🏠 Property Type: ${escapeHtml(r.propertyTypes.join(', '))}${r.propertyTypeOther ? ` (${escapeHtml(r.propertyTypeOther)})` : ''}
+                   Property Type: ${escapeHtml(r.propertyTypes.join(', '))}${r.propertyTypeOther ? ` (${escapeHtml(r.propertyTypeOther)})` : ''}
                 </div>
               ` : ''}
               ${r.carType || r.carModelYear ? `
                 <div style="font-size:0.78rem; color:#1E40AF; margin-top:0.35rem; font-weight:700;">
-                  🚗 Vehicle: ${escapeHtml(r.carType || 'Car')} ${r.carModelYear ? `(${escapeHtml(r.carModelYear)})` : ''}
+                   Vehicle: ${escapeHtml(r.carType || 'Car')} ${r.carModelYear ? `(${escapeHtml(r.carModelYear)})` : ''}
                 </div>
               ` : ''}
               ${r.isElectricVehicle ? `
                 <div style="font-size:0.78rem; color:#0284C7; margin-top:0.2rem;">
-                  ⚡ EV: ${escapeHtml(r.isElectricVehicle)}
+                   EV: ${escapeHtml(r.isElectricVehicle)}
                 </div>
               ` : ''}
               ${Array.isArray(r.carColours) && r.carColours.length ? `
                 <div style="font-size:0.78rem; color:#4B5563; margin-top:0.2rem;">
-                  🎨 Colours: ${escapeHtml(r.carColours.join(', '))}
+                   Colours: ${escapeHtml(r.carColours.join(', '))}
                 </div>
               ` : ''}
               ${r.carBudget ? `
                 <div style="font-size:0.78rem; color:#047857; margin-top:0.2rem; font-weight:600;">
-                  💰 Car Budget: ${escapeHtml(r.carBudget)}
+                   Car Budget: ${escapeHtml(r.carBudget)}
                 </div>
               ` : ''}
               ${r.constructionDescription ? `
                 <div style="font-size:0.78rem; color:#0369A1; margin-top:0.25rem;">
-                  🏗️ Construction: ${escapeHtml(r.constructionDescription)} ${r.landSize ? `· Land: ${escapeHtml(r.landSizeOther || r.landSize)}` : ''}
+                   Construction: ${escapeHtml(r.constructionDescription)} ${r.landSize ? `· Land: ${escapeHtml(r.landSizeOther || r.landSize)}` : ''}
                 </div>
               ` : ''}
               ${r.adminNotes ? `
                 <div style="background:#FFFBEB; border:1px solid #FDE68A; padding:0.3rem 0.5rem; border-radius:6px; font-size:0.78rem; color:#92400E; margin-top:0.4rem;">
-                  📝 <strong>Note:</strong> ${escapeHtml(r.adminNotes)}
+                   <strong>Note:</strong> ${escapeHtml(r.adminNotes)}
                 </div>
               ` : ''}
             </div>
@@ -743,12 +770,12 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
               </a>
 
               <a href="${callLink}" class="btn-contact-call">
-                <span>📞 Call ${cleanPhone || 'Customer'}</span>
+                <span> Call ${cleanPhone || 'Customer'}</span>
               </a>
 
               <div class="card-sub-actions">
                 <button type="button" class="btn-view-details" onclick="window.openRequestModal('${r.id}')">
-                  🔍 View Details
+                   View Details
                 </button>
                 <select class="status-select-inline" onchange="window.updateRequestStatus('${r.id}', this.value)">
                   <option value="pending_matching" ${r.status === 'pending_matching' ? 'selected' : ''}>New (Pending)</option>
@@ -801,7 +828,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     document.getElementById('modalReqId').textContent = '#' + item.id;
     document.getElementById('modalCustomerName').textContent = item.customerName;
     document.getElementById('modalCustomerMeta').textContent = `${item.location || 'Abuja'} • Received on ${formatDate(item.createdAt || item.acceptedAt)}`;
-    
+
     const statusBadge = document.getElementById('modalReqStatusBadge');
     if (statusBadge) {
       statusBadge.textContent = getStatusLabel(item.status);
@@ -811,19 +838,19 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     const cleanPhone = cleanPhoneNumber(item.phone);
     const waBtn = document.getElementById('modalWhatsAppBtn');
     if (waBtn) waBtn.href = getWhatsAppLink(item.phone, item.customerName, item.service, item.category);
-    
+
     const callBtn = document.getElementById('modalCallBtn');
     if (callBtn) {
       callBtn.href = cleanPhone ? `tel:${cleanPhone}` : '#';
-      callBtn.textContent = `📞 Call ${item.phone}`;
+      callBtn.textContent = ` Call ${item.phone}`;
     }
 
     document.getElementById('modalCategory').textContent = item.category || '-';
     document.getElementById('modalService').textContent = item.service || item.category || '-';
     document.getElementById('modalDescription').textContent = item.description || 'No description provided';
-    
+
     // Property Fields
-    const propVal = Array.isArray(item.propertyTypes) && item.propertyTypes.length 
+    const propVal = Array.isArray(item.propertyTypes) && item.propertyTypes.length
       ? item.propertyTypes.join(', ') + (item.propertyTypeOther ? ` (${item.propertyTypeOther})` : '')
       : (item.category === 'Property Sales & Rentals' ? 'Residential Property' : 'None specified');
     document.getElementById('modalPropertyTypes').textContent = propVal;
@@ -952,7 +979,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     }
 
     document.getElementById('modalUrgency').textContent = item.propertyTimeline || item.urgency || 'Standard';
-    
+
     const prefDateLabel = document.getElementById('modalPreferredDateLabel');
     const prefDateVal = document.getElementById('modalPreferredDate');
     if (item.category === 'Property Sales & Rentals' || item.category === 'Cars & Vehicles') {
@@ -1114,7 +1141,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
           <td>
             <strong style="font-size: 1rem;">${escapeHtml(v.businessName || v.fullName)}</strong><br>
             <span style="font-size: 0.85rem; color: #3E4D42;">Lead: ${escapeHtml(v.fullName)}</span><br>
-            <span style="font-size: 0.8rem; color: #68756B;">📞 ${escapeHtml(v.phone)}</span>
+            <span style="font-size: 0.8rem; color: #68756B;"> ${escapeHtml(v.phone)}</span>
           </td>
           <td>
             <strong>${escapeHtml(v.category)}</strong><br>
@@ -1196,8 +1223,8 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
             <td><strong style="font-family: monospace; color: #D97706;">${m.id}</strong></td>
             <td>
               <strong>${escapeHtml(m.name)}</strong><br>
-              ${m.phone ? `<a href="${callLink}" style="color:#16883D; font-size:0.85rem;">📞 ${escapeHtml(m.phone)}</a><br>` : ''}
-              ${m.email ? `<span style="font-size:0.8rem; color:#68756B;">✉️ ${escapeHtml(m.email)}</span>` : ''}
+              ${m.phone ? `<a href="${callLink}" style="color:#16883D; font-size:0.85rem;"> ${escapeHtml(m.phone)}</a><br>` : ''}
+              ${m.email ? `<span style="font-size:0.8rem; color:#68756B;"> ${escapeHtml(m.email)}</span>` : ''}
             </td>
             <td><strong>${escapeHtml(m.subject || 'General Inquiry')}</strong></td>
             <td style="max-width: 300px; font-size: 0.85rem; color: #3E4D42;">${escapeHtml(m.message)}</td>
@@ -1281,7 +1308,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
           <td><span style="font-size: 0.85rem; color: #3E4D42;">${formatDate(r.acceptedAt)}</span></td>
           <td>
             <span style="color: #15803D; font-weight: 700; font-size: 0.85rem;">
-              ✓ Legally Valid (${r.context || 'form'})
+               Legally Valid (${r.context || 'form'})
             </span>
           </td>
           <td><span style="font-size: 0.8rem; font-family: monospace; color: #68756B;">${r.ip || '127.0.0.1'}</span></td>
@@ -1315,7 +1342,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       allProperties = json.properties || json.data || [];
       const badgeCount = document.getElementById('badgePropertiesCount');
       if (badgeCount) badgeCount.textContent = allProperties.length;
-      
+
       const elProperties = document.getElementById('statTotalProperties');
       if (elProperties) elProperties.textContent = allProperties.length;
 
@@ -1358,7 +1385,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
 
     propertiesTable.innerHTML = filtered.map(p => {
       const imageSrc = p.imageUrl || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80';
-      
+
       let priceDisplay = '';
       if (!p.price || String(p.price).trim() === '') {
         priceDisplay = '<span style="background: #FEF3C7; color: #B45309; padding: 0.2rem 0.55rem; border-radius: 4px; font-weight: 700; font-size: 0.76rem;">Price on Request</span>';
@@ -1501,7 +1528,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       return `
         <div class="photo-thumb-card ${isCover ? 'is-cover' : ''}">
           <img src="${src}" alt="Property Photo ${index + 1}">
-          <span class="photo-thumb-badge">${isCover ? '★ Cover' : `#${index + 1}`}</span>
+          <span class="photo-thumb-badge">${isCover ? ' Cover' : `#${index + 1}`}</span>
           <button type="button" class="photo-thumb-del" data-index="${index}" title="Remove photo">&times;</button>
         </div>
       `;
@@ -1633,7 +1660,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     document.getElementById('propFormTitleDoc').value = prop.titleDocument || '';
     if (propImageInput) propImageInput.value = '';
     document.getElementById('propFormDesc').value = prop.description || '';
-    
+
     if (Array.isArray(prop.images) && prop.images.length > 0) {
       propertyImagesList = [...prop.images];
     } else if (prop.imageUrl) {
@@ -1868,7 +1895,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
           <td style="width: 70px;">
             <div style="position: relative;">
               <img src="${firstImg}" alt="${escapeHtml(v.title)}" style="width: 58px; height: 42px; object-fit: cover; border-radius: 6px; border: 1px solid #E2E7E3;" onerror="this.src='https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=200&q=80'">
-              ${imgCount > 1 ? `<span style="position:absolute; bottom:2px; right:2px; background:rgba(0,0,0,0.75); color:white; font-size:0.6rem; font-weight:700; padding:1px 3px; border-radius:3px;">${imgCount} 📷</span>` : ''}
+              ${imgCount > 1 ? `<span style="position:absolute; bottom:2px; right:2px; background:rgba(0,0,0,0.75); color:white; font-size:0.6rem; font-weight:700; padding:1px 3px; border-radius:3px;">${imgCount} </span>` : ''}
             </div>
           </td>
           <td>
@@ -1948,7 +1975,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       return `
         <div class="photo-thumb-card ${isCover ? 'is-cover' : ''}">
           <img src="${src}" alt="Vehicle Photo ${index + 1}">
-          <span class="photo-thumb-badge">${isCover ? '★ Cover' : `#${index + 1}`}</span>
+          <span class="photo-thumb-badge">${isCover ? ' Cover' : `#${index + 1}`}</span>
           <button type="button" class="photo-thumb-del" data-index="${index}" title="Remove photo">&times;</button>
         </div>
       `;
@@ -2309,4 +2336,952 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     })[m]);
   }
+
+  // ==============================================================================
+  // 7. OWNER ASSET MARKETING SUBMISSIONS (PROPERTIES & CARS)
+  // ==============================================================================
+  const marketingDetailModal = document.getElementById('marketingDetailModal');
+  const closeMarketingModalBtn = document.getElementById('closeMarketingModalBtn');
+  const modalMktId = document.getElementById('modalMktId');
+  const modalMktAssetBadge = document.getElementById('modalMktAssetBadge');
+  const modalMktStatusBadge = document.getElementById('modalMktStatusBadge');
+  const modalMktTitle = document.getElementById('modalMktTitle');
+  const modalMktMeta = document.getElementById('modalMktMeta');
+  const modalMktWhatsAppBtn = document.getElementById('modalMktWhatsAppBtn');
+  const modalMktCallBtn = document.getElementById('modalMktCallBtn');
+  const modalMktPublishBtn = document.getElementById('modalMktPublishBtn');
+  const modalMktDetailsList = document.getElementById('modalMktDetailsList');
+  const modalMktGalleryWrap = document.getElementById('modalMktGalleryWrap');
+  const modalMktPhotoGrid = document.getElementById('modalMktPhotoGrid');
+  const modalMktStatusSelect = document.getElementById('modalMktStatusSelect');
+  const modalMktAdminNotes = document.getElementById('modalMktAdminNotes');
+  const saveModalMktStatusBtn = document.getElementById('saveModalMktStatusBtn');
+  const deleteMktRequestBtn = document.getElementById('deleteMktRequestBtn');
+
+  async function loadMarketingRequests() {
+    try {
+      const res = await fetch('/api/marketing-requests');
+      const json = await res.json();
+      if (!json.success) return;
+
+      allMarketingRequests = json.data || [];
+      const badgeCount = document.getElementById('badgeMarketingCount');
+      const pendingCount = allMarketingRequests.filter(m => m.status === 'pending_review' || !m.status).length;
+      if (badgeCount) badgeCount.textContent = pendingCount;
+
+      renderFilteredMarketingRequests();
+    } catch (err) {
+      if (marketingContainer) {
+        marketingContainer.innerHTML = `<div style="color: #DC2626; padding: 2rem; background: white; border-radius: 12px; text-align: center;">Failed to load owner submissions: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+  }
+
+  function getMarketingStatusBadgeClass(status) {
+    switch (status) {
+      case 'pending_review': return 'badge-yellow';
+      case 'contacted': return 'badge-blue';
+      case 'inspected': return 'badge-green';
+      case 'published': return 'badge-green';
+      case 'rejected': return 'badge-red';
+      default: return 'badge-yellow';
+    }
+  }
+
+  function formatMarketingStatus(status) {
+    switch (status) {
+      case 'pending_review': return 'Pending Review';
+      case 'contacted': return 'Owner Contacted';
+      case 'inspected': return 'Inspected & Verified';
+      case 'published': return 'Published Live';
+      case 'rejected': return 'Rejected';
+      default: return status || 'Pending Review';
+    }
+  }
+
+  function renderFilteredMarketingRequests() {
+    if (!marketingContainer) return;
+
+    const query = (marketingSearchInput ? marketingSearchInput.value : '').toLowerCase().trim();
+    const typeFilter = marketingTypeFilter ? marketingTypeFilter.value : 'all';
+    const statusFilter = marketingStatusFilter ? marketingStatusFilter.value : 'all';
+
+    let filtered = allMarketingRequests.filter(item => {
+      // Type filter
+      if (typeFilter !== 'all' && (item.assetType || '').toLowerCase() !== typeFilter) {
+        return false;
+      }
+      // Status filter
+      if (statusFilter !== 'all' && (item.status || 'pending_review').toLowerCase() !== statusFilter) {
+        return false;
+      }
+      // Query search
+      if (query) {
+        const title = item.assetType === 'property' ? `${item.propertyType} ${item.location}` : `${item.carMakeModelYear} ${item.carType}`;
+        const searchCorpus = [
+          item.id,
+          item.ownerName,
+          item.phone,
+          item.email,
+          item.location,
+          title,
+          item.description,
+          item.price
+        ].filter(Boolean).join(' ').toLowerCase();
+
+        if (!searchCorpus.includes(query)) return false;
+      }
+      return true;
+    });
+
+    if (marketingResultsCount) {
+      marketingResultsCount.textContent = `Showing ${filtered.length} of ${allMarketingRequests.length} submissions`;
+    }
+
+    if (filtered.length === 0) {
+      marketingContainer.innerHTML = `
+        <div style="background: white; border: 1px solid #E2E7E3; border-radius: 12px; padding: 3rem; text-align: center; color: #68756B;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;"></div>
+          <p style="margin: 0; font-size: 0.95rem; font-weight: 600;">No owner asset submissions found matching your filters.</p>
+        </div>
+      `;
+      return;
+    }
+
+    marketingContainer.innerHTML = filtered.map(item => {
+      const isCar = item.assetType === 'car';
+      const title = isCar ? (item.carMakeModelYear || 'Automobile') : `${item.propertyType || 'Property'} (${item.listingPurpose || 'For Sale'})`;
+      const statusClass = getMarketingStatusBadgeClass(item.status);
+      const statusText = formatMarketingStatus(item.status);
+      const thumbImg = (item.images && item.images.length > 0) ? item.images[0] : '';
+      const photoCount = (item.images && item.images.length) || 0;
+      const cleanPhone = (item.phone || '').replace(/\s+/g, '');
+      const waMsg = encodeURIComponent(`Hello ${item.ownerName}, this is ALLFIX Dispatch. We received your request to market your ${title} in ${item.location} (Ref: ${item.id}). We would like to schedule physical verification.`);
+
+      // Technical Badges
+      let techBadges = '';
+      if (isCar) {
+        const dutyBadge = item.customDutyPaid === 'Yes'
+          ? '<span class="badge badge-green" style="font-size: 0.72rem;"> Duty Paid</span>'
+          : '<span class="badge badge-red" style="font-size: 0.72rem;"> Incomplete Duty</span>';
+        const condBadge = item.carCondition === 'Brand New'
+          ? '<span class="badge badge-green" style="font-size: 0.72rem;"> Brand New</span>'
+          : `<span class="badge badge-blue" style="font-size: 0.72rem;">${escapeHtml(item.carCondition || 'Fairly Used')}</span>`;
+        const accidentBadge = item.accidentHistory === 'Accident Free'
+          ? '<span class="badge badge-green" style="font-size: 0.72rem;"> Accident Free</span>'
+          : '<span class="badge badge-yellow" style="font-size: 0.72rem;"> Accidented</span>';
+        const engineBadge = item.engineGearStatus === 'Untempered engine and gear'
+          ? '<span class="badge badge-green" style="font-size: 0.72rem;"> Untempered</span>'
+          : '<span class="badge badge-yellow" style="font-size: 0.72rem;"> Tempered Engine</span>';
+        const firstBodyBadge = item.firstBody === 'Yes'
+          ? '<span class="badge badge-green" style="font-size: 0.72rem;"> First Body</span>'
+          : '<span class="badge badge-gray" style="font-size: 0.72rem;"> Resprayed</span>';
+
+        techBadges = `${dutyBadge} ${condBadge} ${accidentBadge} ${engineBadge} ${firstBodyBadge}`;
+      } else {
+        const purposeBadge = `<span class="badge badge-blue" style="font-size: 0.72rem;"> ${escapeHtml(item.listingPurpose || 'For Sale')}</span>`;
+        const titleBadge = item.titleDocument
+          ? `<span class="badge badge-green" style="font-size: 0.72rem;"> ${escapeHtml(item.titleDocument)}</span>`
+          : '';
+        const sizeBadge = item.landSize
+          ? `<span class="badge badge-gray" style="font-size: 0.72rem;"> ${escapeHtml(item.landSize)}</span>`
+          : '';
+        techBadges = `${purposeBadge} ${titleBadge} ${sizeBadge}`;
+      }
+
+      return `
+        <div class="request-card" style="border-left: 5px solid ${isCar ? '#2563EB' : '#16883D'};">
+          <div class="card-top-row">
+            <div class="req-meta">
+              <span class="req-id-badge" style="color: ${isCar ? '#1D4ED8' : '#166534'}; background: ${isCar ? '#EFF6FF' : '#F0FDF4'};">${escapeHtml(item.id)}</span>
+              <span class="badge" style="background: ${isCar ? '#DBEAFE' : '#DCFCE7'}; color: ${isCar ? '#1E40AF' : '#166534'}; font-weight: 700;">${isCar ? ' Automobile' : ' Property'}</span>
+              <span class="badge ${statusClass}">${escapeHtml(statusText)}</span>
+              <span class="req-time">${formatDate(item.createdAt)}</span>
+              ${photoCount > 0 ? `<span style="font-size: 0.75rem; background: #F2F4F2; color: #3E4D42; padding: 0.2rem 0.5rem; border-radius: 6px; font-weight: 600;"> ${photoCount} Photos</span>` : ''}
+            </div>
+            <div>
+              <strong style="color: ${isCar ? '#1D4ED8' : '#16883D'}; font-size: 1.1rem;">${item.price ? escapeHtml(item.price) : 'Price on Request'}</strong>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: ${thumbImg ? '90px 1.4fr 1.6fr 1fr' : '1.4fr 1.6fr 1fr'}; gap: 1rem; align-items: center;" class="card-main-grid">
+            ${thumbImg ? `
+              <div style="width: 84px; height: 68px; border-radius: 8px; overflow: hidden; background: #0C100D; flex-shrink: 0;">
+                <img src="${thumbImg}" alt="Asset thumbnail" style="width: 100%; height: 100%; object-fit: cover;">
+              </div>
+            ` : ''}
+
+            <div class="cust-info">
+              <strong>${escapeHtml(item.ownerName)}</strong>
+              <div class="cust-contact-line">
+                <span> ${escapeHtml(item.phone)}</span>
+              </div>
+              <div class="cust-location">
+                <span> ${escapeHtml(item.location)}</span>
+              </div>
+            </div>
+
+            <div>
+              <div style="font-weight: 700; color: #151B17; font-size: 0.95rem; margin-bottom: 0.35rem;">
+                ${escapeHtml(title)}
+              </div>
+              <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.45rem;">
+                ${techBadges}
+              </div>
+              <div style="font-size: 0.82rem; color: #56645A; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                ${escapeHtml(item.description || 'No additional remarks provided.')}
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="openMarketingModal('${item.id}')" style="width: 100%; justify-content: center; font-size: 0.82rem;">
+                 Inspect Details
+              </button>
+              <div style="display: flex; gap: 0.4rem; width: 100%;">
+                <a href="https://wa.me/${cleanPhone.replace('+', '')}?text=${waMsg}" target="_blank" rel="noopener" class="btn-contact-whatsapp" style="flex: 1; text-align: center; font-size: 0.78rem; padding: 0.45rem 0.3rem;">
+                  WhatsApp
+                </a>
+                <a href="tel:${cleanPhone}" class="btn-contact-call" style="flex: 1; text-align: center; font-size: 0.78rem; padding: 0.45rem 0.3rem;">
+                  Call
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  window.openMarketingModal = function(id) {
+    const item = allMarketingRequests.find(m => m.id === id);
+    if (!item) return;
+
+    currentModalMarketingId = id;
+    const isCar = item.assetType === 'car';
+
+    modalMktId.textContent = item.id;
+    modalMktAssetBadge.textContent = isCar ? ' Automobile' : ' Property';
+    modalMktAssetBadge.className = isCar ? 'badge badge-blue' : 'badge badge-green';
+    modalMktStatusBadge.textContent = formatMarketingStatus(item.status);
+    modalMktStatusBadge.className = `badge ${getMarketingStatusBadgeClass(item.status)}`;
+
+    const title = isCar ? item.carMakeModelYear : `${item.propertyType} (${item.listingPurpose})`;
+    modalMktTitle.textContent = title;
+    modalMktMeta.textContent = `Owner: ${item.ownerName} • Location: ${item.location} • Submitted: ${formatDate(item.createdAt)}`;
+
+    const cleanPhone = (item.phone || '').replace(/\s+/g, '');
+    const waText = encodeURIComponent(`Hello ${item.ownerName}, this is ALLFIX Dispatch. We are reviewing your submission for ${title} (Ref: ${item.id}). When can our inspector visit?`);
+    modalMktWhatsAppBtn.href = `https://wa.me/${cleanPhone.replace('+', '')}?text=${waText}`;
+    modalMktCallBtn.href = `tel:${cleanPhone}`;
+
+    modalMktStatusSelect.value = item.status || 'pending_review';
+    modalMktAdminNotes.value = item.adminNotes || '';
+
+    // Build dl list
+    let dlHtml = `
+      <dt>Owner Name:</dt>
+      <dd><strong>${escapeHtml(item.ownerName)}</strong></dd>
+
+      <dt>Phone (WhatsApp):</dt>
+      <dd><a href="tel:${cleanPhone}" style="color: #16883D; font-weight: 600;">${escapeHtml(item.phone)}</a></dd>
+
+      <dt>Email Address:</dt>
+      <dd>${escapeHtml(item.email || 'Not specified')}</dd>
+
+      <dt>Physical Location:</dt>
+      <dd>${escapeHtml(item.location)}</dd>
+
+      <dt>Target Price / Rent:</dt>
+      <dd><strong style="color: #16883D; font-size: 1.05rem;">${escapeHtml(item.price || 'Price on Request')}</strong></dd>
+    `;
+
+    if (isCar) {
+      dlHtml += `
+        <dt>Car Year & Model:</dt>
+        <dd><strong>${escapeHtml(item.carMakeModelYear || '-')}</strong></dd>
+
+        <dt>Body Type & Colour:</dt>
+        <dd>${escapeHtml(item.carType || '-')} &bull; ${escapeHtml(item.carColour || '-')}</dd>
+
+        <dt>Customs Duty Status:</dt>
+        <dd><span class="badge ${item.customDutyPaid === 'Yes' ? 'badge-green' : 'badge-red'}">${item.customDutyPaid === 'Yes' ? ' Duty Fully Paid' : ' Incomplete Duty'}</span></dd>
+
+        <dt>Usage Status:</dt>
+        <dd><span class="badge badge-blue">${escapeHtml(item.carCondition || 'Fairly Used')}</span></dd>
+
+        <dt>Accident History:</dt>
+        <dd><span class="badge ${item.accidentHistory === 'Accident Free' ? 'badge-green' : 'badge-yellow'}">${escapeHtml(item.accidentHistory || 'Accident Free')}</span></dd>
+
+        <dt>Engine & Gear Status:</dt>
+        <dd><span class="badge ${item.engineGearStatus === 'Untempered engine and gear' ? 'badge-green' : 'badge-yellow'}">${escapeHtml(item.engineGearStatus || 'Untempered')}</span></dd>
+
+        <dt>First Body Paint:</dt>
+        <dd><span class="badge ${item.firstBody === 'Yes' ? 'badge-green' : 'badge-gray'}">${item.firstBody === 'Yes' ? ' First Body (Original Paint)' : ' Resprayed / Baked'}</span></dd>
+      `;
+    } else {
+      dlHtml += `
+        <dt>Property Type:</dt>
+        <dd><strong>${escapeHtml(item.propertyType || '-')}</strong></dd>
+
+        <dt>Listing Purpose:</dt>
+        <dd><span class="badge badge-blue"> ${escapeHtml(item.listingPurpose || 'For Sale')}</span></dd>
+
+        <dt>Title Document:</dt>
+        <dd><span class="badge badge-green"> ${escapeHtml(item.titleDocument || 'Title Pending')}</span></dd>
+
+        <dt>Land Size / Dimensions:</dt>
+        <dd>${escapeHtml(item.landSize || '-')}</dd>
+      `;
+    }
+
+    dlHtml += `
+      <dt>Asset Description:</dt>
+      <dd style="background: #F8FAF8; padding: 0.75rem; border-radius: 8px; border: 1px solid #E2E7E3;">${escapeHtml(item.description || 'No description provided.')}</dd>
+
+      <dt>Terms Audit ID:</dt>
+      <dd><span style="font-family: monospace; color: #166534;">${escapeHtml(item.agreementId || 'AGR-M-LOGGED')}</span> (Owner Marketing Terms v1.0 Accepted)</dd>
+    `;
+
+    modalMktDetailsList.innerHTML = dlHtml;
+
+    // Photos Gallery
+    if (item.images && item.images.length > 0) {
+      modalMktGalleryWrap.style.display = 'block';
+      modalMktPhotoGrid.innerHTML = item.images.map((imgUrl, i) => `
+        <a href="${imgUrl}" target="_blank" rel="noopener" style="display: block; aspect-ratio: 4/3; border-radius: 8px; overflow: hidden; border: 1px solid #CDD3CE; background: #0C100D;">
+          <img src="${imgUrl}" alt="Photo ${i + 1}" style="width: 100%; height: 100%; object-fit: cover;">
+        </a>
+      `).join('');
+    } else {
+      modalMktGalleryWrap.style.display = 'none';
+      modalMktPhotoGrid.innerHTML = '';
+    }
+
+    // Publish button state
+    if (item.status === 'published') {
+      modalMktPublishBtn.textContent = ' Already Published Live';
+      modalMktPublishBtn.disabled = true;
+      modalMktPublishBtn.style.opacity = '0.7';
+    } else {
+      modalMktPublishBtn.textContent = ' Publish Live to Marketplace';
+      modalMktPublishBtn.disabled = false;
+      modalMktPublishBtn.style.opacity = '1';
+    }
+
+    marketingDetailModal.classList.add('open');
+  };
+
+  // Close marketing modal
+  if (closeMarketingModalBtn) {
+    closeMarketingModalBtn.addEventListener('click', () => {
+      marketingDetailModal.classList.remove('open');
+      currentModalMarketingId = null;
+    });
+  }
+
+  // Save status & admin notes
+  if (saveModalMktStatusBtn) {
+    saveModalMktStatusBtn.addEventListener('click', async () => {
+      if (!currentModalMarketingId) return;
+      saveModalMktStatusBtn.textContent = 'Saving...';
+      saveModalMktStatusBtn.disabled = true;
+
+      try {
+        const newStatus = modalMktStatusSelect.value;
+        const newNotes = modalMktAdminNotes.value.trim();
+
+        const res = await fetch('/api/marketing-requests/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: currentModalMarketingId,
+            status: newStatus,
+            adminNotes: newNotes
+          })
+        });
+
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || 'Failed to update');
+
+        showAdminToast(`Updated submission <strong>${currentModalMarketingId}</strong> to <strong>${formatMarketingStatus(newStatus)}</strong>`);
+        await loadMarketingRequests();
+        await loadStats();
+
+        // Refresh modal
+        window.openMarketingModal(currentModalMarketingId);
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        saveModalMktStatusBtn.textContent = 'Save Status & Notes';
+        saveModalMktStatusBtn.disabled = false;
+      }
+    });
+  }
+
+  // Publish Live button
+  if (modalMktPublishBtn) {
+    modalMktPublishBtn.addEventListener('click', async () => {
+      if (!currentModalMarketingId) return;
+      const confirmPub = confirm('Publish this asset live to the public marketplace? It will appear immediately on the website.');
+      if (!confirmPub) return;
+
+      modalMktPublishBtn.textContent = 'Publishing Live...';
+      modalMktPublishBtn.disabled = true;
+
+      try {
+        const res = await fetch('/api/marketing-requests/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: currentModalMarketingId })
+        });
+
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || 'Failed to publish');
+
+        showAdminToast(` Asset published live! Reference: <strong>${json.publishedId}</strong>`);
+        await loadMarketingRequests();
+        await loadStats();
+        if (json.assetType === 'property') {
+          await loadProperties();
+        } else {
+          await loadVehicles();
+        }
+
+        window.openMarketingModal(currentModalMarketingId);
+      } catch (err) {
+        alert('Publishing error: ' + err.message);
+        modalMktPublishBtn.textContent = ' Publish Live to Marketplace';
+        modalMktPublishBtn.disabled = false;
+      }
+    });
+  }
+
+  // Delete marketing submission
+  if (deleteMktRequestBtn) {
+    deleteMktRequestBtn.addEventListener('click', async () => {
+      if (!currentModalMarketingId) return;
+      const confirmDel = confirm(`Permanently delete owner submission ${currentModalMarketingId}?`);
+      if (!confirmDel) return;
+
+      try {
+        const res = await fetch('/api/marketing-requests/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: currentModalMarketingId })
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || 'Failed to delete');
+
+        showAdminToast(`Deleted submission ${currentModalMarketingId}`);
+        marketingDetailModal.classList.remove('open');
+        currentModalMarketingId = null;
+        await loadMarketingRequests();
+        await loadStats();
+      } catch (err) {
+        alert('Delete error: ' + err.message);
+      }
+    });
+  }
+
+  // Search & Filter Listeners for Marketing Tab
+  if (marketingSearchInput) {
+    marketingSearchInput.addEventListener('input', renderFilteredMarketingRequests);
+  }
+  if (marketingTypeFilter) {
+    marketingTypeFilter.addEventListener('change', renderFilteredMarketingRequests);
+  }
+  if (marketingStatusFilter) {
+    marketingStatusFilter.addEventListener('change', renderFilteredMarketingRequests);
+  }
+
+  // Also close modal when clicking outside
+  window.addEventListener('click', (e) => {
+    if (e.target === marketingDetailModal) {
+      marketingDetailModal.classList.remove('open');
+      currentModalMarketingId = null;
+    }
+    if (e.target === workEditModal) {
+      workEditModal.classList.remove('open');
+      currentModalWorkId = null;
+    }
+  });
+
+  // ==============================================================================
+  // VENDOR HANDIWORK SHOWCASE MANAGEMENT (TAB 2)
+  // ==============================================================================
+  let workImagesList = [];
+  const worksTable = document.getElementById('worksTableBody');
+  const workSearchInput = document.getElementById('workSearchInput');
+  const workJobTypeFilter = document.getElementById('workJobTypeFilter');
+  const workStatusFilter = document.getElementById('workStatusFilter');
+  const btnOpenNewWorkModal = document.getElementById('btnOpenNewWorkModal');
+  const workEditModal = document.getElementById('workEditModal');
+  const closeWorkModalBtn = document.getElementById('closeWorkModalBtn');
+  const workEditForm = document.getElementById('workEditForm');
+  const saveWorkSubmitBtn = document.getElementById('saveWorkSubmitBtn');
+  const deleteWorkBtn = document.getElementById('deleteWorkBtn');
+
+  // Work Image Upload Elements
+  const workFileInput = document.getElementById('workFormFileInput');
+  const workUploadZone = document.getElementById('workImageUploadZone');
+  const workUploadPrompt = document.getElementById('workImageUploadPrompt');
+  const workGalleryGrid = document.getElementById('workGalleryGrid');
+  const workPhotoCountBadge = document.getElementById('workPhotoCountBadge');
+  const btnSelectWorkPictures = document.getElementById('btnSelectWorkPictures');
+  const workImageInput = document.getElementById('workFormImage');
+  const btnAddWorkUrl = document.getElementById('btnAddWorkUrlBtn');
+
+  async function loadVendorWorks() {
+    try {
+      const res = await fetch('/api/vendor-works');
+      const json = await res.json();
+      if (!json.success) return;
+
+      allWorks = json.data || [];
+      const badgeCount = document.getElementById('badgeWorksCount');
+      if (badgeCount) badgeCount.textContent = allWorks.length;
+      const statWorks = document.getElementById('statVendorWorks');
+      if (statWorks) statWorks.textContent = allWorks.length;
+
+      renderWorksTable();
+    } catch (err) {
+      if (worksTable) {
+        worksTable.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#DC2626; padding:2rem;">Failed to load vendor handiwork: ${escapeHtml(err.message)}</td></tr>`;
+      }
+    }
+  }
+
+  function renderWorksTable() {
+    if (!worksTable) return;
+
+    const searchTerm = (workSearchInput?.value || '').toLowerCase().trim();
+    const typeVal = workJobTypeFilter?.value || 'all';
+    const statusVal = workStatusFilter?.value || 'all';
+
+    const filtered = allWorks.filter(w => {
+      const matchesSearch = !searchTerm ||
+        (w.title && w.title.toLowerCase().includes(searchTerm)) ||
+        (w.jobType && w.jobType.toLowerCase().includes(searchTerm)) ||
+        (w.vendorName && w.vendorName.toLowerCase().includes(searchTerm)) ||
+        (w.location && w.location.toLowerCase().includes(searchTerm)) ||
+        (w.description && w.description.toLowerCase().includes(searchTerm)) ||
+        (w.id && w.id.toLowerCase().includes(searchTerm));
+
+      const matchesType = typeVal === 'all' || w.jobType === typeVal;
+      const matchesStatus = statusVal === 'all' || (w.status || 'active') === statusVal;
+
+      return matchesSearch && matchesType && matchesStatus;
+    });
+
+    if (filtered.length === 0) {
+      worksTable.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 3rem 1.5rem; color: #68756B;">
+            <div style="font-weight: 700; font-size: 1.05rem; color: #151B17; margin-bottom: 0.35rem;">No Handiwork Matches Found</div>
+            <p style="font-size: 0.88rem; margin: 0;">Try adjusting your search terms or trade filters, or post a new job using the green button above.</p>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    worksTable.innerHTML = filtered.map(w => {
+      const photos = Array.isArray(w.photos) && w.photos.length > 0 ? w.photos : (w.image ? [w.image] : ['/favicon.png']);
+      const coverPhoto = photos[0];
+      const photoCount = photos.length;
+      const status = w.status || 'active';
+      const statusBadge = status === 'active'
+        ? `<span class="badge badge-green" style="font-size: 0.74rem;">Active / Live</span>`
+        : `<span class="badge" style="background:#FEF3C7; color:#B45309; font-size: 0.74rem;">Draft</span>`;
+
+      const tradeColors = {
+        'Plumbing': { bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE' },
+        'Carpentry': { bg: '#FEF3C7', text: '#B45309', border: '#FDE68A' },
+        'Electrical': { bg: '#FEF9C3', text: '#A16207', border: '#FEF08A' },
+        'Auto Mechanic': { bg: '#FEE2E2', text: '#B91C1C', border: '#FECACA' },
+        'Interior Decor': { bg: '#F3E8FF', text: '#7E22CE', border: '#E9D5FF' },
+        'Painting & Tiling': { bg: '#ECFDF5', text: '#047857', border: '#A7F3D0' },
+        'AC & Appliances': { bg: '#E0F2FE', text: '#0369A1', border: '#BAE6FD' }
+      };
+      const tc = tradeColors[w.jobType] || { bg: '#F3F4F6', text: '#374151', border: '#E5E7EB' };
+
+      return `
+        <tr>
+          <td>
+            <div style="position: relative; width: 62px; height: 48px; border-radius: 8px; overflow: hidden; background: #0C100D; border: 1px solid #E2E7E3;">
+              <img src="${coverPhoto}" alt="${escapeHtml(w.title)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/favicon.png'">
+              <span style="position: absolute; bottom: 2px; right: 2px; background: rgba(0,0,0,0.75); color: white; font-size: 0.65rem; font-weight: 700; padding: 1px 4px; border-radius: 4px;">
+                 ${photoCount}
+              </span>
+            </div>
+          </td>
+          <td>
+            <div style="font-weight: 700; color: #151B17; font-size: 0.92rem; margin-bottom: 0.2rem;">
+              ${escapeHtml(w.title)}
+              ${w.featured ? `<span style="margin-left: 0.35rem; background: #FEF3C7; color: #B45309; padding: 2px 6px; border-radius: 4px; font-size: 0.68rem; font-weight: 800;"> Featured</span>` : ''}
+            </div>
+            <span class="req-id-badge" style="font-size: 0.72rem; padding: 0.15rem 0.45rem;">${escapeHtml(w.id)}</span>
+          </td>
+          <td>
+            <span style="display: inline-block; background: ${tc.bg}; color: ${tc.text}; border: 1px solid ${tc.border}; font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 6px; white-space: nowrap;">
+              ${escapeHtml(w.jobType || 'Artisan Work')}
+            </span>
+          </td>
+          <td>
+            <div style="font-size: 0.88rem; font-weight: 600; color: #151B17;">${escapeHtml(w.vendorName || 'ALLFIX Verified Artisan')}</div>
+            ${w.vendorPhone ? `<a href="https://wa.me/234${w.vendorPhone.replace(/\D/g,'').replace(/^0/,'')}?text=Hello%20${encodeURIComponent(w.vendorName || 'Artisan')}%2C%20regarding%20job%20${encodeURIComponent(w.id)}" target="_blank" style="font-size: 0.78rem; color: #16883D; text-decoration: underline;"> WhatsApp</a>` : ''}
+          </td>
+          <td>
+            <span style="font-size: 0.86rem; color: #4B5563;">${escapeHtml(w.location || 'Abuja')}</span>
+          </td>
+          <td>
+            <span style="font-size: 0.84rem; font-weight: 700; color: #16883D;">${photoCount} photo${photoCount === 1 ? '' : 's'}</span>
+          </td>
+          <td>
+            ${statusBadge}
+          </td>
+          <td>
+            <div style="display: flex; gap: 0.45rem; align-items: center;">
+              <button class="btn btn-outline btn-sm btn-edit-work" data-id="${w.id}" style="padding: 0.35rem 0.65rem; font-size: 0.78rem;">
+                Edit
+              </button>
+              <a href="/gallery#work-${w.id}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="padding: 0.35rem 0.65rem; font-size: 0.78rem; background: #F1F8F2; border-color: #B8D9C0; color: #166534;" title="View on Public Gallery">
+                View
+              </a>
+              <button class="btn btn-outline btn-sm btn-delete-work" data-id="${w.id}" style="padding: 0.35rem 0.55rem; font-size: 0.78rem; color: #DC2626; border-color: #FECACA; display: inline-flex; align-items: center; justify-content: center;" title="Delete Handiwork">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Attach row button events
+    worksTable.querySelectorAll('.btn-edit-work').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const workId = btn.getAttribute('data-id');
+        const found = allWorks.find(w => w.id === workId);
+        if (found) openEditWorkModal(found);
+      });
+    });
+
+    worksTable.querySelectorAll('.btn-delete-work').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const workId = btn.getAttribute('data-id');
+        confirmDeleteWork(workId);
+      });
+    });
+  }
+
+  // Work Gallery Photos Rendering
+  function renderWorkGallery() {
+    if (workPhotoCountBadge) {
+      workPhotoCountBadge.textContent = `${workImagesList.length} / 10 photos selected`;
+    }
+    if (!workGalleryGrid || !workUploadPrompt) return;
+
+    if (workImagesList.length === 0) {
+      workGalleryGrid.style.display = 'none';
+      workGalleryGrid.innerHTML = '';
+      workUploadPrompt.style.display = 'block';
+      return;
+    }
+
+    workUploadPrompt.style.display = 'none';
+    workGalleryGrid.style.display = 'grid';
+
+    let html = workImagesList.map((src, index) => {
+      const isCover = index === 0;
+      return `
+        <div class="photo-thumb-card ${isCover ? 'is-cover' : ''}" style="${isCover ? 'border-color: #16883D; box-shadow: 0 0 0 2px rgba(22, 136, 61, 0.25);' : ''}">
+          <img src="${src}" alt="Work Photo ${index + 1}">
+          <span class="photo-thumb-badge" style="${isCover ? 'background: #16883D; color: white;' : ''}">${isCover ? ' Cover' : `#${index + 1}`}</span>
+          <button type="button" class="photo-thumb-del" data-index="${index}" title="Remove photo">&times;</button>
+        </div>
+      `;
+    }).join('');
+
+    if (workImagesList.length < 10) {
+      html += `
+        <div class="photo-add-more-card" id="btnWorkAddMorePhotos" style="color: #16883D; border-color: #86EFAC;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>Add More</span>
+        </div>
+      `;
+    }
+
+    workGalleryGrid.innerHTML = html;
+
+    workGalleryGrid.querySelectorAll('.photo-thumb-del').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.getAttribute('data-index'), 10);
+        workImagesList.splice(idx, 1);
+        renderWorkGallery();
+      });
+    });
+
+    const addMoreBtn = document.getElementById('btnWorkAddMorePhotos');
+    if (addMoreBtn) {
+      addMoreBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (workFileInput) workFileInput.click();
+      });
+    }
+  }
+
+  // Work Pictures File Selection & Compression
+  if (btnSelectWorkPictures) {
+    btnSelectWorkPictures.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (workFileInput) workFileInput.click();
+    });
+  }
+
+  if (workUploadZone) {
+    workUploadZone.addEventListener('click', () => {
+      if (workFileInput) workFileInput.click();
+    });
+
+    workUploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      workUploadZone.classList.add('dragover');
+    });
+
+    workUploadZone.addEventListener('dragleave', () => {
+      workUploadZone.classList.remove('dragover');
+    });
+
+    workUploadZone.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      workUploadZone.classList.remove('dragover');
+      const files = Array.from(e.dataTransfer?.files || []).filter(f => f.type.startsWith('image/'));
+      if (files.length === 0) return;
+      await processWorkFiles(files);
+    });
+  }
+
+  if (workFileInput) {
+    workFileInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
+      if (files.length === 0) return;
+      await processWorkFiles(files);
+      workFileInput.value = '';
+    });
+  }
+
+  async function processWorkFiles(files) {
+    const slotsLeft = 10 - workImagesList.length;
+    if (slotsLeft <= 0) {
+      alert('Maximum of 10 pictures allowed per vendor work showcase.');
+      return;
+    }
+    const toProcess = files.slice(0, slotsLeft);
+    if (workPhotoCountBadge) workPhotoCountBadge.textContent = 'Compressing pictures...';
+
+    for (const f of toProcess) {
+      try {
+        const compressedBase64 = await compressImageFile(f, 1280, 0.82);
+        workImagesList.push(compressedBase64);
+      } catch (err) {
+        console.warn('Could not compress image file:', err);
+      }
+    }
+    renderWorkGallery();
+  }
+
+  if (btnAddWorkUrl && workImageInput) {
+    btnAddWorkUrl.addEventListener('click', (e) => {
+      e.preventDefault();
+      const url = (workImageInput.value || '').trim();
+      if (!url) return;
+      if (workImagesList.length >= 10) {
+        alert('Maximum of 10 pictures reached.');
+        return;
+      }
+      workImagesList.push(url);
+      workImageInput.value = '';
+      renderWorkGallery();
+    });
+  }
+
+  // Open Modal: New Work
+  function openNewWorkModal() {
+    currentModalWorkId = null;
+    if (workEditForm) workEditForm.reset();
+    const idField = document.getElementById('workFormId');
+    if (idField) idField.value = '';
+    const heading = document.getElementById('workModalHeading');
+    if (heading) heading.textContent = 'Post Vendor Handiwork';
+    if (saveWorkSubmitBtn) saveWorkSubmitBtn.textContent = 'Save & Publish Handiwork';
+    if (deleteWorkBtn) deleteWorkBtn.style.display = 'none';
+
+    workImagesList = [];
+    renderWorkGallery();
+    if (workEditModal) workEditModal.classList.add('open');
+  }
+
+  // Open Modal: Edit Work
+  function openEditWorkModal(work) {
+    currentModalWorkId = work.id;
+    const idField = document.getElementById('workFormId');
+    const jobTypeField = document.getElementById('workFormJobType');
+    const titleField = document.getElementById('workFormTitle');
+    const vendorNameField = document.getElementById('workFormVendorName');
+    const vendorPhoneField = document.getElementById('workFormVendorPhone');
+    const locationField = document.getElementById('workFormLocation');
+    const descField = document.getElementById('workFormDesc');
+    const statusField = document.getElementById('workFormStatus');
+    const featuredField = document.getElementById('workFormFeatured');
+    const heading = document.getElementById('workModalHeading');
+
+    if (idField) idField.value = work.id;
+    if (jobTypeField) jobTypeField.value = work.jobType || '';
+    if (titleField) titleField.value = work.title || '';
+    if (vendorNameField) vendorNameField.value = work.vendorName || '';
+    if (vendorPhoneField) vendorPhoneField.value = work.vendorPhone || '';
+    if (locationField) locationField.value = work.location || '';
+    if (descField) descField.value = work.description || '';
+    if (statusField) statusField.value = work.status || 'active';
+    if (featuredField) featuredField.checked = !!work.featured;
+
+    if (heading) heading.textContent = `Edit Handiwork (${work.id})`;
+    if (saveWorkSubmitBtn) saveWorkSubmitBtn.textContent = 'Update Handiwork';
+    if (deleteWorkBtn) deleteWorkBtn.style.display = 'inline-block';
+
+    workImagesList = Array.isArray(work.photos) && work.photos.length > 0
+      ? [...work.photos]
+      : (work.image ? [work.image] : []);
+    renderWorkGallery();
+
+    if (workEditModal) workEditModal.classList.add('open');
+  }
+
+  if (btnOpenNewWorkModal) {
+    btnOpenNewWorkModal.addEventListener('click', openNewWorkModal);
+  }
+
+  if (closeWorkModalBtn) {
+    closeWorkModalBtn.addEventListener('click', () => {
+      if (workEditModal) workEditModal.classList.remove('open');
+      currentModalWorkId = null;
+    });
+  }
+
+  // Submit Work Edit / Create Form
+  if (workEditForm) {
+    workEditForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const id = (document.getElementById('workFormId')?.value || '').trim();
+      const jobType = (document.getElementById('workFormJobType')?.value || '').trim();
+      const title = (document.getElementById('workFormTitle')?.value || '').trim();
+      const vendorName = (document.getElementById('workFormVendorName')?.value || '').trim();
+      const vendorPhone = (document.getElementById('workFormVendorPhone')?.value || '').trim();
+      const location = (document.getElementById('workFormLocation')?.value || '').trim();
+      const description = (document.getElementById('workFormDesc')?.value || '').trim();
+      const status = document.getElementById('workFormStatus')?.value || 'active';
+      const featured = !!document.getElementById('workFormFeatured')?.checked;
+
+      if (!jobType) {
+        alert('Please select the Type of Job / Trade (e.g. Plumbing, Carpentry, etc.).');
+        return;
+      }
+      if (!title || !description || !location) {
+        alert('Please fill in Job Title, Location, and Job Description.');
+        return;
+      }
+      if (workImagesList.length === 0) {
+        alert('Please add at least 1 picture of the completed work.');
+        return;
+      }
+
+      if (saveWorkSubmitBtn) {
+        saveWorkSubmitBtn.disabled = true;
+        saveWorkSubmitBtn.textContent = 'Saving Handiwork...';
+      }
+
+      const payload = {
+        id: id || undefined,
+        jobType,
+        title,
+        vendorName: vendorName || 'ALLFIX Verified Artisan',
+        vendorPhone,
+        location,
+        description,
+        photos: workImagesList,
+        image: workImagesList[0],
+        status,
+        featured
+      };
+
+      const isUpdate = !!id;
+      const url = isUpdate ? '/api/vendor-works/update' : '/api/vendor-works';
+
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || 'Failed to save handiwork');
+
+        showAdminToast(`Vendor handiwork <strong>${escapeHtml(title)}</strong> ${isUpdate ? 'updated' : 'published'} successfully!`);
+        if (workEditModal) workEditModal.classList.remove('open');
+        currentModalWorkId = null;
+
+        await loadVendorWorks();
+        await loadStats();
+      } catch (err) {
+        alert('Error saving handiwork: ' + err.message);
+      } finally {
+        if (saveWorkSubmitBtn) {
+          saveWorkSubmitBtn.disabled = false;
+          saveWorkSubmitBtn.textContent = isUpdate ? 'Update Handiwork' : 'Save & Publish Handiwork';
+        }
+      }
+    });
+  }
+
+  // Delete Work
+  async function confirmDeleteWork(workId) {
+    if (!workId) return;
+    const found = allWorks.find(w => w.id === workId);
+    const title = found ? found.title : workId;
+    const ok = confirm(`Are you sure you want to delete this vendor work?\n"${title}" (${workId})\n\nThis will remove it from the public work gallery.`);
+    if (!ok) return;
+
+    try {
+      const res = await fetch('/api/vendor-works/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: workId })
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || 'Failed to delete');
+
+      showAdminToast(`Deleted work <strong>${escapeHtml(workId)}</strong>`);
+      if (workEditModal) workEditModal.classList.remove('open');
+      currentModalWorkId = null;
+
+      await loadVendorWorks();
+      await loadStats();
+    } catch (err) {
+      alert('Delete error: ' + err.message);
+    }
+  }
+
+  if (deleteWorkBtn) {
+    deleteWorkBtn.addEventListener('click', () => {
+      const id = document.getElementById('workFormId')?.value || currentModalWorkId;
+      if (id) confirmDeleteWork(id);
+    });
+  }
+
+  // Search & Filter listeners
+  if (workSearchInput) workSearchInput.addEventListener('input', renderWorksTable);
+  if (workJobTypeFilter) workJobTypeFilter.addEventListener('change', renderWorksTable);
+  if (workStatusFilter) workStatusFilter.addEventListener('change', renderWorksTable);
 });

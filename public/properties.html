@@ -37,8 +37,10 @@
       <nav aria-label="Main navigation">
         <ul class="nav-links">
           <li class="nav-item"><a href="/">Home</a></li>
+          <li class="nav-item"><a href="/gallery" style="color: #16883D; font-weight: 700;">Work Gallery</a></li>
           <li class="nav-item"><a href="/properties" class="active" style="color: var(--brand-600); font-weight: 700;">Properties</a></li>
           <li class="nav-item"><a href="/cars">Cars</a></li>
+          <li class="nav-item"><a href="/list-with-us?type=property" style="color: var(--brand-700); font-weight: 700;">List Property</a></li>
           <li class="nav-item"><a href="/about">How It Works</a></li>
           <li class="nav-item"><a href="/request-service">Services</a></li>
           <li class="nav-item"><a href="/become-vendor">For Vendors</a></li>
@@ -47,7 +49,7 @@
       </nav>
 
       <div class="nav-actions">
-        <a href="/request-service?cat=property" class="btn btn-outline btn-sm">Request Custom Property</a>
+        <a href="/list-with-us?type=property" class="btn btn-outline btn-sm">Market Your Property</a>
         <a href="https://wa.me/2347058099045" target="_blank" rel="noopener" class="btn btn-primary btn-sm">WhatsApp Desk</a>
         <button class="mobile-menu-btn" aria-label="Toggle navigation menu">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -64,8 +66,10 @@
   <div class="mobile-nav">
     <ul class="nav-links">
       <li><a href="/">Home</a></li>
+      <li><a href="/gallery" style="color: #16883D; font-weight: 700;"> Explore Our Work Gallery</a></li>
       <li><a href="/properties" style="color: var(--brand-600); font-weight: 700;">Available Properties</a></li>
       <li><a href="/cars">Automobiles & Cars</a></li>
+      <li><a href="/list-with-us?type=property" style="color: var(--brand-700); font-weight: 700;">Market Your Property</a></li>
       <li><a href="/about">How It Works</a></li>
       <li><a href="/request-service">Request a Service</a></li>
       <li><a href="/become-vendor">Become a Vendor</a></li>
@@ -75,7 +79,7 @@
       <li><a href="/admin">Audit Portal</a></li>
     </ul>
     <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
-      <a href="/request-service?cat=property" class="btn btn-primary" style="width: 100%;">Submit Property Request</a>
+      <a href="/list-with-us?type=property" class="btn btn-primary" style="width: 100%;">Market Your Property</a>
       <a href="https://wa.me/2347058099045" class="btn btn-outline" style="width: 100%;">Direct WhatsApp Desk</a>
     </div>
   </div>
@@ -85,12 +89,18 @@
     <section class="properties-hero">
       <div class="container">
         <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(22, 136, 59, 0.1); border: 1px solid rgba(22, 136, 59, 0.25); color: var(--brand-700); padding: 0.35rem 0.95rem; border-radius: 999px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1.25rem;">
-          <span>🏡 Verified Real Estate Division</span>
+          <span> Verified Real Estate Division</span>
         </div>
         <h1>Available Properties & <span class="text-highlight">Verified Land</span></h1>
         <p>
           Every plot and development listed below has undergone title verification, site validation, and inspection by the ALLFIX Property & Construction Desk.
         </p>
+
+        <div style="margin: 1.25rem 0 1.75rem 0;">
+          <a href="/list-with-us?type=property" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.35rem; border-radius: 9999px; font-weight: 700; box-shadow: 0 4px 12px rgba(22, 136, 59, 0.35);">
+            <span> Own a Property or Land? Market it with ALLFIX &rarr;</span>
+          </a>
+        </div>
 
         <!-- Filters -->
         <div class="properties-filter-wrap">
@@ -122,7 +132,7 @@
             <p style="color: var(--navy-600); font-size: 0.95rem; margin: 0;">Tell us your desired district in Abuja, budget, plot size, or building type. Our construction & property team will source, vet, and inspect verified matches for you.</p>
           </div>
           <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-            <a href="/request-service?cat=property" class="btn btn-primary">Submit Property Request 📝</a>
+            <a href="/request-service?cat=property" class="btn btn-primary">Submit Property Request </a>
             <a href="https://wa.me/2347058099045?text=Hello%20ALLFIX%2C%20I%20want%20to%20consult%20on%20available%20properties%20and%20construction%20in%20Abuja." target="_blank" rel="noopener" class="btn btn-outline">Chat with Property Desk</a>
           </div>
         </div>
@@ -141,9 +151,9 @@
           “ALLFIX — not just selling you products and services, but selling you peace of mind.”
         </p>
         <div class="footer-contact">
-          <p>📍 Office: Garki 2, Abuja, FCT, Nigeria</p>
-          <p>📞 Phone: +234 705 809 9045</p>
-          <p>💬 WhatsApp: <a href="https://wa.me/2347058099045" target="_blank" style="color: #42E94D; text-decoration: underline;">Direct Chat</a></p>
+          <p> Office: Abuja, Nigeria</p>
+          <p> Phone: +234 705 809 9045</p>
+          <p> WhatsApp: <a href="https://wa.me/2347058099045" target="_blank" style="color: #42E94D; text-decoration: underline;">Direct Chat</a></p>
         </div>
         <div class="social-links">
           <a href="https://www.facebook.com/profile.php?id=61594556316060" target="_blank" rel="noopener noreferrer" class="social-link facebook" aria-label="Follow ALLFIX on Facebook">
@@ -282,7 +292,7 @@
         if (imgEl) imgEl.src = images[next];
 
         const counterEl = document.getElementById(`propCounter_${cardIdx}`);
-        if (counterEl) counterEl.textContent = `📷 ${next + 1} / ${images.length}`;
+        if (counterEl) counterEl.textContent = ` ${next + 1} / ${images.length}`;
       };
 
       function formatPriceDisplay(rawPrice) {
@@ -346,7 +356,7 @@ Please share title documents and schedule an inspection.`;
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
                   Verified
                 </span>
-                ${images.length > 1 ? `<span class="gallery-counter-tag" id="propCounter_${cardIdx}">📷 1 / ${images.length}</span>` : ''}
+                ${images.length > 1 ? `<span class="gallery-counter-tag" id="propCounter_${cardIdx}"> 1 / ${images.length}</span>` : ''}
                 ${images.length > 1 ? `
                   <button type="button" class="gallery-nav-btn gallery-nav-prev" onclick="window.stepPropImage(event, ${cardIdx}, -1)">&lsaquo;</button>
                   <button type="button" class="gallery-nav-btn gallery-nav-next" onclick="window.stepPropImage(event, ${cardIdx}, 1)">&rsaquo;</button>

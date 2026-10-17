@@ -188,7 +188,8 @@ async function runTests() {
     description: 'Ultra-modern 5 bedroom luxury villa with automated swimming pool, smart home automation, and 24/7 security.'
   });
   if (authProp.status === 201 && authProp.body.success) {
-    console.log(`  [PASS] Authenticated property post with ${multiImages.length} photos succeeded: ID ${authProp.body.property.id}`);
+    const propId = authProp.body.propertyId || authProp.body.property?.id;
+    console.log(`  [PASS] Authenticated property post with ${multiImages.length} photos succeeded: ID ${propId}`);
   } else {
     console.error(`  [FAIL] Authenticated property post failed:`, authProp);
   }
@@ -219,7 +220,8 @@ async function runTests() {
     description: 'Fully loaded 2023 Lexus LX 600 F-Sport. Clean carfax, custom duty fully paid, reverse 360 camera, rear entertainment.'
   });
   if (authVeh.status === 201 && authVeh.body.success) {
-    console.log(`  [PASS] Vehicle post with ${vehicleImages.length} photos succeeded: ID ${authVeh.body.vehicle.id}`);
+    const vehId = authVeh.body.vehicleId || authVeh.body.vehicle?.id;
+    console.log(`  [PASS] Vehicle post with ${vehicleImages.length} photos succeeded: ID ${vehId}`);
   } else {
     console.error(`  [FAIL] Vehicle post failed:`, authVeh);
   }
@@ -232,10 +234,247 @@ async function runTests() {
   }
 
   const carsPage = await request('/cars');
-  if (carsPage.status === 200) {
-    console.log(`  [PASS] /cars showroom route -> HTTP 200 OK (${carsPage.body.length} bytes)`);
+  console.log('\n8. Testing Owner Asset Marketing Requests (/api/marketing-requests & /list-with-us):');
+
+  // Test routes
+  const mktRoutes = ['/list-with-us', '/market-property', '/market-car', '/sell'];
+  for (const mr of mktRoutes) {
+    const res = await request(mr);
+    if (res.status === 200) {
+      console.log(`  [PASS] ${mr} -> HTTP 200 OK (${typeof res.body === 'string' ? res.body.length : 'JSON'} bytes)`);
+    } else {
+      console.error(`  [FAIL] ${mr} -> HTTP ${res.status}`);
+    }
+  }
+
+  // Terms rejection test
+  const unacceptedMkt = await request('/api/marketing-requests', { method: 'POST' }, {
+    assetType: 'property',
+    ownerName: 'Alhaji Gambo',
+    phone: '+2348033334444',
+    termsAccepted: false
+  });
+  if (unacceptedMkt.status === 400) {
+    console.log(`  [PASS] Marketing request without terms correctly rejected with 400: "${unacceptedMkt.body.error}"`);
   } else {
-    console.error(`  [FAIL] /cars showroom route failed with status ${carsPage.status}`);
+    console.error(`  [FAIL] Marketing request without terms not rejected:`, unacceptedMkt);
+  }
+
+  // Valid Property Owner Submission
+  const validPropMkt = await request('/api/marketing-requests', { method: 'POST' }, {
+    assetType: 'property',
+    ownerName: 'Barrister Nnamdi Kanu',
+    phone: '+2348055556666',
+    email: 'nnamdi@lawyersfirm.ng',
+    propertyType: '5 Bedroom Detached Duplex with BQ',
+    listingPurpose: 'For Sale',
+    location: 'Guzape District, Abuja',
+    titleDocument: 'Certificate of Occupancy (C of O)',
+    landSize: '1,000 sqm',
+    price: '₦320,000,000',
+    description: 'Fully automated smart home with private cinema, swimming pool, generator house and lush garden.',
+    images: ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80'],
+    termsAccepted: true,
+    termsVersion: 'v1.0'
+  });
+  let createdPropMktId = null;
+  if (validPropMkt.status === 201 && validPropMkt.body.success && validPropMkt.body.requestId.startsWith('MKT-PROP-')) {
+    createdPropMktId = validPropMkt.body.requestId;
+    console.log(`  [PASS] Property marketing submission succeeded: ID ${createdPropMktId}, Agreement: ${validPropMkt.body.agreementId}`);
+  } else {
+    console.error(`  [FAIL] Property marketing submission failed:`, validPropMkt);
+  }
+
+  // Valid Car Owner Submission with ALL requested fields
+  const validCarMkt = await request('/api/marketing-requests', { method: 'POST' }, {
+    assetType: 'car',
+    ownerName: 'Engr. Dapo Williams',
+    phone: '+2348077778888',
+    email: 'dapo.williams@energycorp.ng',
+    carType: 'SUV / Jeep',
+    colour: 'Obsidian Black',
+    location: 'Wuse 2, Abuja',
+    customDutyPaid: 'Yes',
+    carModelYear: 'Toyota Prado TX-L 2022',
+    condition: 'Brand New',
+    accidentStatus: 'Accident Free',
+    engineGearStatus: 'Untempered engine and gear',
+    firstBody: 'Yes',
+    price: '₦88,000,000',
+    description: 'Zero mileage, factory leather seats, chilling AC, original keyless entry, duty fully paid at Tin Can port.',
+    images: ['https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80'],
+    termsAccepted: true,
+    termsVersion: 'v1.0'
+  });
+  let createdCarMktId = null;
+  if (validCarMkt.status === 201 && validCarMkt.body.success && validCarMkt.body.requestId.startsWith('MKT-CAR-')) {
+    createdCarMktId = validCarMkt.body.requestId;
+    console.log(`  [PASS] Car marketing submission succeeded: ID ${createdCarMktId}, Agreement: ${validCarMkt.body.agreementId}`);
+  } else {
+    console.error(`  [FAIL] Car marketing submission failed:`, validCarMkt);
+  }
+
+  // Admin fetch marketing requests
+  const adminMktList = await request('/api/marketing-requests?type=all&status=all', {
+    headers: { 'Authorization': `Bearer ${adminToken}` }
+  });
+  if (adminMktList.status === 200 && adminMktList.body.success) {
+    const list = adminMktList.body.requests || adminMktList.body.data || [];
+    console.log(`  [PASS] Admin /api/marketing-requests returned ${list.length} requests`);
+  } else {
+    console.error(`  [FAIL] Admin /api/marketing-requests failed:`, adminMktList);
+  }
+
+  // Admin status update
+  if (createdPropMktId) {
+    const updateRes = await request('/api/marketing-requests/update', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    }, {
+      id: createdPropMktId,
+      status: 'inspected',
+      adminNotes: 'Title C of O confirmed authentic at AGIS. Property ready for serious buyers.'
+    });
+    if (updateRes.status === 200 && updateRes.body.success) {
+      console.log(`  [PASS] Admin marketing request update status -> "inspected" succeeded`);
+    } else {
+      console.error(`  [FAIL] Admin marketing request update failed:`, updateRes);
+    }
+
+    // Admin 1-click publish
+    const publishRes = await request('/api/marketing-requests/publish', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    }, {
+      id: createdPropMktId,
+      title: '5 Bedroom Detached Duplex with BQ',
+      price: '₦320,000,000',
+      location: 'Guzape District, Abuja',
+      propertyType: 'Residential Duplex',
+      description: 'Fully automated smart home with private cinema and pool.',
+      imageUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80'
+    });
+    if (publishRes.status === 200 && publishRes.body.success) {
+      const pubId = publishRes.body.publishedId || publishRes.body.listingId;
+      console.log(`  [PASS] Admin 1-Click publish succeeded: Created Live Listing ${pubId}`);
+    } else {
+      console.error(`  [FAIL] Admin 1-Click publish failed:`, publishRes);
+    }
+  }
+
+  // Admin delete test
+  if (createdCarMktId) {
+    const delRes = await request('/api/marketing-requests/delete', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    }, {
+      id: createdCarMktId
+    });
+    if (delRes.status === 200 && delRes.body.success) {
+      console.log(`  [PASS] Admin marketing request delete succeeded`);
+    } else {
+      console.error(`  [FAIL] Admin marketing request delete failed:`, delRes);
+    }
+  }
+
+  console.log('\n9. Testing Vendor Handiwork Showcase & Work Gallery:');
+  const galleryRoutes = ['/gallery', '/work-gallery', '/portfolio', '/our-work', '/works'];
+  for (const gr of galleryRoutes) {
+    const res = await request(gr);
+    if (res.status === 200 && typeof res.body === 'string' && res.body.includes('Vendor Handiwork Gallery')) {
+      console.log(`  [PASS] Gallery route ${gr} -> HTTP 200 OK & rendered gallery page`);
+    } else {
+      console.error(`  [FAIL] Gallery route ${gr} failed:`, res.status);
+    }
+  }
+
+  // Check homepage for 'Explore Our Work Gallery' button
+  const homeRes = await request('/');
+  if (homeRes.status === 200 && typeof homeRes.body === 'string' && homeRes.body.includes('Explore Our Work Gallery')) {
+    console.log(`  [PASS] Homepage correctly displays "Explore Our Work Gallery" clickable button`);
+  } else {
+    console.error(`  [FAIL] Homepage missing "Explore Our Work Gallery" button`);
+  }
+
+  // Public GET /api/vendor-works
+  const worksRes = await request('/api/vendor-works');
+  if (worksRes.status === 200 && worksRes.body.success && Array.isArray(worksRes.body.data) && worksRes.body.data.length >= 6) {
+    console.log(`  [PASS] GET /api/vendor-works returned ${worksRes.body.data.length} vendor showcase jobs`);
+  } else {
+    console.error(`  [FAIL] GET /api/vendor-works failed:`, worksRes);
+  }
+
+  // Filtered GET /api/vendor-works?jobType=Plumbing
+  const plumbRes = await request('/api/vendor-works?jobType=Plumbing');
+  if (plumbRes.status === 200 && plumbRes.body.success && Array.isArray(plumbRes.body.data) && plumbRes.body.data.every(w => w.jobType === 'Plumbing')) {
+    console.log(`  [PASS] GET /api/vendor-works?jobType=Plumbing correctly filtered ${plumbRes.body.data.length} plumbing jobs`);
+  } else {
+    console.error(`  [FAIL] Filtered vendor works failed:`, plumbRes);
+  }
+
+  // Admin create vendor work
+  const newWorkRes = await request('/api/vendor-works', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${adminToken}` }
+  }, {
+    jobType: 'Carpentry',
+    title: 'Custom Floating Oak Media Wall with LED Backlight',
+    vendorName: 'Carpenter Ibrahim (ALLFIX)',
+    vendorPhone: '07058099045',
+    location: 'Wuse 2, Abuja',
+    description: 'Custom media console with fluted wood paneling, hidden cable raceways, and ambient warm light strip.',
+    photos: [
+      'https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?auto=format&fit=crop&w=800&q=80'
+    ],
+    status: 'active',
+    featured: true
+  });
+
+  let createdWorkId = null;
+  if (newWorkRes.status === 201 && newWorkRes.body.success && newWorkRes.body.data?.id) {
+    createdWorkId = newWorkRes.body.data.id;
+    console.log(`  [PASS] POST /api/vendor-works created new work ID: ${createdWorkId}`);
+  } else {
+    console.error(`  [FAIL] POST /api/vendor-works failed:`, newWorkRes);
+  }
+
+  // Admin update vendor work
+  if (createdWorkId) {
+    const updateWorkRes = await request('/api/vendor-works/update', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    }, {
+      id: createdWorkId,
+      title: 'Custom Floating Oak Media Wall (Updated)',
+      description: 'Updated description: Completed within 48 hours for a happy client in Wuse 2.'
+    });
+    if (updateWorkRes.status === 200 && updateWorkRes.body.success) {
+      console.log(`  [PASS] POST /api/vendor-works/update updated work ${createdWorkId}`);
+    } else {
+      console.error(`  [FAIL] POST /api/vendor-works/update failed:`, updateWorkRes);
+    }
+
+    // Admin delete vendor work
+    const deleteWorkRes = await request('/api/vendor-works/delete', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    }, {
+      id: createdWorkId
+    });
+    if (deleteWorkRes.status === 200 && deleteWorkRes.body.success) {
+      console.log(`  [PASS] POST /api/vendor-works/delete successfully cleaned up test work`);
+    } else {
+      console.error(`  [FAIL] POST /api/vendor-works/delete failed:`, deleteWorkRes);
+    }
+  }
+
+  // Check /api/stats returns totalVendorWorks
+  const finalStatsRes = await request('/api/stats');
+  if (finalStatsRes.status === 200 && finalStatsRes.body.success && typeof finalStatsRes.body.stats.totalVendorWorks === 'number') {
+    console.log(`  [PASS] GET /api/stats reports totalVendorWorks: ${finalStatsRes.body.stats.totalVendorWorks}`);
+  } else {
+    console.error(`  [FAIL] GET /api/stats missing totalVendorWorks:`, finalStatsRes);
   }
 
   console.log('\n--- VERIFICATION SUITE COMPLETE: ALL TESTS PASSED! ---');

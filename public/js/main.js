@@ -176,4 +176,13 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.body.appendChild(waBtn);
   }
+
+  const footer = document.querySelector('.site-footer');
+  const supportButton = document.querySelector('.floating-whatsapp-btn');
+  if (footer && supportButton && 'IntersectionObserver' in window) {
+    const footerObserver = new IntersectionObserver(([entry]) => {
+      document.body.classList.toggle('footer-visible', entry.isIntersecting);
+    }, { threshold: 0.01 });
+    footerObserver.observe(footer);
+  }
 });

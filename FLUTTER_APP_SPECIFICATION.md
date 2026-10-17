@@ -125,7 +125,57 @@ CREATE TABLE public.properties (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Legal Compliance Audit Trail (Agreements)
+-- 4. Available Automobiles & Vehicles
+CREATE TABLE public.vehicles (
+  id TEXT PRIMARY KEY,                       -- e.g. 'VEH-3A2B1'
+  title TEXT NOT NULL,
+  brand TEXT,
+  model_year TEXT,
+  car_type TEXT,
+  price TEXT,
+  location TEXT,
+  colour TEXT,
+  condition TEXT,                            -- 'Brand New', 'Tokunbo / Foreign Used', 'Nigerian Used'
+  description TEXT,
+  image_url TEXT,
+  status TEXT DEFAULT 'available',           -- 'available', 'reserved', 'sold'
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. Owner Asset Marketing Submissions (Properties & Cars)
+CREATE TABLE public.marketing_requests (
+  id TEXT PRIMARY KEY,                       -- e.g. 'MKT-PROP-XXXX' or 'MKT-CAR-XXXX'
+  asset_type TEXT NOT NULL,                  -- 'property' or 'car'
+  owner_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  email TEXT,
+  location TEXT,
+  price TEXT,
+  description TEXT,
+  images JSONB DEFAULT '[]',
+  -- Property-specific fields:
+  property_type TEXT,                        -- 'Bungalow', 'Duplex', 'Land / Plot', etc.
+  listing_purpose TEXT,                      -- 'For Sale', 'For Rent / Lease'
+  title_document TEXT,                       -- 'C of O', 'R of O', 'Governor Consent', etc.
+  land_size TEXT,                            -- '500 sqm', '1,000 sqm (2 plots)', etc.
+  -- Car-specific fields:
+  car_type TEXT,                             -- 'SUV / Jeep', 'Sedan / Saloon', etc.
+  car_model_year TEXT,                       -- 'Toyota Camry 2021'
+  colour TEXT,                               -- 'Black', 'White', etc.
+  condition TEXT,                            -- 'Brand New', 'Fairly Used (Foreign / Tokunbo)', 'Fairly Used (Nigerian)'
+  custom_duty_paid TEXT,                     -- 'Yes', 'No'
+  accident_status TEXT,                      -- 'Accident Free', 'Accidented'
+  engine_gear_status TEXT,                   -- 'Untempered engine and gear', 'Tempered engine and gear'
+  first_body TEXT,                           -- 'Yes', 'No'
+  -- Management & compliance:
+  status TEXT DEFAULT 'pending_review',      -- 'pending_review', 'inspected', 'published', 'rejected'
+  admin_notes TEXT,
+  agreement_id TEXT,                         -- 'AGR-C-XXXX'
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 6. Legal Compliance Audit Trail (Agreements)
 CREATE TABLE public.agreements (
   id TEXT PRIMARY KEY,                       -- e.g. 'AGR-C-...' or 'AGR-V-...'
   user_name TEXT NOT NULL,
@@ -138,6 +188,25 @@ CREATE TABLE public.agreements (
   user_agent TEXT,
   related_entity_id TEXT,
   accepted_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 7. Vendor Handiwork Showcase & Job Evidence
+CREATE TABLE public.vendor_works (
+  id TEXT PRIMARY KEY,                       -- e.g. 'WORK-PLUMB01'
+  vendor_id TEXT,                            -- optional foreign link to vendors.id
+  vendor_name TEXT NOT NULL,                 -- e.g. 'Plumber Emeka Okafor'
+  vendor_phone TEXT,
+  job_type TEXT NOT NULL,                    -- 'Plumbing', 'Carpentry', 'Electrical', 'Auto Mechanic', etc.
+  title TEXT NOT NULL,                       -- e.g. 'Concealed Bathroom Piping & Shower System'
+  description TEXT NOT NULL,                 -- Detailed scope, materials, problem solved
+  location TEXT,                             -- e.g. 'Maitama, Abuja'
+  image TEXT,                                -- primary cover picture (URL or base64)
+  photos JSONB DEFAULT '[]',                 -- array of image URLs/base64 strings (up to 10 photos)
+  completed_at TIMESTAMPTZ DEFAULT NOW(),
+  featured BOOLEAN DEFAULT FALSE,
+  status TEXT DEFAULT 'active',              -- 'active', 'draft'
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 
@@ -238,6 +307,105 @@ CREATE TABLE public.agreements (
 * **Endpoint**: `POST /api/upload`
 * **Format**: `multipart/form-data` with form field key `file` (Image uploaded directly to Cloudinary or Supabase Storage bucket; returns `{ success: true, url: "..." }`).
 
+### F. Owner Asset Marketing Submissions (Property & Car)
+* **Submit Marketing Request**: `POST /api/marketing-requests`
+* **Headers**: `Content-Type: application/json`
+* **Property Owner Payload**:
+```json
+{
+  "assetType": "property",
+  "ownerName": "Chief Segun Adeleke",
+  "phone": "+2348039876543",
+  "email": "segun@adeleke.ng",
+  "propertyType": "4 Bedroom Detached Duplex",
+  "listingPurpose": "For Sale",
+  "location": "Maitama Extension, Abuja",
+  "titleDocument": "Certificate of Occupancy (C of O)",
+  "landSize": "850 sqm",
+  "price": "₦350,000,000",
+  "description": "Newly completed luxury mansion with swimming pool, smart home automation, and 2-room BQ.",
+  "images": ["data:image/jpeg;base64,..."],
+  "termsAccepted": true,
+  "termsVersion": "v1.0"
+}
+```
+* **Car Owner Payload (with tactile button values)**:
+```json
+{
+  "assetType": "car",
+  "ownerName": "Dr. Emeka Okonkwo",
+  "phone": "+2348123456789",
+  "email": "emeka.okonkwo@gmail.com",
+  "carType": "SUV / Jeep",
+  "carModelYear": "Toyota Land Cruiser Prado 2022",
+  "colour": "Pearl White",
+  "location": "Garki 2, Abuja",
+  "condition": "Fairly Used (Foreign / Tokunbo)",
+  "customDutyPaid": "Yes",
+  "accidentStatus": "Accident Free",
+  "engineGearStatus": "Untempered engine and gear",
+  "firstBody": "Yes",
+  "price": "₦75,000,000",
+  "description": "Full option, panoramic roof, leather interior, clean foreign title, zero faults.",
+  "images": ["data:image/jpeg;base64,..."],
+  "termsAccepted": true,
+  "termsVersion": "v1.0"
+}
+```
+* **Success Response (201)**:
+```json
+{
+  "success": true,
+  "requestId": "MKT-PROP-4A82F19E",
+  "agreementId": "AGR-C-63D11BA2",
+  "assetType": "property",
+  "message": "Property marketing request submitted successfully! Our valuation and brokerage team will inspect and verify your asset."
+}
+```
+* **Fetch Submissions (Admin)**: `GET /api/marketing-requests?type=all&status=all`
+* **Update Status (Admin)**: `POST /api/marketing-requests/update` (`{ id, status, adminNotes }`)
+* **1-Click Convert to Live Listing (Admin)**: `POST /api/marketing-requests/publish` (`{ id, title, price, location, propertyType / carType, description, imageUrl }`)
+* **Delete Submission (Admin)**: `POST /api/marketing-requests/delete` (`{ id }`)
+
+### G. Available Automobiles & Vehicles
+* **List Vehicles**: `GET /api/vehicles`
+* **Create Vehicle (Admin)**: `POST /api/vehicles`
+* **Update Vehicle (Admin)**: `PUT /api/vehicles/:id`
+* **Delete Vehicle (Admin)**: `DELETE /api/vehicles/:id`
+
+### H. Vendor Handiwork Showcase & Work Gallery
+* **Public Gallery Endpoint**: `GET /api/vendor-works?jobType=all&search=`
+* **Public Response**:
+```json
+{
+  "success": true,
+  "count": 6,
+  "data": [
+    {
+      "id": "WORK-PLUMB01",
+      "vendorId": "VEN-EMEKAPLUMB",
+      "vendorName": "Plumber Emeka Okafor",
+      "vendorPhone": "07058099045",
+      "jobType": "Plumbing",
+      "title": "Concealed Bathroom Piping & Shower System",
+      "description": "Complete bathroom repiping with Italian PPR pressure testing and zero leaks.",
+      "location": "Maitama, Abuja",
+      "image": "https://images.unsplash.com/...",
+      "photos": [
+        "https://images.unsplash.com/...",
+        "https://images.unsplash.com/..."
+      ],
+      "completedAt": "2026-10-10T14:30:00.000Z",
+      "featured": true,
+      "status": "active"
+    }
+  ]
+}
+```
+* **Post New Handiwork (Admin)**: `POST /api/vendor-works` (Payload includes `jobType`, `title`, `description`, `vendorName`, `vendorPhone`, `location`, `photos`, `image`, `status`, `featured`)
+* **Update Handiwork (Admin)**: `POST /api/vendor-works/update`
+* **Delete Handiwork (Admin)**: `POST /api/vendor-works/delete` (`{ id }`)
+
 ---
 
 ## 6. Service Categories & Dynamic Workflow
@@ -314,18 +482,27 @@ dependencies:
      * Urgency selector: High (Red), Medium (Amber), Low (Green)
      * Mandatory Terms Checkbox (Client Terms v1.0)
      * Instant Confirmation Screen with Request ID + Direct "Chat with Dispatch" button
-   * **Tab 3: Property Explorer**:
-     * Verified land, duplexes, apartments, and commercial listings
-     * Filter by location, price, and property type
-     * Detail view with photo gallery & "Book Inspection" button
-   * **Tab 4: Become a Vendor (Join ALLFIX)**:
+   * **Tab 3: Property & Automobile Explorers**:
+     * Real Estate: Verified land, duplexes, apartments, and commercial listings with inspection booking
+     * Automobiles: Available foreign used / brand new vehicles with condition badges and test-drive inquiries
+   * **Tab 4: List / Market With Us (Property & Car Owners)**:
+     * Segmented Switcher: `Market a Property` vs `Market a Car`
+     * Tactile toggle buttons for cars:
+       * Custom duty fully paid? (Yes / No)
+       * Vehicle condition: Brand New vs Fairly Used (Tokunbo / Nigerian Used)
+       * History: Accident Free vs Accidented
+       * Engine & Gear: Untempered engine and gear vs Tempered
+       * Body status: First Body (Yes / No)
+     * Up to 10 photos upload with local thumbnail previews
+     * Mandatory Terms Checkbox & instant pre-filled WhatsApp link
+   * **Tab 5: Become a Vendor (Join ALLFIX)**:
      * Artisan KYC registration, trade documents, experience years
      * Vendor Terms v1.0 acceptance
-   * **Tab 5: Admin / Dispatch Portal (Protected)**:
+   * **Tab 6: Admin / Dispatch Portal (Protected)**:
      * Real-time list of all incoming requests with push/in-app notifications
-     * Request filters by Urgency (High/Medium/Low) and Status
-     * Add/Manage Properties (Camera/gallery image upload directly to Cloudinary)
-     * Status updater (`pending` → `contacted` → `matched` → `completed`)
+     * Owner Asset Submissions manager with search, filter, and WhatsApp link
+     * 1-Click Publishing: Convert submitted asset into live property or vehicle catalog item
+     * Status updater (`pending_review` → `inspected` → `published` → `rejected`)
 
 ---
 

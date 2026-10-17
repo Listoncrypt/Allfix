@@ -60,10 +60,18 @@ const MIME_TYPES = {
 function readDb() {
   try {
     const raw = fs.readFileSync(DB_PATH, 'utf-8');
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    parsed.agreements = parsed.agreements || [];
+    parsed.requests = parsed.requests || [];
+    parsed.vendors = parsed.vendors || [];
+    parsed.messages = parsed.messages || [];
+    parsed.properties = parsed.properties || [];
+    parsed.vehicles = parsed.vehicles || [];
+    parsed.marketingRequests = parsed.marketingRequests || [];
+    return parsed;
   } catch (err) {
     console.error('Error reading database:', err);
-    return { agreements: [], requests: [], vendors: [], messages: [] };
+    return { agreements: [], requests: [], vendors: [], messages: [], properties: [], vehicles: [], marketingRequests: [] };
   }
 }
 
@@ -803,15 +811,18 @@ const server = http.createServer(async (req, res) => {
         let vendors = [];
         let agreements = [];
         let messages = [];
+        let marketingRequests = [];
 
         if (supabase.isSupabaseConfigured()) {
           try {
-            [requests, vendors, agreements, messages] = await Promise.all([
+            [requests, vendors, agreements, messages, marketingRequests] = await Promise.all([
               supabase.getRequests(),
               supabase.getVendors(),
               supabase.getAgreements(),
-              supabase.getMessages()
+              supabase.getMessages(),
+              supabase.getMarketingRequests()
             ]);
+            marketingRequests = marketingRequests || [];
           } catch (err) {
             console.error('Supabase stats error, falling back to db.json:', err);
             const db = readDb();
@@ -819,6 +830,7 @@ const server = http.createServer(async (req, res) => {
             vendors = db.vendors || [];
             agreements = db.agreements || [];
             messages = db.messages || [];
+            marketingRequests = db.marketingRequests || [];
           }
         } else {
           const db = readDb();
@@ -826,11 +838,13 @@ const server = http.createServer(async (req, res) => {
           vendors = db.vendors || [];
           agreements = db.agreements || [];
           messages = db.messages || [];
+          marketingRequests = db.marketingRequests || [];
         }
 
         const pendingCount = (requests || []).filter(r => r.status === 'pending_matching' || r.status === 'pending').length;
         const contactedCount = (requests || []).filter(r => r.status === 'contacted').length;
         const completedCount = (requests || []).filter(r => r.status === 'completed').length;
+        const pendingMarketingCount = (marketingRequests || []).filter(m => m.status === 'pending_review' || !m.status).length;
         const dbFallback = readDb();
         const propertiesCount = (dbFallback.properties || []).length;
         const vehiclesCount = (dbFallback.vehicles || []).length;
@@ -842,11 +856,14 @@ const server = http.createServer(async (req, res) => {
             pendingRequests: pendingCount,
             contactedRequests: contactedCount,
             completedRequests: completedCount,
+            totalMarketingRequests: (marketingRequests || []).length,
+            pendingMarketingRequests: pendingMarketingCount,
             verifiedVendors: Math.max(1, (vendors || []).length),
             agreementsSigned: (agreements || []).length,
             totalMessages: (messages || []).length,
             totalProperties: propertiesCount,
             totalVehicles: vehiclesCount,
+            totalVendorWorks: (dbFallback.vendorWorks || []).length,
             storageBackend: supabase.isSupabaseConfigured() ? 'Supabase Database' : 'Local Storage',
             supabaseConfigured: supabase.isSupabaseConfigured()
           }
@@ -916,6 +933,7 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 201, {
           success: true,
           propertyId: propId,
+          property: propRecord,
           message: 'Property posted successfully!'
         });
       }
@@ -1029,19 +1047,19 @@ const server = http.createServer(async (req, res) => {
 
         const vehRecord = {
           id: vehId,
-          title: title.trim(),
-          make: (make || '').trim(),
-          model: (model || '').trim(),
-          year: (year || '').trim(),
-          vehicleType: (vehicleType || 'SUV / Jeep').trim(),
-          price: (price || '').trim(),
-          mileage: (mileage || '').trim(),
-          transmission: (transmission || 'Automatic').trim(),
-          fuelType: (fuelType || 'Petrol').trim(),
-          condition: (condition || 'Foreign Used (Tokunbo)').trim(),
-          color: (color || '').trim(),
-          location: location.trim(),
-          description: (description || '').trim(),
+          title: String(title || '').trim(),
+          make: String(make || '').trim(),
+          model: String(model || '').trim(),
+          year: String(year || '').trim(),
+          vehicleType: String(vehicleType || 'SUV / Jeep').trim(),
+          price: String(price || '').trim(),
+          mileage: String(mileage || '').trim(),
+          transmission: String(transmission || 'Automatic').trim(),
+          fuelType: String(fuelType || 'Petrol').trim(),
+          condition: String(condition || 'Foreign Used (Tokunbo)').trim(),
+          color: String(color || '').trim(),
+          location: String(location || '').trim(),
+          description: String(description || '').trim(),
           imageUrl: primaryImage,
           images: imagesList,
           status: status || 'available',
@@ -1062,6 +1080,7 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 201, {
           success: true,
           vehicleId: vehId,
+          vehicle: vehRecord,
           message: 'Vehicle posted successfully!'
         });
       }
@@ -1083,19 +1102,19 @@ const server = http.createServer(async (req, res) => {
           return sendJson(res, 404, { success: false, error: 'Vehicle not found.' });
         }
         const updates = { updatedAt: new Date().toISOString() };
-        if (title !== undefined) updates.title = title.trim();
-        if (make !== undefined) updates.make = make.trim();
-        if (model !== undefined) updates.model = model.trim();
-        if (year !== undefined) updates.year = year.trim();
-        if (vehicleType !== undefined) updates.vehicleType = vehicleType.trim();
-        if (price !== undefined) updates.price = price.trim();
-        if (mileage !== undefined) updates.mileage = mileage.trim();
-        if (transmission !== undefined) updates.transmission = transmission.trim();
-        if (fuelType !== undefined) updates.fuelType = fuelType.trim();
-        if (condition !== undefined) updates.condition = condition.trim();
-        if (color !== undefined) updates.color = color.trim();
-        if (location !== undefined) updates.location = location.trim();
-        if (description !== undefined) updates.description = description.trim();
+        if (title !== undefined) updates.title = String(title).trim();
+        if (make !== undefined) updates.make = String(make).trim();
+        if (model !== undefined) updates.model = String(model).trim();
+        if (year !== undefined) updates.year = String(year).trim();
+        if (vehicleType !== undefined) updates.vehicleType = String(vehicleType).trim();
+        if (price !== undefined) updates.price = String(price).trim();
+        if (mileage !== undefined) updates.mileage = String(mileage).trim();
+        if (transmission !== undefined) updates.transmission = String(transmission).trim();
+        if (fuelType !== undefined) updates.fuelType = String(fuelType).trim();
+        if (condition !== undefined) updates.condition = String(condition).trim();
+        if (color !== undefined) updates.color = String(color).trim();
+        if (location !== undefined) updates.location = String(location).trim();
+        if (description !== undefined) updates.description = String(description).trim();
         if (images !== undefined) {
           updates.images = Array.isArray(images) ? images.slice(0, 10) : [];
           if (!imageUrl && updates.images.length > 0) updates.imageUrl = updates.images[0];
@@ -1142,6 +1161,553 @@ const server = http.createServer(async (req, res) => {
         });
       }
 
+      // ==============================================================================
+      // Owner Asset Marketing Endpoints (Properties & Vehicles)
+      // ==============================================================================
+      if (pathname === '/api/marketing-requests' && method === 'POST') {
+        const body = await parseJsonBody(req);
+        const {
+          assetType, // 'property' or 'car'
+          ownerName,
+          phone,
+          email,
+          location,
+          price,
+          description,
+          images,
+          // Property fields
+          propertyType,
+          listingPurpose,
+          titleDocument,
+          landSize,
+          // Car fields
+          carType,
+          carColour,
+          colour,
+          carMakeModelYear,
+          carModelYear,
+          customDutyPaid,
+          carCondition,
+          condition,
+          accidentHistory,
+          accidentStatus,
+          engineGearStatus,
+          firstBody,
+          // Compliance
+          termsAccepted,
+          termsVersion
+        } = body;
+
+        if (termsAccepted !== true || termsVersion !== 'v1.0') {
+          return sendJson(res, 400, {
+            success: false,
+            error: 'Please accept the Marketing & Inspection Authorization Terms before submitting.'
+          });
+        }
+
+        if (!ownerName || !phone || !location) {
+          return sendJson(res, 400, {
+            success: false,
+            error: 'Please fill in all essential owner details: full name, phone number, and location.'
+          });
+        }
+
+        if (assetType !== 'property' && assetType !== 'car') {
+          return sendJson(res, 400, {
+            success: false,
+            error: 'Invalid asset type. Please select either Property or Car.'
+          });
+        }
+
+        if (assetType === 'property') {
+          if (!propertyType || !listingPurpose) {
+            return sendJson(res, 400, {
+              success: false,
+              error: 'Please select the property type and whether it is for Sale or Rent.'
+            });
+          }
+        }
+
+        if (assetType === 'car') {
+          const finalCarModel = carModelYear || carMakeModelYear;
+          if (!carType || !finalCarModel) {
+            return sendJson(res, 400, {
+              success: false,
+              error: 'Please specify the vehicle type (e.g. SUV, Sedan) and year/model.'
+            });
+          }
+        }
+
+        const db = readDb();
+        const isoNow = new Date().toISOString();
+        const idPrefix = assetType === 'property' ? 'MKT-PROP-' : 'MKT-CAR-';
+        const recordId = idPrefix + crypto.randomBytes(4).toString('hex').toUpperCase();
+        const agreementId = 'AGR-M-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+        const clientIp = getClientIp(req);
+        const userAgent = req.headers['user-agent'] || 'Unknown';
+
+        const agreementRecord = {
+          id: agreementId,
+          userName: ownerName.trim(),
+          contact: (phone || email || '').trim(),
+          agreementType: 'Owner Marketing Terms',
+          version: 'v1.0',
+          acceptedAt: isoNow,
+          status: true,
+          context: 'marketing_form_' + assetType,
+          ip: clientIp,
+          userAgent: userAgent,
+          relatedEntityId: recordId
+        };
+
+        const imagesList = Array.isArray(images) ? images.slice(0, 10) : [];
+
+        const marketingRecord = {
+          id: recordId,
+          assetType: assetType,
+          ownerName: ownerName.trim(),
+          phone: phone.trim(),
+          email: (email || '').trim(),
+          location: location.trim(),
+          price: (price || '').trim(),
+          description: (description || '').trim(),
+          images: imagesList,
+          // Property specific
+          propertyType: (propertyType || '').trim(),
+          listingPurpose: (listingPurpose || 'For Sale').trim(),
+          titleDocument: (titleDocument || '').trim(),
+          landSize: (landSize || '').trim(),
+          // Car specific
+          carType: (carType || '').trim(),
+          carColour: (carColour || colour || '').trim(),
+          carMakeModelYear: (carMakeModelYear || carModelYear || '').trim(),
+          customDutyPaid: customDutyPaid || 'Yes',
+          carCondition: carCondition || condition || 'Fairly Used (Tokunbo)',
+          accidentHistory: accidentHistory || accidentStatus || 'Accident Free',
+          engineGearStatus: engineGearStatus || 'Untempered engine and gear',
+          firstBody: firstBody || 'Yes',
+          // Management
+          status: 'pending_review',
+          adminNotes: '',
+          agreementId: agreementId,
+          termsVersion: 'v1.0',
+          createdAt: isoNow,
+          updatedAt: isoNow
+        };
+
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.insertAgreement(agreementRecord);
+            await supabase.insertMarketingRequest(marketingRecord);
+          } catch (supaErr) {
+            console.error('Failed to sync marketing request to Supabase, saved to local db:', supaErr);
+          }
+        }
+
+        db.agreements.push(agreementRecord);
+        db.marketingRequests = db.marketingRequests || [];
+        db.marketingRequests.unshift(marketingRecord);
+        writeDb(db);
+
+        const assetLabel = assetType === 'property' ? 'property' : 'vehicle';
+        return sendJson(res, 201, {
+          success: true,
+          id: recordId,
+          requestId: recordId,
+          agreementId: agreementId,
+          assetType: assetType,
+          message: `Your ${assetLabel} marketing request has been submitted successfully! The ALLFIX inspection team will contact you shortly.`
+        });
+      }
+
+      if (pathname === '/api/marketing-requests' && method === 'GET') {
+        if (!requireAdminAuth(req, res)) return;
+        let records = [];
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            const data = await supabase.getMarketingRequests();
+            records = data || [];
+          } catch (supaErr) {
+            console.error('Supabase getMarketingRequests error, falling back:', supaErr);
+            const db = readDb();
+            records = db.marketingRequests || [];
+          }
+        } else {
+          const db = readDb();
+          records = db.marketingRequests || [];
+        }
+
+        const typeFilter = urlObj.searchParams.get('type');
+        const statusFilter = urlObj.searchParams.get('status');
+        if (typeFilter && typeFilter !== 'all') {
+          records = records.filter(r => (r.assetType || '').toLowerCase() === typeFilter.toLowerCase());
+        }
+        if (statusFilter && statusFilter !== 'all') {
+          records = records.filter(r => (r.status || '').toLowerCase() === statusFilter.toLowerCase());
+        }
+
+        return sendJson(res, 200, {
+          success: true,
+          total: records.length,
+          data: records,
+          requests: records
+        });
+      }
+
+      if (pathname === '/api/marketing-requests/update' && (method === 'POST' || method === 'PATCH')) {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const { id, status, adminNotes, price, description } = body;
+        if (!id) {
+          return sendJson(res, 400, { success: false, error: 'Marketing Request ID is required' });
+        }
+        let updatedItem = null;
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            updatedItem = await supabase.updateMarketingRequest(id, { status, adminNotes, price, description });
+          } catch (supaErr) {
+            console.error('Supabase updateMarketingRequest error:', supaErr);
+          }
+        }
+        const db = readDb();
+        db.marketingRequests = db.marketingRequests || [];
+        const index = db.marketingRequests.findIndex(m => m.id === id);
+        if (index !== -1) {
+          if (status !== undefined) db.marketingRequests[index].status = status;
+          if (adminNotes !== undefined) db.marketingRequests[index].adminNotes = adminNotes;
+          if (price !== undefined) db.marketingRequests[index].price = price;
+          if (description !== undefined) db.marketingRequests[index].description = description;
+          db.marketingRequests[index].updatedAt = new Date().toISOString();
+          writeDb(db);
+          if (!updatedItem) updatedItem = db.marketingRequests[index];
+        }
+        if (!updatedItem) {
+          return sendJson(res, 404, { success: false, error: 'Marketing request not found' });
+        }
+        return sendJson(res, 200, { success: true, message: 'Marketing request updated', data: updatedItem });
+      }
+
+      if (pathname === '/api/marketing-requests/delete' && method === 'POST') {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const { id } = body;
+        if (!id) {
+          return sendJson(res, 400, { success: false, error: 'Marketing Request ID is required' });
+        }
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.deleteMarketingRequest(id);
+          } catch (supaErr) {
+            console.error('Supabase deleteMarketingRequest error:', supaErr);
+          }
+        }
+        const db = readDb();
+        db.marketingRequests = (db.marketingRequests || []).filter(m => m.id !== id);
+        writeDb(db);
+        return sendJson(res, 200, { success: true, message: 'Marketing request deleted successfully' });
+      }
+
+      if (pathname === '/api/marketing-requests/publish' && method === 'POST') {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const { id, targetPrice } = body;
+        if (!id) {
+          return sendJson(res, 400, { success: false, error: 'Marketing Request ID is required' });
+        }
+        const db = readDb();
+        db.marketingRequests = db.marketingRequests || [];
+        const item = db.marketingRequests.find(m => m.id === id);
+        if (!item) {
+          return sendJson(res, 404, { success: false, error: 'Marketing request not found' });
+        }
+
+        const isoNow = new Date().toISOString();
+        let publishedId = '';
+        const finalPrice = targetPrice || item.price || '';
+
+        if (item.assetType === 'property') {
+          publishedId = 'PROP-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+          const propRecord = {
+            id: publishedId,
+            title: `${item.propertyType || 'Property'} in ${item.location} (${item.listingPurpose || 'For Sale'})`,
+            location: item.location,
+            propertyType: item.propertyType || 'Residential',
+            price: finalPrice,
+            size: item.landSize || '',
+            titleDocument: item.titleDocument || '',
+            description: item.description || `Verified ${item.propertyType || 'property'} available for ${item.listingPurpose || 'sale'} in ${item.location}. Inspected by ALLFIX.`,
+            imageUrl: (item.images && item.images.length > 0) ? item.images[0] : '',
+            images: item.images || [],
+            status: 'available',
+            createdAt: isoNow,
+            updatedAt: isoNow
+          };
+          if (supabase.isSupabaseConfigured()) {
+            try { await supabase.insertProperty(propRecord); } catch (e) {}
+          }
+          db.properties = db.properties || [];
+          db.properties.unshift(propRecord);
+        } else {
+          publishedId = 'CAR-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+          const vehRecord = {
+            id: publishedId,
+            title: `${item.carMakeModelYear || 'Vehicle'} (${item.carColour || ''})`,
+            make: (item.carMakeModelYear || '').split(' ')[0] || '',
+            model: (item.carMakeModelYear || '').split(' ').slice(1).join(' ') || '',
+            year: '',
+            vehicleType: item.carType || 'SUV / Jeep',
+            price: finalPrice,
+            mileage: '',
+            transmission: 'Automatic',
+            fuelType: 'Petrol',
+            condition: item.carCondition || 'Foreign Used (Tokunbo)',
+            color: item.carColour || '',
+            location: item.location,
+            description: item.description || `Pre-inspected ${item.carMakeModelYear}. Custom duty: ${item.customDutyPaid}. Condition: ${item.carCondition}. Engine & Gear: ${item.engineGearStatus}. First body: ${item.firstBody}.`,
+            imageUrl: (item.images && item.images.length > 0) ? item.images[0] : '',
+            images: item.images || [],
+            status: 'available',
+            createdAt: isoNow,
+            updatedAt: isoNow
+          };
+          if (supabase.isSupabaseConfigured()) {
+            try { await supabase.insertVehicle(vehRecord); } catch (e) {}
+          }
+          db.vehicles = db.vehicles || [];
+          db.vehicles.unshift(vehRecord);
+        }
+
+        item.status = 'published';
+        item.publishedListingId = publishedId;
+        item.updatedAt = isoNow;
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.updateMarketingRequest(id, { status: 'published', adminNotes: `Published as live listing ${publishedId}` });
+          } catch (e) {}
+        }
+        writeDb(db);
+
+        return sendJson(res, 200, {
+          success: true,
+          message: 'Asset successfully published live to the public marketplace!',
+          publishedId,
+          assetType: item.assetType
+        });
+      }
+
+      // ----------------------------------------------------------------------
+      // Vendor Handiwork & Completed Jobs Showcase (/api/vendor-works)
+      // ----------------------------------------------------------------------
+      if (pathname === '/api/vendor-works' && method === 'GET') {
+        let works = [];
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            const data = await supabase.getVendorWorks();
+            works = (data && data.length > 0) ? data : (readDb().vendorWorks || []);
+          } catch (supaErr) {
+            console.error('Supabase getVendorWorks error, falling back:', supaErr);
+            const db = readDb();
+            works = db.vendorWorks || [];
+          }
+        } else {
+          const db = readDb();
+          works = db.vendorWorks || [];
+        }
+
+        const jobTypeFilter = urlObj.searchParams.get('jobType');
+        const statusFilter = urlObj.searchParams.get('status');
+        const searchQuery = urlObj.searchParams.get('search');
+
+        if (jobTypeFilter && jobTypeFilter !== 'all') {
+          works = works.filter(w => (w.jobType || '').toLowerCase().includes(jobTypeFilter.toLowerCase()));
+        }
+        if (statusFilter && statusFilter !== 'all') {
+          works = works.filter(w => (w.status || 'published').toLowerCase() === statusFilter.toLowerCase());
+        }
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase();
+          works = works.filter(w =>
+            (w.title || '').toLowerCase().includes(q) ||
+            (w.jobType || '').toLowerCase().includes(q) ||
+            (w.description || '').toLowerCase().includes(q) ||
+            (w.location || '').toLowerCase().includes(q) ||
+            (w.vendorName || '').toLowerCase().includes(q)
+          );
+        }
+
+        return sendJson(res, 200, {
+          success: true,
+          total: works.length,
+          works: works,
+          data: works
+        });
+      }
+
+      if (pathname === '/api/vendor-works' && method === 'POST') {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const {
+          jobType, title, description, vendorName, vendorId, vendorPhone,
+          location, imageUrl, images, photos, image, featured, status
+        } = body;
+
+        if (!jobType || !title || !description) {
+          return sendJson(res, 400, {
+            success: false,
+            error: 'Type of job, title, and job description are required.'
+          });
+        }
+
+        const db = readDb();
+        const workId = 'WORK-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+        const isoNow = new Date().toISOString();
+        const rawImages = (Array.isArray(photos) && photos.length > 0)
+          ? photos
+          : (Array.isArray(images) && images.length > 0 ? images : (image ? [image] : (imageUrl ? [imageUrl] : [])));
+        const imagesList = rawImages.slice(0, 10);
+        const primaryImage = (image && String(image).trim()) || (imageUrl && String(imageUrl).trim()) || (imagesList.length > 0 ? imagesList[0] : '');
+
+        const workRecord = {
+          id: workId,
+          jobType: String(jobType).trim(),
+          title: String(title).trim(),
+          description: String(description).trim(),
+          vendorName: String(vendorName || '').trim(),
+          vendorId: String(vendorId || '').trim(),
+          vendorPhone: String(vendorPhone || '').trim(),
+          location: String(location || '').trim(),
+          imageUrl: primaryImage,
+          image: primaryImage,
+          images: imagesList,
+          photos: imagesList,
+          featured: !!featured,
+          status: status || 'active',
+          createdAt: isoNow,
+          updatedAt: isoNow
+        };
+
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.insertVendorWork(workRecord);
+          } catch (supaErr) {
+            console.error('Failed to insert vendor work into Supabase:', supaErr);
+          }
+        }
+
+        db.vendorWorks = db.vendorWorks || [];
+        db.vendorWorks.unshift(workRecord);
+        writeDb(db);
+
+        return sendJson(res, 201, {
+          success: true,
+          workId: workId,
+          work: workRecord,
+          data: workRecord,
+          message: 'Vendor handiwork posted successfully to work gallery!'
+        });
+      }
+
+      if (pathname === '/api/vendor-works/update' && (method === 'POST' || method === 'PATCH')) {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const {
+          id, jobType, title, description, vendorName, vendorId, vendorPhone,
+          location, imageUrl, images, photos, image, featured, status
+        } = body;
+
+        if (!id) {
+          return sendJson(res, 400, { success: false, error: 'Job ID is required.' });
+        }
+
+        const db = readDb();
+        db.vendorWorks = db.vendorWorks || [];
+        const index = db.vendorWorks.findIndex(w => w.id === id);
+        if (index === -1) {
+          return sendJson(res, 404, { success: false, error: 'Vendor work not found.' });
+        }
+
+        const updates = { updatedAt: new Date().toISOString() };
+        if (jobType !== undefined) updates.jobType = String(jobType).trim();
+        if (title !== undefined) updates.title = String(title).trim();
+        if (description !== undefined) updates.description = String(description).trim();
+        if (vendorName !== undefined) updates.vendorName = String(vendorName).trim();
+        if (vendorId !== undefined) updates.vendorId = String(vendorId).trim();
+        if (vendorPhone !== undefined) updates.vendorPhone = String(vendorPhone).trim();
+        if (location !== undefined) updates.location = String(location).trim();
+        if (photos !== undefined) {
+          updates.photos = Array.isArray(photos) ? photos.slice(0, 10) : [];
+          updates.images = updates.photos;
+          if (!image && updates.photos.length > 0) {
+            updates.image = updates.photos[0];
+            updates.imageUrl = updates.photos[0];
+          }
+        }
+        if (images !== undefined && photos === undefined) {
+          updates.images = Array.isArray(images) ? images.slice(0, 10) : [];
+          updates.photos = updates.images;
+          if (!imageUrl && updates.images.length > 0) updates.imageUrl = updates.images[0];
+        }
+        if (image !== undefined) {
+          updates.image = String(image).trim();
+          updates.imageUrl = updates.image;
+        }
+        if (imageUrl !== undefined && image === undefined) {
+          updates.imageUrl = String(imageUrl).trim();
+          updates.image = updates.imageUrl;
+        }
+        if (featured !== undefined) updates.featured = !!featured;
+        if (status !== undefined) updates.status = String(status).trim();
+
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.updateVendorWork(id, updates);
+          } catch (supaErr) {
+            console.error('Failed to update vendor work in Supabase:', supaErr);
+          }
+        }
+
+        Object.assign(db.vendorWorks[index], updates);
+        writeDb(db);
+
+        return sendJson(res, 200, {
+          success: true,
+          work: db.vendorWorks[index],
+          data: db.vendorWorks[index],
+          message: 'Vendor work updated successfully.'
+        });
+      }
+
+      if (pathname === '/api/vendor-works/delete' && (method === 'POST' || method === 'DELETE')) {
+        if (!requireAdminAuth(req, res)) return;
+        const body = await parseJsonBody(req);
+        const { id } = body;
+
+        if (!id) {
+          return sendJson(res, 400, { success: false, error: 'Job ID is required.' });
+        }
+
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            await supabase.deleteVendorWork(id);
+          } catch (supaErr) {
+            console.error('Failed to delete vendor work from Supabase:', supaErr);
+          }
+        }
+
+        const db = readDb();
+        db.vendorWorks = db.vendorWorks || [];
+        const index = db.vendorWorks.findIndex(w => w.id === id);
+        if (index !== -1) {
+          db.vendorWorks.splice(index, 1);
+          writeDb(db);
+        }
+
+        return sendJson(res, 200, {
+          success: true,
+          message: 'Vendor work deleted successfully.'
+        });
+      }
+
       return sendJson(res, 404, { success: false, error: 'API route not found' });
     } catch (apiErr) {
       console.error('API Error:', apiErr);
@@ -1155,10 +1721,14 @@ const server = http.createServer(async (req, res) => {
     filePath = path.join(PUBLIC_DIR, 'request-service.html');
   } else if (pathname === '/become-vendor' || pathname === '/vendors') {
     filePath = path.join(PUBLIC_DIR, 'become-vendor.html');
+  } else if (pathname === '/list-with-us' || pathname === '/market-property' || pathname === '/market-car' || pathname === '/market-with-us' || pathname === '/sell' || pathname === '/market-asset') {
+    filePath = path.join(PUBLIC_DIR, 'list-with-us.html');
   } else if (pathname === '/properties' || pathname === '/available-properties') {
     filePath = path.join(PUBLIC_DIR, 'properties.html');
   } else if (pathname === '/cars' || pathname === '/vehicles' || pathname === '/automobiles') {
     filePath = path.join(PUBLIC_DIR, 'cars.html');
+  } else if (pathname === '/gallery' || pathname === '/work-gallery' || pathname === '/portfolio' || pathname === '/our-work' || pathname === '/works') {
+    filePath = path.join(PUBLIC_DIR, 'gallery.html');
   } else if (pathname === '/client-terms') {
     filePath = path.join(PUBLIC_DIR, 'client-terms.html');
   } else if (pathname === '/vendor-terms') {

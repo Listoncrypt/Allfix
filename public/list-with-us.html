@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <title>Market Your Property or Car | ALLFIX Services Xpress</title>
+  <meta name="description" content="Property owners and automobile sellers: list your houses, land, or pre-inspected vehicles with ALLFIX Services Xpress. Abuja and nationwide verified buyer matching.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .market-hero {
+      background: linear-gradient(135deg, #0C100D 0%, #151B17 100%);
+      color: #FFFFFF;
+      padding: 4.5rem 0 3.5rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .market-hero::before {
+      content: '';
+      position: absolute;
+      top: -120px;
+      right: -120px;
+      width: 380px;
+      height: 380px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(22, 136, 59, 0.25) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .market-hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(22, 136, 59, 0.2);
+      border: 1px solid rgba(134, 239, 172, 0.3);
+      color: #86EFAC;
+      padding: 0.4rem 1rem;
+      border-radius: var(--radius-full);
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1.25rem;
+    }
+    .market-hero h1 {
+      color: #FFFFFF;
+      font-size: clamp(2rem, 4vw, 2.85rem);
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+      letter-spacing: -0.02em;
+    }
+    .market-hero p {
+      color: #CDD3CE;
+      max-width: 680px;
+      margin: 0 auto 2rem;
+      font-size: 1.05rem;
+      line-height: 1.6;
+    }
+    .market-trust-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      max-width: 1040px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    .market-trust-item {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 1rem 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      backdrop-filter: blur(8px);
+    }
+    .market-trust-item { display: block; border-left: 3px solid #16883D; }
+    .market-trust-item strong {
+      display: block;
+      color: #FFFFFF;
+      font-size: 0.9rem;
+      margin-bottom: 0.15rem;
+    }
+    .market-trust-item span {
+      display: block;
+      color: #929B93;
+      font-size: 0.78rem;
+      line-height: 1.3;
+    }
+
+    /* Tab Switcher */
+    .market-tabs-wrapper {
+      max-width: 760px;
+      margin: -2rem auto 2.5rem;
+      position: relative;
+      z-index: 10;
+      padding: 0 1rem;
+    }
+    .market-tabs-bar {
+      background: #FFFFFF;
+      border: 1px solid var(--gray-300);
+      border-radius: 18px;
+      padding: 0.45rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      box-shadow: 0 12px 28px -6px rgba(12, 16, 13, 0.12);
+    }
+    .market-tab-btn {
+      padding: 1rem 1.25rem;
+      border: none;
+      background: transparent;
+      border-radius: 14px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--navy-700);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      transition: all 0.22s ease;
+    }
+    .market-tab-btn:hover {
+      color: var(--brand-600);
+      background: var(--brand-50);
+    }
+    .market-tab-btn.active {
+      background: var(--brand-500);
+      color: #FFFFFF;
+      box-shadow: 0 6px 16px rgba(22, 136, 59, 0.35);
+    }
+
+    /* Forms */
+    .market-form-card {
+      background: #FFFFFF;
+      border: 1px solid var(--gray-200);
+      border-radius: 24px;
+      padding: 2.5rem;
+      box-shadow: var(--shadow-lg);
+      max-width: 860px;
+      margin: 0 auto 4rem;
+    }
+    @media (max-width: 640px) {
+      .market-form-card {
+        padding: 1.5rem 1.15rem;
+        border-radius: 18px;
+      }
+      .market-tabs-bar {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Interactive Button Groups */
+    .button-toggle-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 0.45rem;
+    }
+    .btn-toggle-option {
+      flex: 1;
+      min-width: 140px;
+      cursor: pointer;
+      margin: 0;
+    }
+    .btn-toggle-option input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .btn-toggle-option span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      padding: 0.75rem 1rem;
+      background: var(--gray-50);
+      border: 1.5px solid var(--gray-300);
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--navy-800);
+      text-align: center;
+      transition: all 0.18s ease;
+      user-select: none;
+    }
+    .btn-toggle-option:hover span {
+      border-color: var(--brand-500);
+      background: var(--brand-50);
+    }
+    .btn-toggle-option input:checked + span {
+      background: var(--brand-100);
+      border-color: var(--brand-600);
+      color: var(--brand-700);
+      font-weight: 700;
+      box-shadow: 0 0 0 1px var(--brand-600);
+    }
+
+    /* Button Pill Multi-choice Grid */
+    .pill-choice-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 0.65rem;
+      margin-top: 0.45rem;
+    }
+    .pill-choice {
+      cursor: pointer;
+      margin: 0;
+    }
+    .pill-choice input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .pill-choice span {
+      display: block;
+      padding: 0.65rem 0.85rem;
+      background: var(--gray-50);
+      border: 1.5px solid var(--gray-300);
+      border-radius: 10px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--navy-800);
+      text-align: center;
+      transition: all 0.18s ease;
+      user-select: none;
+    }
+    .pill-choice:hover span {
+      border-color: var(--brand-500);
+      background: var(--brand-50);
+    }
+    .pill-choice input:checked + span {
+      background: var(--brand-100);
+      border-color: var(--brand-600);
+      color: var(--brand-700);
+      font-weight: 700;
+      box-shadow: 0 0 0 1px var(--brand-600);
+    }
+
+    /* Multi-Photo Grid */
+    .market-photos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+    .market-photo-card {
+      position: relative;
+      aspect-ratio: 4/3;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--gray-300);
+      background: #0C100D;
+    }
+    .market-photo-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .market-photo-del {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: rgba(220, 38, 38, 0.9);
+      color: #fff;
+      border: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      transition: transform 0.15s ease;
+    }
+    .market-photo-del:hover {
+      transform: scale(1.15);
+      background: #DC2626;
+    }
+
+    /* Section divider inside form */
+    .form-step-heading {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--navy-900);
+      margin: 2rem 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding-bottom: 0.65rem;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .form-step-num {
+      width: 26px;
+      height: 26px;
+      background: var(--brand-100);
+      color: var(--brand-700);
+      border-radius: 50%;
+      font-size: 0.82rem;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Site Header -->
+  <header class="site-header">
+    <div class="container nav-inner">
+      <a href="/" class="logo-wrapper" aria-label="ALLFIX Services Xpress Home">
+        <img class="brand-logo" src="/allfix-xpress-green.png" alt="ALLFIX Services Xpress">
+      </a>
+
+      <nav aria-label="Main navigation">
+        <ul class="nav-links">
+          <li class="nav-item"><a href="/">Home</a></li>
+          <li class="nav-item"><a href="/gallery">Work Gallery</a></li>
+          <li class="nav-item"><a href="/properties">Properties</a></li>
+          <li class="nav-item"><a href="/cars">Cars</a></li>
+          <li class="nav-item"><a href="/list-with-us" class="active">List With Us</a></li>
+          <li class="nav-item"><a href="/about">How It Works</a></li>
+          <li class="nav-item"><a href="/request-service">Services</a></li>
+          <li class="nav-item"><a href="/become-vendor">For Vendors</a></li>
+          <li class="nav-item"><a href="/contact">Contact</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        <a href="https://wa.me/2347058099045" target="_blank" rel="noopener" class="btn btn-primary btn-sm">WhatsApp Desk</a>
+        <button class="mobile-menu-btn" aria-label="Toggle navigation menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Nav -->
+  <div class="mobile-nav">
+    <ul class="nav-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="/gallery" style="color: #16883D; font-weight: 700;"> Explore Our Work Gallery</a></li>
+      <li><a href="/properties">Available Properties</a></li>
+      <li><a href="/cars">Available Cars & Vehicles</a></li>
+      <li><a href="/list-with-us" style="color: var(--brand-600); font-weight: 700;">Market Your Property / Car</a></li>
+      <li><a href="/about">How It Works</a></li>
+      <li><a href="/request-service">Request a Service</a></li>
+      <li><a href="/become-vendor">Become a Vendor</a></li>
+      <li><a href="/client-terms">Client Terms (v1.0)</a></li>
+      <li><a href="/contact">Contact Us</a></li>
+    </ul>
+    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
+      <a href="https://wa.me/2347058099045" class="btn btn-primary" style="width: 100%;">Direct WhatsApp Desk</a>
+    </div>
+  </div>
+
+  <main>
+    <!-- Hero Banner -->
+    <section class="market-hero">
+      <div class="container">
+        <div class="market-hero-badge">
+          <span>  Verified Asset Marketing Desk</span>
+        </div>
+        <h1>Market Your Property or <span class="text-highlight">Vehicle With ALLFIX</span></h1>
+        <p>
+          Connect directly with verified, pre-qualified buyers across Abuja and nationwide. Our dedicated coordination desk conducts pre-inspections, document verification, and managed transactions for complete peace of mind.
+        </p>
+
+        <!-- Trust Strip -->
+        <div class="market-trust-strip">
+          <div class="market-trust-item">
+            <div>
+              <strong>Pre-Inspection Clarity</strong>
+              <span>Every asset is physically verified before showcase.</span>
+            </div>
+          </div>
+          <div class="market-trust-item">
+            <div>
+              <strong>Serious Buyers Only</strong>
+              <span>Filtered leads &mdash; no time wasters or fake offers.</span>
+            </div>
+          </div>
+          <div class="market-trust-item">
+            <div>
+              <strong>Audited Legal Terms</strong>
+              <span>Protected under Client Terms v1.0 governance.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Tab Switcher -->
+    <section class="market-tabs-wrapper">
+      <div class="market-tabs-bar">
+        <button type="button" class="market-tab-btn active" id="tabBtnProperty" data-target="propertySectionWrap">
+          <span>Market a Property / Land</span>
+        </button>
+        <button type="button" class="market-tab-btn" id="tabBtnCar" data-target="carSectionWrap">
+          <span>Market a Car / Vehicle</span>
+        </button>
+      </div>
+    </section>
+
+    <div class="container">
+
+      <!-- ========================================================================= -->
+      <!-- 1. PROPERTY OWNER SUBMISSION FORM -->
+      <!-- ========================================================================= -->
+      <section id="propertySectionWrap" class="market-form-card">
+        <div style="margin-bottom: 2rem; border-bottom: 2px solid var(--gray-100); padding-bottom: 1.25rem;">
+          <h2 style="font-size: 1.6rem; color: var(--navy-900); margin-bottom: 0.35rem;">Property Marketing Submission</h2>
+          <p style="font-size: 0.92rem; color: var(--navy-600); margin: 0;">Submit your house, duplex, apartment, commercial space, or land plot for verified listing.</p>
+        </div>
+
+        <form id="propertyMarketingForm">
+          <!-- Step 1: Owner Contact Information -->
+          <div class="form-step-heading" style="margin-top: 0;">
+            <span class="form-step-num">1</span>
+            <span>Owner / Representative Contact</span>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="propOwnerName">Your Full Name <span class="required">*</span></label>
+              <input type="text" id="propOwnerName" class="form-control" placeholder="e.g. Chief Emeka Danjuma" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="propPhone">Phone Number (WhatsApp preferred) <span class="required">*</span></label>
+              <input type="tel" id="propPhone" class="form-control" placeholder="e.g. +234 803 123 4567" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="propEmail">Email Address <span style="font-size: 0.8rem; color: var(--gray-500);">(For inspection reports)</span></label>
+            <input type="email" id="propEmail" class="form-control" placeholder="e.g. emeka.danjuma@gmail.com">
+          </div>
+
+          <!-- Step 2: Property Specifications -->
+          <div class="form-step-heading">
+            <span class="form-step-num">2</span>
+            <span>Property & Listing Details</span>
+          </div>
+
+          <!-- Sale or Rent Selection (User Requirement) -->
+          <div class="form-group">
+            <label class="form-label">Listing Purpose: Sale or Rent? <span class="required">*</span></label>
+            <div class="button-toggle-group">
+              <label class="btn-toggle-option">
+                <input type="radio" name="propListingPurpose" value="For Sale" checked>
+                <span> For Sale (Outright Purchase)</span>
+              </label>
+              <label class="btn-toggle-option">
+                <input type="radio" name="propListingPurpose" value="For Rent / Lease">
+                <span> For Rent / Annual Lease</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Type of Property -->
+          <div class="form-group">
+            <label class="form-label">Type of Property <span class="required">*</span></label>
+            <div class="pill-choice-grid">
+              <label class="pill-choice"><input type="radio" name="propType" value="Fully Detached Duplex" checked><span>Fully Detached Duplex</span></label>
+              <label class="pill-choice"><input type="radio" name="propType" value="Semi-Detached Duplex"><span>Semi-Detached Duplex</span></label>
+              <label class="pill-choice"><input type="radio" name="propType" value="Terrace Duplex"><span>Terrace Duplex</span></label>
+              <label class="pill-choice"><input type="radio" name="propType" value="Bungalow"><span>Bungalow</span></label>
+              <label class="pill-choice"><input type="radio" name="propType" value="Apartment / Flat"><span>Apartment / Flat</span></label>
+              <label class="pill-choice"><input type="radio" name="propType" value="Land / Plot"><span>Land / Plot</span></label>
+              <label class="pill-choice"><input type="radio" name="propType" value="Commercial / Plaza"><span>Commercial Plaza / Office</span></label>
+              <label class="pill-choice"><input type="radio" name="propType" value="Warehouse / Industrial"><span>Warehouse / Industrial</span></label>
+              <label class="pill-choice"><input type="radio" name="propType" value="Other" id="propTypeOtherRadio"><span>Other Specific Type</span></label>
+            </div>
+            <div class="form-group" id="propTypeOtherWrap" style="margin-top: 0.65rem;" hidden>
+              <input type="text" id="propTypeOtherText" class="form-control" placeholder="Specify property type (e.g. Penthouse, Event Garden, Farmland)">
+            </div>
+          </div>
+
+          <!-- Location of Property -->
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="propLocation">Location / City & Area <span class="required">*</span></label>
+              <input type="text" id="propLocation" class="form-control" placeholder="e.g. Guzape, Abuja or Lekki Phase 1, Lagos" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="propLandSize">Land Size / Built Area <span class="required">*</span></label>
+              <input type="text" id="propLandSize" class="form-control" placeholder="e.g. 650 sqm, 1,200 sqm, 2 Plots, Half Plot" required>
+            </div>
+          </div>
+
+          <!-- Title Document & Price -->
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="propTitleDoc">Title Document <span class="required">*</span></label>
+              <select id="propTitleDoc" class="form-control" required>
+                <option value="">Select Primary Title Document</option>
+                <option value="Certificate of Occupancy (C of O)">Certificate of Occupancy (C of O)</option>
+                <option value="Right of Occupancy (R of O) / AGIS">Right of Occupancy (R of O) &bull; AGIS Verified</option>
+                <option value="Governor's Consent">Governor's Consent</option>
+                <option value="Gazette / Excision">Gazette / Government Excision</option>
+                <option value="Deed of Assignment & Registered Survey">Deed of Assignment & Registered Survey</option>
+                <option value="Federal Housing Authority (FHA) Allocation">FHA Allocation Letter</option>
+                <option value="Court Judgment">Court Judgment</option>
+                <option value="Other / In Processing">Other / Document in Processing</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="propPrice">Asking Price / Rent (₦) <span class="required">*</span></label>
+              <input type="text" id="propPrice" class="form-control" placeholder="e.g. ₦185,000,000 or ₦6,000,000/yr" required>
+            </div>
+          </div>
+
+          <!-- More Description -->
+          <div class="form-group">
+            <label class="form-label" for="propDescription">More Description & Features <span class="required">*</span></label>
+            <textarea id="propDescription" class="form-control" rows="4" placeholder="Detail any standout features: tarred access road, 24/7 solar backup, BQ, swimming pool, perimeter fencing, security gates, water borehole, payment flexibility, etc." required></textarea>
+          </div>
+
+          <!-- Step 3: Photos Upload -->
+          <div class="form-step-heading">
+            <span class="form-step-num">3</span>
+            <span>Upload Property Photos (Up to 10 photos)</span>
+          </div>
+
+          <div class="image-uploader-card" id="propUploaderDropzone" onclick="document.getElementById('propPhotosInput').click()">
+            <input type="file" id="propPhotosInput" accept="image/*" multiple style="display: none;">
+            <div style="font-weight: 700; color: var(--navy-900); font-size: 0.95rem;">Click to upload property pictures</div>
+            <div style="font-size: 0.8rem; color: var(--navy-600); margin-top: 0.2rem;">Attach facade, compound, interior rooms, access road (JPG, PNG, WebP)</div>
+          </div>
+          <div class="market-photos-grid" id="propPhotosPreviewGrid"></div>
+
+          <!-- Step 4: Terms & Compliance -->
+          <div class="form-step-heading">
+            <span class="form-step-num">4</span>
+            <span>Authorization & Terms Agreement</span>
+          </div>
+
+          <div style="background: var(--brand-50); border: 1.5px solid var(--brand-300); border-radius: 14px; padding: 1.25rem; margin-bottom: 1.5rem;">
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; font-size: 0.92rem; color: var(--navy-900); line-height: 1.5;">
+              <input type="checkbox" id="propTermsCheckbox" required style="width: 19px; height: 19px; margin-top: 3px; accent-color: var(--brand-500); cursor: pointer;">
+              <span>
+                <strong>I confirm that I am the verified owner or mandated agent</strong> of this property with legal rights to market it. I accept the <a href="/client-terms" target="_blank" style="color: var(--brand-600); font-weight: 700; text-decoration: underline;">ALLFIX Client & Representation Terms (v1.0)</a> and authorize pre-inspection by the dispatch team.
+              </span>
+            </label>
+          </div>
+
+          <button type="submit" id="propSubmitBtn" class="btn btn-primary" style="width: 100%; padding: 1.1rem; font-size: 1.05rem; font-weight: 800; border-radius: 12px; justify-content: center; box-shadow: var(--shadow-glow);">
+            Submit Property for Verified Marketing →
+          </button>
+        </form>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- 2. CAR OWNER SUBMISSION FORM -->
+      <!-- ========================================================================= -->
+      <section id="carSectionWrap" class="market-form-card" style="display: none;">
+        <div style="margin-bottom: 2rem; border-bottom: 2px solid var(--gray-100); padding-bottom: 1.25rem;">
+          <h2 style="font-size: 1.6rem; color: var(--navy-900); margin-bottom: 0.35rem;">Car & Automobile Marketing Submission</h2>
+          <p style="font-size: 0.92rem; color: var(--navy-600); margin: 0;">Submit your car, SUV, truck, or commercial vehicle for pre-inspection and buyer matching.</p>
+        </div>
+
+        <form id="carMarketingForm">
+          <!-- Step 1: Owner Contact Information -->
+          <div class="form-step-heading" style="margin-top: 0;">
+            <span class="form-step-num">1</span>
+            <span>Owner / Seller Contact Information</span>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="carOwnerName">Your Full Name <span class="required">*</span></label>
+              <input type="text" id="carOwnerName" class="form-control" placeholder="e.g. Alhaji Aminu Bello" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="carPhone">Phone Number (WhatsApp preferred) <span class="required">*</span></label>
+              <input type="tel" id="carPhone" class="form-control" placeholder="e.g. +234 809 988 7766" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="carEmail">Email Address <span style="font-size: 0.8rem; color: var(--gray-500);">(Optional &bull; For receipts)</span></label>
+            <input type="email" id="carEmail" class="form-control" placeholder="aminu.bello@gmail.com">
+          </div>
+
+          <!-- Step 2: Car Specs -->
+          <div class="form-step-heading">
+            <span class="form-step-num">2</span>
+            <span>Vehicle Specifications</span>
+          </div>
+
+          <!-- Type of car -->
+          <div class="form-group">
+            <label class="form-label">Type of Car <span class="required">*</span></label>
+            <div class="pill-choice-grid">
+              <label class="pill-choice"><input type="radio" name="carType" value="SUV / Jeep" checked><span>SUV / Jeep</span></label>
+              <label class="pill-choice"><input type="radio" name="carType" value="Sedan / Saloon"><span>Sedan / Saloon</span></label>
+              <label class="pill-choice"><input type="radio" name="carType" value="Pickup Truck"><span>Pickup Truck</span></label>
+              <label class="pill-choice"><input type="radio" name="carType" value="Crossover"><span>Crossover</span></label>
+              <label class="pill-choice"><input type="radio" name="carType" value="Coupe / Sports"><span>Coupe / Sports</span></label>
+              <label class="pill-choice"><input type="radio" name="carType" value="Bus / Van"><span>Bus / Van</span></label>
+              <label class="pill-choice"><input type="radio" name="carType" value="Hatchback"><span>Hatchback</span></label>
+              <label class="pill-choice"><input type="radio" name="carType" value="Commercial / Truck"><span>Commercial Truck</span></label>
+            </div>
+          </div>
+
+          <!-- Car year / model & Colour -->
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="carMakeModelYear">Car Year & Model <span class="required">*</span></label>
+              <input type="text" id="carMakeModelYear" class="form-control" placeholder="e.g. Toyota Prado TXL 2021 or Mercedes GLE 450 2022" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="carColour">Exterior Colour <span class="required">*</span></label>
+              <input type="text" id="carColour" class="form-control" placeholder="e.g. Black, Pearl White, Silver, Wine, Grey" required>
+            </div>
+          </div>
+
+          <!-- Location of vehicle -->
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="carLocation">Location Where Vehicle is Parked <span class="required">*</span></label>
+              <input type="text" id="carLocation" class="form-control" placeholder="e.g. Wuse 2, Abuja or Ikeja, Lagos (For inspection)" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="carPrice">Asking Price (₦) <span class="required">*</span></label>
+              <input type="text" id="carPrice" class="form-control" placeholder="e.g. ₦38,000,000 (Negotiable)" required>
+            </div>
+          </div>
+
+          <!-- Step 3: Exact Vehicle Logic Toggles (User Prompt Requirements) -->
+          <div class="form-step-heading">
+            <span class="form-step-num">3</span>
+            <span>Vehicle Condition & Technical Verification</span>
+          </div>
+
+          <!-- 1. Custom duty fully paid for? (Yes/No button in front) -->
+          <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+              <span>Custom duty fully paid for? <span class="required">*</span></span>
+              <span style="font-size: 0.78rem; color: var(--brand-700); font-weight: 700;">Federal Customs Compliance</span>
+            </label>
+            <div class="button-toggle-group">
+              <label class="btn-toggle-option">
+                <input type="radio" name="customDutyPaid" value="Yes" checked>
+                <span> Yes, Custom Duty Fully Paid & Verified</span>
+              </label>
+              <label class="btn-toggle-option">
+                <input type="radio" name="customDutyPaid" value="No">
+                <span> No / Incomplete Customs Papers</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 2. Brand New or Fairly Used button -->
+          <div class="form-group">
+            <label class="form-label">Vehicle Usage Status <span class="required">*</span></label>
+            <div class="button-toggle-group">
+              <label class="btn-toggle-option">
+                <input type="radio" name="carCondition" value="Brand New">
+                <span> Brand New (0 km / Showroom)</span>
+              </label>
+              <label class="btn-toggle-option">
+                <input type="radio" name="carCondition" value="Foreign Used (Tokunbo)" checked>
+                <span> Fairly Used &bull; Foreign Used (Tokunbo)</span>
+              </label>
+              <label class="btn-toggle-option">
+                <input type="radio" name="carCondition" value="Nigerian Used">
+                <span> Fairly Used &bull; Nigerian (Locally) Used</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 3. Accident Free or Accidented button -->
+          <div class="form-group">
+            <label class="form-label">Accident History <span class="required">*</span></label>
+            <div class="button-toggle-group">
+              <label class="btn-toggle-option">
+                <input type="radio" name="accidentHistory" value="Accident Free" checked>
+                <span> Accident Free</span>
+              </label>
+              <label class="btn-toggle-option">
+                <input type="radio" name="accidentHistory" value="Accidented">
+                <span> Accidented (Repaired or Needs Repair)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 4. Untempered or Tempered engine and gear button -->
+          <div class="form-group">
+            <label class="form-label">Engine & Gear Status <span class="required">*</span></label>
+            <div class="button-toggle-group">
+              <label class="btn-toggle-option">
+                <input type="radio" name="engineGearStatus" value="Untempered engine and gear" checked>
+                <span> Untempered Engine & Gear (Original Factory Seal)</span>
+              </label>
+              <label class="btn-toggle-option">
+                <input type="radio" name="engineGearStatus" value="Tempered engine and gear">
+                <span> Tempered Engine / Gear (Replaced or Repaired)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 5. First body yes or no button -->
+          <div class="form-group">
+            <label class="form-label">First Body Paint? <span class="required">*</span></label>
+            <div class="button-toggle-group">
+              <label class="btn-toggle-option">
+                <input type="radio" name="firstBody" value="Yes" checked>
+                <span> First Body (Yes &bull; 100% Original Factory Paint)</span>
+              </label>
+              <label class="btn-toggle-option">
+                <input type="radio" name="firstBody" value="No">
+                <span> No (Resprayed / Baked / Touched Up)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- More description / details -->
+          <div class="form-group">
+            <label class="form-label" for="carDescription">More Description & Mechanical Details <span class="required">*</span></label>
+            <textarea id="carDescription" class="form-control" rows="4" placeholder="Mention mileage, transmission (Automatic/Manual), leather vs fabric interior, AC cooling status, panoramic roof, reverse camera, extra keys, or any minor maintenance needed." required></textarea>
+          </div>
+
+          <!-- Step 4: Photos Upload -->
+          <div class="form-step-heading">
+            <span class="form-step-num">4</span>
+            <span>Upload Vehicle Pictures (Up to 10 photos)</span>
+          </div>
+
+          <div class="image-uploader-card" id="carUploaderDropzone" onclick="document.getElementById('carPhotosInput').click()">
+            <input type="file" id="carPhotosInput" accept="image/*" multiple style="display: none;">
+            <div style="font-weight: 700; color: var(--navy-900); font-size: 0.95rem;">Click to upload car photos</div>
+            <div style="font-size: 0.8rem; color: var(--navy-600); margin-top: 0.2rem;">Front exterior, rear, sides, engine bay, interior dashboard, and seats</div>
+          </div>
+          <div class="market-photos-grid" id="carPhotosPreviewGrid"></div>
+
+          <!-- Step 5: Terms & Compliance -->
+          <div class="form-step-heading">
+            <span class="form-step-num">5</span>
+            <span>Authorization & Compliance Agreement</span>
+          </div>
+
+          <div style="background: var(--brand-50); border: 1.5px solid var(--brand-300); border-radius: 14px; padding: 1.25rem; margin-bottom: 1.5rem;">
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; font-size: 0.92rem; color: var(--navy-900); line-height: 1.5;">
+              <input type="checkbox" id="carTermsCheckbox" required style="width: 19px; height: 19px; margin-top: 3px; accent-color: var(--brand-500); cursor: pointer;">
+              <span>
+                <strong>I confirm that the vehicle details declared are accurate</strong> and that this automobile is legally owned and free from police encumbrance. I agree to the <a href="/client-terms" target="_blank" style="color: var(--brand-600); font-weight: 700; text-decoration: underline;">ALLFIX Representation Terms (v1.0)</a> and authorize physical pre-inspection.
+              </span>
+            </label>
+          </div>
+
+          <button type="submit" id="carSubmitBtn" class="btn btn-primary" style="width: 100%; padding: 1.1rem; font-size: 1.05rem; font-weight: 800; border-radius: 12px; justify-content: center; box-shadow: var(--shadow-glow);">
+            Submit Car for Verified Marketing →
+          </button>
+        </form>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Success Confirmation Modal -->
+  <div id="marketSuccessModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card" style="max-width: 540px; text-align: center; padding: 2.75rem 2rem;">
+      <div style="width: 72px; height: 72px; border-radius: 50%; background: #DCFCE7; color: #16883D; font-size: 2rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+        ✓
+      </div>
+      <h3 style="font-size: 1.5rem; color: var(--navy-900); margin-bottom: 0.5rem;" id="modalAssetTitle">Marketing Request Submitted!</h3>
+      <p style="color: var(--navy-600); font-size: 0.95rem; margin-bottom: 1.5rem;" id="modalAssetMessage">
+        Your asset details have been safely received by the ALLFIX Abuja inspection desk.
+      </p>
+
+      <div style="background: var(--gray-50); border: 1px dashed var(--gray-300); border-radius: 12px; padding: 1rem; margin-bottom: 1.75rem;">
+        <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--gray-500); font-weight: 700; letter-spacing: 0.05em;">Your Tracking Reference</div>
+        <div id="modalTrackingRef" style="font-size: 1.45rem; font-weight: 800; font-family: monospace; color: var(--brand-600); margin-top: 0.25rem;">MKT-PROP-XXXX</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <a id="modalWhatsAppBtn" href="#" target="_blank" rel="noopener" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 0.95rem; font-weight: 700;">
+          <span> Chat With Inspection Desk on WhatsApp</span>
+        </a>
+        <button type="button" class="btn btn-outline" id="closeModalBtn" style="width: 100%; justify-content: center;">
+          Back to ALLFIX Home
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="/" class="logo-wrapper" aria-label="ALLFIX Services Xpress home">
+            <img class="brand-logo" src="/allfix-xpress-green.png" alt="ALLFIX Services Xpress">
+          </a>
+          <p>Service coordination for homes, businesses and the people who keep Nigeria moving.</p>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Explore</h4>
+          <ul class="footer-links-list">
+            <li><a href="/gallery">Work Gallery</a></li>
+            <li><a href="/properties">Properties</a></li>
+            <li><a href="/cars">Cars</a></li>
+            <li><a href="/list-with-us">List With Us</a></li>
+            <li><a href="/request-service">Request a Service</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Legal</h4>
+          <ul class="footer-links-list">
+            <li><a href="/client-terms">Client Terms (v1.0)</a></li>
+            <li><a href="/vendor-terms">Vendor Terms (v1.0)</a></li>
+            <li><a href="/privacy-policy">Privacy Policy</a></li>
+            <li><a href="/disclaimer">Disclaimer</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Contact</h4>
+          <ul class="footer-links-list">
+            <li><a href="tel:+2347058099045">+234 705 809 9045</a></li>
+            <li><a href="mailto:allfix456@gmail.com">allfix456@gmail.com</a></li>
+            <li><a href="/contact">Abuja, Nigeria</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom-bar">
+        <span>&copy; 2026 ALLFIX Services Xpress. All rights reserved.</span>
+        <nav class="footer-legal-links" aria-label="Legal">
+          <a href="/client-terms">Client Terms</a><span class="footer-separator">&middot;</span>
+          <a href="/vendor-terms">Vendor Terms</a><span class="footer-separator">&middot;</span>
+          <a href="/privacy-policy">Privacy Policy</a><span class="footer-separator">&middot;</span>
+          <a href="/disclaimer">Disclaimer</a>
+        </nav>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/main.js"></script>
+  <script src="/js/list-with-us.js"></script>
+</body>
+</html>

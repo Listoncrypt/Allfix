@@ -191,6 +191,60 @@ function mapVehicleFromDb(row) {
   };
 }
 
+function mapMarketingRequestFromDb(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    assetType: row.asset_type,
+    ownerName: row.owner_name,
+    phone: row.phone,
+    email: row.email || '',
+    location: row.location || '',
+    price: row.price || '',
+    description: row.description || '',
+    images: Array.isArray(row.images) ? row.images : [],
+    // Property specific
+    propertyType: row.property_type || '',
+    listingPurpose: row.listing_purpose || 'For Sale',
+    titleDocument: row.title_document || '',
+    landSize: row.land_size || '',
+    // Car specific
+    carType: row.car_type || '',
+    carColour: row.car_colour || '',
+    carMakeModelYear: row.car_make_model_year || '',
+    customDutyPaid: row.custom_duty_paid || 'Yes',
+    carCondition: row.car_condition || 'Fairly Used (Tokunbo)',
+    accidentHistory: row.accident_history || 'Accident Free',
+    engineGearStatus: row.engine_gear_status || 'Untempered engine and gear',
+    firstBody: row.first_body || 'Yes',
+    // Management & Compliance
+    status: row.status || 'pending_review',
+    adminNotes: row.admin_notes || '',
+    agreementId: row.agreement_id || '',
+    termsVersion: row.terms_version || 'v1.0',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function mapVendorWorkFromDb(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    jobType: row.job_type,
+    title: row.title,
+    description: row.description,
+    vendorName: row.vendor_name || '',
+    vendorId: row.vendor_id || '',
+    location: row.location || '',
+    imageUrl: row.image_url || '',
+    images: Array.isArray(row.images) ? row.images : [],
+    status: row.status || 'published',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
 module.exports = {
   isSupabaseConfigured,
   getSupabaseCredentials,
@@ -570,6 +624,177 @@ module.exports = {
       return true;
     } catch (e) {
       console.error('Supabase deleteVehicle error:', e.message);
+      return false;
+    }
+  },
+
+  async getMarketingRequests() {
+    const c = client || initClient();
+    if (!c) return null;
+    try {
+      const { data, error } = await c.from('marketing_requests').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(mapMarketingRequestFromDb);
+    } catch (err) {
+      console.error('Supabase getMarketingRequests error:', err.message);
+      return null;
+    }
+  },
+
+  async insertMarketingRequest(m) {
+    const c = client || initClient();
+    if (!c) return null;
+    const row = {
+      id: m.id,
+      asset_type: m.assetType,
+      owner_name: m.ownerName,
+      phone: m.phone,
+      email: m.email || '',
+      location: m.location,
+      price: m.price || '',
+      description: m.description || '',
+      images: Array.isArray(m.images) ? m.images : [],
+      // Property specific
+      property_type: m.propertyType || '',
+      listing_purpose: m.listingPurpose || 'For Sale',
+      title_document: m.titleDocument || '',
+      land_size: m.landSize || '',
+      // Car specific
+      car_type: m.carType || '',
+      car_colour: m.carColour || '',
+      car_make_model_year: m.carMakeModelYear || '',
+      custom_duty_paid: m.customDutyPaid || 'Yes',
+      car_condition: m.carCondition || 'Fairly Used (Tokunbo)',
+      accident_history: m.accidentHistory || 'Accident Free',
+      engine_gear_status: m.engineGearStatus || 'Untempered engine and gear',
+      first_body: m.firstBody || 'Yes',
+      // Status & compliance
+      status: m.status || 'pending_review',
+      admin_notes: m.adminNotes || '',
+      agreement_id: m.agreementId || '',
+      terms_version: m.termsVersion || 'v1.0',
+      created_at: m.createdAt || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    try {
+      const { data, error } = await c.from('marketing_requests').insert([row]).select();
+      if (error) throw error;
+      return mapMarketingRequestFromDb(data[0]);
+    } catch (err) {
+      console.error('Supabase insertMarketingRequest error:', err.message);
+      return null;
+    }
+  },
+
+  async updateMarketingRequest(id, updates) {
+    const c = client || initClient();
+    if (!c) return null;
+    const row = { updated_at: new Date().toISOString() };
+    if (updates.status !== undefined) row.status = updates.status;
+    if (updates.adminNotes !== undefined) row.admin_notes = updates.adminNotes;
+    if (updates.price !== undefined) row.price = updates.price;
+    if (updates.description !== undefined) row.description = updates.description;
+    if (updates.images !== undefined) row.images = updates.images;
+    try {
+      const { data, error } = await c.from('marketing_requests').update(row).eq('id', id).select();
+      if (error) throw error;
+      return mapMarketingRequestFromDb(data[0]);
+    } catch (err) {
+      console.error('Supabase updateMarketingRequest error:', err.message);
+      return null;
+    }
+  },
+
+  async deleteMarketingRequest(id) {
+    const c = client || initClient();
+    if (!c) return null;
+    try {
+      const { error } = await c.from('marketing_requests').delete().eq('id', id);
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.error('Supabase deleteMarketingRequest error:', err.message);
+      return false;
+    }
+  },
+
+  async getVendorWorks(jobType) {
+    const c = client || initClient();
+    if (!c) return null;
+    try {
+      let query = c.from('vendor_works').select('*').order('created_at', { ascending: false });
+      if (jobType && jobType !== 'all') {
+        query = query.ilike('job_type', `%${jobType}%`);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []).map(mapVendorWorkFromDb);
+    } catch (err) {
+      console.warn('Supabase getVendorWorks error:', err.message);
+      return null;
+    }
+  },
+
+  async insertVendorWork(w) {
+    const c = client || initClient();
+    if (!c) return null;
+    const row = {
+      id: w.id,
+      job_type: w.jobType,
+      title: w.title,
+      description: w.description,
+      vendor_name: w.vendorName || '',
+      vendor_id: w.vendorId || '',
+      location: w.location || '',
+      image_url: w.imageUrl || '',
+      images: Array.isArray(w.images) ? w.images : [],
+      status: w.status || 'published',
+      created_at: w.createdAt || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    try {
+      const { data, error } = await c.from('vendor_works').insert([row]).select();
+      if (error) throw error;
+      return mapVendorWorkFromDb(data[0]);
+    } catch (err) {
+      console.error('Supabase insertVendorWork error:', err.message);
+      return null;
+    }
+  },
+
+  async updateVendorWork(id, updates) {
+    const c = client || initClient();
+    if (!c) return null;
+    const row = { updated_at: new Date().toISOString() };
+    if (updates.jobType !== undefined) row.job_type = updates.jobType;
+    if (updates.title !== undefined) row.title = updates.title;
+    if (updates.description !== undefined) row.description = updates.description;
+    if (updates.vendorName !== undefined) row.vendor_name = updates.vendorName;
+    if (updates.vendorId !== undefined) row.vendor_id = updates.vendorId;
+    if (updates.location !== undefined) row.location = updates.location;
+    if (updates.imageUrl !== undefined) row.image_url = updates.imageUrl;
+    if (updates.images !== undefined) row.images = updates.images;
+    if (updates.status !== undefined) row.status = updates.status;
+
+    try {
+      const { data, error } = await c.from('vendor_works').update(row).eq('id', id).select();
+      if (error) throw error;
+      return mapVendorWorkFromDb(data[0]);
+    } catch (err) {
+      console.error('Supabase updateVendorWork error:', err.message);
+      return null;
+    }
+  },
+
+  async deleteVendorWork(id) {
+    const c = client || initClient();
+    if (!c) return null;
+    try {
+      const { error } = await c.from('vendor_works').delete().eq('id', id);
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.error('Supabase deleteVendorWork error:', err.message);
       return false;
     }
   }

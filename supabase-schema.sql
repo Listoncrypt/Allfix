@@ -157,6 +157,64 @@ ALTER TABLE public.vehicles ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::
 CREATE INDEX IF NOT EXISTS idx_vehicles_status ON public.vehicles(status);
 CREATE INDEX IF NOT EXISTS idx_vehicles_created_at ON public.vehicles(created_at DESC);
 
+-- 8. Owner Asset Marketing Submissions Table (Properties & Vehicles)
+CREATE TABLE IF NOT EXISTS public.marketing_requests (
+  id TEXT PRIMARY KEY,                       -- e.g. 'MKT-PROP-XXXX' or 'MKT-CAR-XXXX'
+  asset_type TEXT NOT NULL,                  -- 'property' or 'car'
+  owner_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  email TEXT,
+  location TEXT NOT NULL,
+  price TEXT,
+  description TEXT,
+  images JSONB DEFAULT '[]'::jsonb,
+  -- Property-specific fields:
+  property_type TEXT,
+  listing_purpose TEXT,                      -- 'For Sale', 'For Rent / Lease'
+  title_document TEXT,
+  land_size TEXT,
+  -- Car-specific fields:
+  car_type TEXT,
+  car_colour TEXT,
+  car_make_model_year TEXT,
+  custom_duty_paid TEXT,                     -- 'Yes', 'No'
+  car_condition TEXT,                        -- 'Brand New', 'Fairly Used (Tokunbo)', 'Fairly Used (Nigerian)'
+  accident_history TEXT,                     -- 'Accident Free', 'Accidented'
+  engine_gear_status TEXT,                   -- 'Untempered engine and gear', 'Tempered engine and gear'
+  first_body TEXT,                           -- 'Yes', 'No'
+  -- Management & Compliance:
+  status TEXT DEFAULT 'pending_review',      -- 'pending_review', 'contacted', 'inspected', 'published', 'rejected'
+  admin_notes TEXT,
+  agreement_id TEXT,
+  terms_version TEXT DEFAULT 'v1.0',
+  created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()),
+  updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
+);
+
+CREATE INDEX IF NOT EXISTS idx_marketing_requests_type ON public.marketing_requests(asset_type);
+CREATE INDEX IF NOT EXISTS idx_marketing_requests_status ON public.marketing_requests(status);
+CREATE INDEX IF NOT EXISTS idx_marketing_requests_created_at ON public.marketing_requests(created_at DESC);
+
+-- 8. Vendor Handiwork & Completed Jobs Showcase (public.vendor_works)
+CREATE TABLE IF NOT EXISTS public.vendor_works (
+  id TEXT PRIMARY KEY,
+  job_type TEXT NOT NULL,                     -- 'Plumbing', 'Carpentry', 'Electrical', 'Painting & Tiling', etc.
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  vendor_name TEXT,
+  vendor_id TEXT,
+  location TEXT,
+  image_url TEXT,
+  images JSONB DEFAULT '[]'::jsonb,
+  status TEXT DEFAULT 'published',            -- 'published', 'archived', 'draft'
+  created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()),
+  updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
+);
+
+CREATE INDEX IF NOT EXISTS idx_vendor_works_job_type ON public.vendor_works(job_type);
+CREATE INDEX IF NOT EXISTS idx_vendor_works_status ON public.vendor_works(status);
+CREATE INDEX IF NOT EXISTS idx_vendor_works_created_at ON public.vendor_works(created_at DESC);
+
 -- ==============================================================================
 -- Row Level Security (RLS) Configuration
 -- ==============================================================================
@@ -166,6 +224,8 @@ ALTER TABLE public.agreements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vehicles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.marketing_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vendor_works ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
@@ -191,6 +251,14 @@ BEGIN
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public operations on vehicles') THEN
     CREATE POLICY "Allow public operations on vehicles" ON public.vehicles FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public operations on marketing_requests') THEN
+    CREATE POLICY "Allow public operations on marketing_requests" ON public.marketing_requests FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public operations on vendor_works') THEN
+    CREATE POLICY "Allow public operations on vendor_works" ON public.vendor_works FOR ALL USING (true) WITH CHECK (true);
   END IF;
 END $$;
 
@@ -251,5 +319,23 @@ BEGIN
     EXCEPTION WHEN duplicate_object THEN
     END;
     ALTER TABLE public.vehicles REPLICA IDENTITY FULL;
+  END IF;
+
+  -- 7. marketing_requests
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'marketing_requests') THEN
+    BEGIN
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.marketing_requests;
+    EXCEPTION WHEN duplicate_object THEN
+    END;
+    ALTER TABLE public.marketing_requests REPLICA IDENTITY FULL;
+  END IF;
+
+  -- 8. vendor_works
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'vendor_works') THEN
+    BEGIN
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.vendor_works;
+    EXCEPTION WHEN duplicate_object THEN
+    END;
+    ALTER TABLE public.vendor_works REPLICA IDENTITY FULL;
   END IF;
 END $$;

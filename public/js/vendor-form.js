@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isChecked) {
       termsBox.classList.add('terms-accepted');
       statusMsg.className = 'terms-status-msg success';
-      statusMsg.textContent = '✓ Vendor Terms & Conditions v1.0 accepted. You can now submit your application.';
+      statusMsg.textContent = ' Vendor Terms & Conditions v1.0 accepted. You can now submit your application.';
     } else {
       termsBox.classList.remove('terms-accepted');
       statusMsg.className = 'terms-status-msg';
