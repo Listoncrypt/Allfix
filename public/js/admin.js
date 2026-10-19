@@ -2108,11 +2108,13 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     document.getElementById('vehFormTransmission').value = veh.transmission || 'Automatic';
     document.getElementById('vehFormFuel').value = veh.fuelType || 'Petrol';
     document.getElementById('vehFormMileage').value = veh.mileage || '';
+    document.getElementById('vehFormSeats').value = veh.seatingCapacity || '';
     document.getElementById('vehFormPrice').value = veh.price || '';
     document.getElementById('vehFormColor').value = veh.color || '';
     document.getElementById('vehFormLocation').value = veh.location || '';
     if (vehImageInput) vehImageInput.value = '';
     document.getElementById('vehFormDesc').value = veh.description || '';
+    document.getElementById('vehFormFullSpecs').value = veh.fullSpecifications || '';
 
     if (Array.isArray(veh.images) && veh.images.length > 0) {
       vehicleImagesList = [...veh.images];
@@ -2193,10 +2195,12 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       const transmission = document.getElementById('vehFormTransmission').value;
       const fuelType = document.getElementById('vehFormFuel').value;
       const mileage = document.getElementById('vehFormMileage').value.trim();
+      const seatingCapacity = document.getElementById('vehFormSeats').value.trim();
       const price = document.getElementById('vehFormPrice').value.trim();
       const color = document.getElementById('vehFormColor').value.trim();
       const location = document.getElementById('vehFormLocation').value.trim();
       const description = document.getElementById('vehFormDesc').value.trim();
+      const fullSpecifications = document.getElementById('vehFormFullSpecs').value.trim();
 
       if (!title || !make) {
         alert('Please provide at least a vehicle title and brand/make.');
@@ -2219,12 +2223,14 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
           transmission,
           fuelType,
           mileage,
+          seatingCapacity,
           price,
           color,
           location,
           images: vehicleImagesList,
           imageUrl: vehicleImagesList[0] || '',
-          description
+          description,
+          fullSpecifications
         };
 
         const endpoint = vehId ? '/api/vehicles/update' : '/api/vehicles';

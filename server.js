@@ -1034,7 +1034,8 @@ const server = http.createServer(async (req, res) => {
         const body = await parseJsonBody(req);
         const {
           title, make, model, year, vehicleType, price, mileage, transmission,
-          fuelType, condition, color, location, description, imageUrl, images, status
+          fuelType, condition, color, location, description, fullSpecifications,
+          seatingCapacity, imageUrl, images, status
         } = body;
         if (!title || !location) {
           return sendJson(res, 400, { success: false, error: 'Vehicle title and location are required.' });
@@ -1054,12 +1055,14 @@ const server = http.createServer(async (req, res) => {
           vehicleType: String(vehicleType || 'SUV / Jeep').trim(),
           price: String(price || '').trim(),
           mileage: String(mileage || '').trim(),
+          seatingCapacity: String(seatingCapacity || '').trim(),
           transmission: String(transmission || 'Automatic').trim(),
           fuelType: String(fuelType || 'Petrol').trim(),
           condition: String(condition || 'Foreign Used (Tokunbo)').trim(),
           color: String(color || '').trim(),
           location: String(location || '').trim(),
           description: String(description || '').trim(),
+          fullSpecifications: String(fullSpecifications || '').trim(),
           imageUrl: primaryImage,
           images: imagesList,
           status: status || 'available',
@@ -1090,7 +1093,8 @@ const server = http.createServer(async (req, res) => {
         const body = await parseJsonBody(req);
         const {
           id, title, make, model, year, vehicleType, price, mileage, transmission,
-          fuelType, condition, color, location, description, imageUrl, images, status
+          fuelType, condition, color, location, description, fullSpecifications,
+          seatingCapacity, imageUrl, images, status
         } = body;
         if (!id) {
           return sendJson(res, 400, { success: false, error: 'Vehicle ID is required.' });
@@ -1109,12 +1113,14 @@ const server = http.createServer(async (req, res) => {
         if (vehicleType !== undefined) updates.vehicleType = String(vehicleType).trim();
         if (price !== undefined) updates.price = String(price).trim();
         if (mileage !== undefined) updates.mileage = String(mileage).trim();
+        if (seatingCapacity !== undefined) updates.seatingCapacity = String(seatingCapacity).trim();
         if (transmission !== undefined) updates.transmission = String(transmission).trim();
         if (fuelType !== undefined) updates.fuelType = String(fuelType).trim();
         if (condition !== undefined) updates.condition = String(condition).trim();
         if (color !== undefined) updates.color = String(color).trim();
         if (location !== undefined) updates.location = String(location).trim();
         if (description !== undefined) updates.description = String(description).trim();
+        if (fullSpecifications !== undefined) updates.fullSpecifications = String(fullSpecifications).trim();
         if (images !== undefined) {
           updates.images = Array.isArray(images) ? images.slice(0, 10) : [];
           if (!imageUrl && updates.images.length > 0) updates.imageUrl = updates.images[0];

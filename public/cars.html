@@ -53,6 +53,56 @@
       gap: 0.3rem;
       z-index: 4;
     }
+    .vehicle-listing-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 0.85rem;
+    }
+    .vehicle-listing-head .vehicle-title { margin: 0; }
+    .vehicle-listing-head .property-price-val { white-space: nowrap; }
+    .vehicle-listing-head .property-price-val.price-on-request {
+      background: none;
+      padding: 0;
+      font-size: 0.86rem;
+      color: var(--gray-600);
+    }
+    .vehicle-specs-chips { margin-top: 0.2rem; }
+    .vehicle-description {
+      display: block;
+      overflow: visible;
+      margin-bottom: 0.9rem;
+      line-height: 1.65;
+    }
+    .vehicle-full-specs {
+      border-top: 1px solid var(--gray-200);
+      padding-top: 0.8rem;
+      margin: 0 0 1rem;
+      color: var(--navy-700);
+      font-size: 0.88rem;
+    }
+    .vehicle-full-specs summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--brand-700);
+    }
+    .vehicle-full-specs p { margin: 0.7rem 0 0; line-height: 1.65; white-space: pre-line; }
+    .vehicle-photo-empty {
+      width: 100%; height: 100%; display: grid; place-items: center;
+      padding: 1.5rem; color: #DCE4DD; text-align: center; background: #151B17;
+    }
+    @media (max-width: 600px) {
+      .vehicles-grid { grid-template-columns: 1fr; gap: 1rem; }
+      .vehicle-card { border-radius: 12px; }
+      .vehicle-content { padding: 1rem; }
+      .card-image-gallery { height: clamp(210px, 62vw, 300px); }
+      .vehicle-listing-head { gap: 0.6rem; }
+      .vehicle-listing-head .vehicle-title { font-size: 1.05rem; }
+      .vehicle-listing-head .property-price-val { font-size: 1.05rem; }
+      .vehicle-footer-row { align-items: stretch; }
+      .btn-contact-buy { justify-content: center; padding-inline: 0.8rem; }
+    }
   </style>
 </head>
 <body>
@@ -253,6 +303,7 @@
   <script>
     (function() {
       let allVehicles = [];
+      let visibleVehicles = [];
       const container = document.getElementById('vehiclesContainer');
       const filterPills = document.querySelectorAll('.property-filter-pill');
 
@@ -311,7 +362,7 @@
         if (!isNaN(num) && num > 0) {
           return `<span class="property-price-val">₦${num.toLocaleString()}</span>`;
         }
-        return `<span class="property-price-val">${price}</span>`;
+        return `<span class="property-price-val">${escapeHtml(price)}</span>`;
       }
 
       function buildWhatsAppLink(veh) {
@@ -329,14 +380,23 @@
 • Price: ${priceText}
 • Condition: ${veh.condition || 'Foreign Used'}
 • Mileage: ${veh.mileage || 'Clean'}
+• Transmission / Fuel: ${veh.transmission || 'Not listed'} / ${veh.fuelType || 'Not listed'}
+• Seating: ${veh.seatingCapacity || 'Not listed'}
 • Location: ${veh.location || 'Abuja'}
 
-Please share vehicle history and schedule an inspection date.`;
+Please share the full specifications, vehicle history and available inspection times.`;
 
         return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
       }
 
+      function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, char => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[char]);
+      }
+
       function renderVehicles(list) {
+        visibleVehicles = list || [];
         if (!list || list.length === 0) {
           container.innerHTML = `
             <div class="property-empty-state">
@@ -351,24 +411,34 @@ Please share vehicle history and schedule an inspection date.`;
         container.innerHTML = list.map((veh, cardIdx) => {
           const images = (Array.isArray(veh.images) && veh.images.length > 0)
             ? veh.images
-            : (veh.imageUrl ? [veh.imageUrl] : ['https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80']);
+            : (veh.imageUrl ? [veh.imageUrl] : []);
           
           const primaryImg = images[0];
-          const typeBadge = veh.vehicleType || 'Vehicle';
-          const conditionBadge = veh.condition || 'Verified';
+          const conditionBadge = escapeHtml(veh.condition || 'Condition not specified');
           const waLink = buildWhatsAppLink(veh);
           const priceHtml = formatPriceDisplay(veh.price);
-          const imagesJson = JSON.stringify(images).replace(/"/g, '&quot;');
+          const safeTitle = escapeHtml(veh.title || `${veh.year || ''} ${veh.make || ''} ${veh.model || 'Vehicle'}`.trim());
+          const description = escapeHtml(veh.description || 'Contact ALLFIX for the vehicle’s condition and ownership details.');
+          const quickSpecs = [
+            veh.year && `Year ${veh.year}`,
+            veh.make && `Make ${veh.make}`,
+            veh.model && `Model ${veh.model}`,
+            veh.transmission,
+            veh.fuelType,
+            veh.mileage,
+            veh.condition,
+            veh.seatingCapacity
+          ].filter(Boolean);
+          const fullSpecs = escapeHtml(veh.fullSpecifications || '');
+          const photosMarkup = images.length
+            ? `<img id="carImg_${cardIdx}" src="${escapeHtml(images[0])}" alt="${safeTitle} — exterior photo" loading="lazy">`
+            : `<div class="vehicle-photo-empty">Photos for this vehicle will be added shortly.</div>`;
 
           return `
             <article class="vehicle-card" data-card-index="${cardIdx}">
               <div class="card-image-gallery" onclick="window.viewCarGallery(${cardIdx}, 0)">
-                <img id="carImg_${cardIdx}" src="${primaryImg}" alt="${veh.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80'">
+                ${photosMarkup}
                 <span class="vehicle-condition-tag">${conditionBadge}</span>
-                <span class="vehicle-verified-tag">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                  Verified
-                </span>
                 ${images.length > 1 ? `<span class="gallery-counter-tag"> ${images.length} Photos</span>` : ''}
                 ${images.length > 1 ? `
                   <button type="button" class="gallery-nav-btn gallery-nav-prev" onclick="window.stepCarImage(event, ${cardIdx}, -1)">&lsaquo;</button>
@@ -376,30 +446,31 @@ Please share vehicle history and schedule an inspection date.`;
                 ` : ''}
               </div>
               <div class="vehicle-content">
-                <h3 class="vehicle-title">${veh.title}</h3>
+                <div class="vehicle-listing-head">
+                  <h3 class="vehicle-title">${safeTitle}</h3>
+                  <div class="property-price-box"><span class="property-price-label">Price</span>${priceHtml}</div>
+                </div>
                 <div class="vehicle-location">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                  <span>${veh.location || 'Abuja HQ, Nigeria'}</span>
+                  <span>${escapeHtml(veh.location || 'Abuja')}</span>
                 </div>
                 
                 <div class="vehicle-specs-chips">
-                  ${veh.year ? `<span class="vehicle-spec-chip"> ${veh.year}</span>` : ''}
-                  ${veh.transmission ? `<span class="vehicle-spec-chip"> ${veh.transmission}</span>` : ''}
-                  ${veh.fuelType ? `<span class="vehicle-spec-chip"> ${veh.fuelType}</span>` : ''}
-                  ${veh.mileage ? `<span class="vehicle-spec-chip"> ${veh.mileage}</span>` : ''}
-                  ${veh.color ? `<span class="vehicle-spec-chip"> ${veh.color}</span>` : ''}
+                  ${quickSpecs.map(spec => `<span class="vehicle-spec-chip">${escapeHtml(spec)}</span>`).join('')}
                 </div>
 
-                <p class="vehicle-description">${veh.description || 'Verified vehicle with full inspection documentation. Contact desk to schedule physical inspection.'}</p>
+                ${veh.description ? `<p class="vehicle-description">${description}</p>` : ''}
+                ${(fullSpecs || veh.color || veh.vehicleType || veh.location) ? `
+                  <details class="vehicle-full-specs">
+                    <summary>Full specifications</summary>
+                    <p>${fullSpecs}${veh.color ? `\nColour: ${escapeHtml(veh.color)}` : ''}${veh.vehicleType ? `\nBody type: ${escapeHtml(veh.vehicleType)}` : ''}${veh.location ? `\nLocation: ${escapeHtml(veh.location)}` : ''}</p>
+                  </details>
+                ` : ''}
 
                 <div class="vehicle-footer-row">
-                  <div class="property-price-box">
-                    <span class="property-price-label">Price</span>
-                    ${priceHtml}
-                  </div>
                   <a href="${waLink}" target="_blank" rel="noopener" class="btn-contact-buy">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-                    Contact to buy
+                    Enquire About This Car
                   </a>
                 </div>
               </div>
@@ -412,7 +483,7 @@ Please share vehicle history and schedule an inspection date.`;
       const cardImageIndexes = {};
       window.stepCarImage = function(e, cardIdx, step) {
         if (e) e.stopPropagation();
-        const veh = allVehicles[cardIdx];
+        const veh = visibleVehicles[cardIdx];
         if (!veh) return;
         const images = (Array.isArray(veh.images) && veh.images.length > 0)
           ? veh.images
@@ -434,7 +505,7 @@ Please share vehicle history and schedule an inspection date.`;
       };
 
       window.viewCarGallery = function(cardIdx, startIdx) {
-        const veh = allVehicles[cardIdx];
+        const veh = visibleVehicles[cardIdx];
         if (!veh) return;
         const images = (Array.isArray(veh.images) && veh.images.length > 0)
           ? veh.images

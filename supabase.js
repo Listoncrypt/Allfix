@@ -177,12 +177,14 @@ function mapVehicleFromDb(row) {
     vehicleType: row.vehicle_type || 'SUV / Jeep',
     price: row.price || '',
     mileage: row.mileage || '',
+    seatingCapacity: row.seating_capacity || '',
     transmission: row.transmission || 'Automatic',
     fuelType: row.fuel_type || 'Petrol',
     condition: row.condition || 'Foreign Used (Tokunbo)',
     color: row.color || '',
     location: row.location || 'Abuja',
     description: row.description || '',
+    fullSpecifications: row.full_specifications || '',
     imageUrl: row.image_url || (images.length > 0 ? images[0] : ''),
     images: images,
     status: row.status || 'available',
@@ -562,12 +564,14 @@ module.exports = {
       vehicle_type: v.vehicleType || 'SUV / Jeep',
       price: v.price || '',
       mileage: v.mileage || '',
+      seating_capacity: v.seatingCapacity || '',
       transmission: v.transmission || 'Automatic',
       fuel_type: v.fuelType || 'Petrol',
       condition: v.condition || 'Foreign Used (Tokunbo)',
       color: v.color || '',
       location: v.location || 'Abuja',
       description: v.description || '',
+      full_specifications: v.fullSpecifications || '',
       image_url: v.imageUrl || (imagesList[0] || ''),
       images: imagesList,
       status: v.status || 'available',
@@ -595,12 +599,14 @@ module.exports = {
     if (updates.vehicleType !== undefined) row.vehicle_type = updates.vehicleType;
     if (updates.price !== undefined) row.price = updates.price;
     if (updates.mileage !== undefined) row.mileage = updates.mileage;
+    if (updates.seatingCapacity !== undefined) row.seating_capacity = updates.seatingCapacity;
     if (updates.transmission !== undefined) row.transmission = updates.transmission;
     if (updates.fuelType !== undefined) row.fuel_type = updates.fuelType;
     if (updates.condition !== undefined) row.condition = updates.condition;
     if (updates.color !== undefined) row.color = updates.color;
     if (updates.location !== undefined) row.location = updates.location;
     if (updates.description !== undefined) row.description = updates.description;
+    if (updates.fullSpecifications !== undefined) row.full_specifications = updates.fullSpecifications;
     if (updates.imageUrl !== undefined) row.image_url = updates.imageUrl;
     if (updates.images !== undefined) row.images = updates.images;
     if (updates.status !== undefined) row.status = updates.status;

@@ -139,12 +139,14 @@ CREATE TABLE IF NOT EXISTS public.vehicles (
   vehicle_type TEXT DEFAULT 'SUV / Jeep',
   price TEXT,
   mileage TEXT,
+  seating_capacity TEXT,
   transmission TEXT DEFAULT 'Automatic',
   fuel_type TEXT DEFAULT 'Petrol',
   condition TEXT DEFAULT 'Foreign Used (Tokunbo)',
   color TEXT,
   location TEXT NOT NULL,
   description TEXT,
+  full_specifications TEXT,
   image_url TEXT,
   images JSONB DEFAULT '[]'::jsonb,
   status TEXT DEFAULT 'available',
@@ -153,6 +155,8 @@ CREATE TABLE IF NOT EXISTS public.vehicles (
 );
 
 ALTER TABLE public.vehicles ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.vehicles ADD COLUMN IF NOT EXISTS seating_capacity TEXT;
+ALTER TABLE public.vehicles ADD COLUMN IF NOT EXISTS full_specifications TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_vehicles_status ON public.vehicles(status);
 CREATE INDEX IF NOT EXISTS idx_vehicles_created_at ON public.vehicles(created_at DESC);

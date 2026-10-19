@@ -1737,7 +1737,7 @@
           </div>
         </div>
 
-        <div class="grid-cols-2-mobile" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.85rem; margin-bottom: 0.85rem;">
+        <div class="grid-cols-2-mobile" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-bottom: 0.85rem;">
           <div class="form-group">
             <label class="form-label" for="vehFormPrice" style="font-size: 0.85rem;">
               Price (₦) <span style="font-weight: 400; color: #68756B;">(Blank = "On Request")</span>
@@ -1755,6 +1755,10 @@
               Location / Lot
             </label>
             <input type="text" id="vehFormLocation" class="form-control" placeholder="e.g. Central Area, Abuja">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="vehFormSeats" style="font-size: 0.85rem;">Seating Capacity</label>
+            <input type="text" id="vehFormSeats" class="form-control" placeholder="e.g. 5 seats">
           </div>
         </div>
 
@@ -1776,8 +1780,8 @@
               <span style="width: 44px; height: 44px; background: #DBEAFE; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #2563EB; margin-bottom: 0.5rem;">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
               </span>
-              <strong style="font-size: 0.92rem; color: #151B17; display: block;">Tap to select up to 10 vehicle pictures (Gallery or Camera)</strong>
-              <span style="font-size: 0.78rem; color: #68756B;">JPG, PNG, WEBP (auto-compressed for showroom viewing)</span>
+              <strong style="font-size: 0.92rem; color: #151B17; display: block;">Add up to 10 vehicle photos in viewing order</strong>
+              <span style="font-size: 0.78rem; color: #68756B;">Start with the exterior, then add interior, dashboard, seats, boot and other useful angles. JPG, PNG or WEBP.</span>
             </div>
 
             <div id="vehGalleryGrid" class="admin-photo-grid" style="display: none;"></div>
@@ -1794,11 +1798,16 @@
           </div>
         </div>
 
-        <div class="form-group" style="margin-bottom: 1.25rem;">
+        <div class="form-group" style="margin-bottom: 0.85rem;">
           <label class="form-label" for="vehFormDesc" style="font-size: 0.85rem;">
-            Description & Key Features
+            Short Description <span style="font-weight: 400; color: #68756B;">(aim for 50–100 words)</span>
           </label>
-          <textarea id="vehFormDesc" class="form-control" rows="3" placeholder="Engine condition, interior finish, duty paid status, reverse camera, sunroof, keyless entry..."></textarea>
+          <textarea id="vehFormDesc" class="form-control" rows="4" placeholder="Summarise the car's condition, standout features and ownership highlights for buyers."></textarea>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label class="form-label" for="vehFormFullSpecs" style="font-size: 0.85rem;">Full Specifications &amp; Notes</label>
+          <textarea id="vehFormFullSpecs" class="form-control" rows="5" placeholder="Add detailed trim, engine size, drive type, service history, documentation, safety and convenience features."></textarea>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #E2E7E3; padding-top: 1rem;">
@@ -1926,7 +1935,7 @@
         <!-- Job Description -->
         <div class="form-group" style="margin-bottom: 0.85rem;">
           <label class="form-label" for="workFormDesc" style="font-size: 0.85rem;">
-            Job Description <span class="required">*</span>
+            Description of Work Completed <span class="required">*</span>
           </label>
           <textarea id="workFormDesc" class="form-control" rows="4" placeholder="Describe the job done: scope of work, materials used, specific problem solved (e.g. concealed leak repaired, custom wardrobe built), and client feedback..." required></textarea>
         </div>
