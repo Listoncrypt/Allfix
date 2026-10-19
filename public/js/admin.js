@@ -1861,18 +1861,27 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     });
 
     if (filtered.length === 0) {
+      const hasVehicleInventory = allVehicles.length > 0;
       vehiclesTable.innerHTML = `
-        <tr>
-          <td colspan="8" style="text-align: center; padding: 2.5rem; color: #68756B;">
-            No vehicles found matching your filter. Click <strong>Post New Vehicle</strong> to add one.
+        <tr class="vehicle-inventory-empty">
+          <td colspan="8" style="text-align: center; padding: 1.5rem; color: #68756B;">
+            <strong style="display: block; color: #151B17; margin-bottom: 0.35rem;">${hasVehicleInventory ? 'No vehicles match these filters' : 'No vehicles have been added yet'}</strong>
+            <span>${hasVehicleInventory ? `There are ${allVehicles.length} vehicles in your inventory. Clear the filters to see them.` : 'Post a vehicle to add it to the ALLFIX showroom.'}</span>
+            ${hasVehicleInventory ? '<button type="button" id="resetVehicleFilters" class="btn btn-outline btn-sm" style="margin: 0.85rem auto 0;">Clear filters</button>' : ''}
           </td>
         </tr>
       `;
+      document.getElementById('resetVehicleFilters')?.addEventListener('click', () => {
+        if (vehicleSearchInput) vehicleSearchInput.value = '';
+        if (vehicleTypeFilter) vehicleTypeFilter.value = 'all';
+        if (vehicleConditionFilter) vehicleConditionFilter.value = 'all';
+        renderFilteredVehicles();
+      });
       return;
     }
 
     vehiclesTable.innerHTML = filtered.map(v => {
-      const firstImg = (v.images && v.images[0]) || v.imageUrl || 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=400&q=80';
+      const firstImg = (v.images && v.images[0]) || v.imageUrl || '';
       const imgCount = (v.images && v.images.length) || (v.imageUrl ? 1 : 0);
 
       let priceDisplay = '';
@@ -1889,12 +1898,26 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
 
       const waMsg = `Hello ALLFIX Services Xpress! I am interested in inspecting/purchasing this vehicle: ${v.title} (Year: ${v.year || 'N/A'}, Condition: ${v.condition || 'Verified'}, Ref: ${v.id}). Price: ${v.price || 'On Request'}. Please confirm availability.`;
       const waLink = `https://wa.me/2347058099045?text=${encodeURIComponent(waMsg)}`;
+      const quickSpecs = [
+        v.year && `Year ${v.year}`,
+        v.make && `Make ${v.make}`,
+        v.model && `Model ${v.model}`,
+        v.transmission,
+        v.fuelType,
+        v.mileage,
+        v.condition,
+        v.vehicleType,
+        v.seatingCapacity
+      ].filter(Boolean);
+      const imageMarkup = firstImg
+        ? `<img class="vehicle-admin-thumb" src="${escapeHtml(firstImg)}" alt="${escapeHtml(v.title)}" loading="lazy" style="width: 58px; height: 42px; object-fit: cover; border-radius: 6px; border: 1px solid #E2E7E3;">`
+        : '<div class="vehicle-admin-thumb" style="width: 58px; height: 42px; display: grid; place-items: center; border-radius: 6px; background: #F2F4F2; color: #68756B; font-size: 0.62rem; text-align: center;">No photo</div>';
 
       return `
         <tr id="veh-row-${v.id}">
           <td style="width: 70px;">
             <div style="position: relative;">
-              <img src="${firstImg}" alt="${escapeHtml(v.title)}" style="width: 58px; height: 42px; object-fit: cover; border-radius: 6px; border: 1px solid #E2E7E3;" onerror="this.src='https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=200&q=80'">
+              ${imageMarkup}
               ${imgCount > 1 ? `<span style="position:absolute; bottom:2px; right:2px; background:rgba(0,0,0,0.75); color:white; font-size:0.6rem; font-weight:700; padding:1px 3px; border-radius:3px;">${imgCount} </span>` : ''}
             </div>
           </td>
@@ -1910,8 +1933,9 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
           </td>
           <td>
             <div style="font-size: 0.8rem; color: #56645A;">
-              Year: ${escapeHtml(v.year || '-')}<br>
-              ${v.transmission ? escapeHtml(v.transmission) : ''} ${v.fuelType ? '&bull; ' + escapeHtml(v.fuelType) : ''}
+              <div class="vehicle-admin-quick-specs">${quickSpecs.map(spec => `<span>${escapeHtml(spec)}</span>`).join('')}</div>
+              ${v.description ? `<p class="vehicle-admin-description">${escapeHtml(v.description)}</p>` : ''}
+              ${v.fullSpecifications ? `<details class="vehicle-admin-full-specs"><summary>Full specifications</summary><p>${escapeHtml(v.fullSpecifications)}</p></details>` : ''}
             </div>
           </td>
           <td>
@@ -1921,12 +1945,12 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
             <span style="font-size: 0.85rem; color: #3E4D42;">${escapeHtml(v.location || 'Abuja')}</span>
           </td>
           <td>
-            <div style="display: flex; gap: 0.45rem; align-items: center;">
+            <div class="vehicle-admin-actions" style="display: flex; gap: 0.45rem; align-items: center;">
               <button class="btn btn-outline btn-sm btn-edit-vehicle" data-id="${v.id}" style="padding: 0.35rem 0.65rem; font-size: 0.78rem;">
                 Edit
               </button>
-              <a href="${waLink}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="padding: 0.35rem 0.65rem; font-size: 0.78rem; background: #EFF6FF; border-color: #BFDBFE; color: #1E40AF;" title="Open WhatsApp Buyer Chat">
-                WhatsApp
+              <a href="${waLink}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="padding: 0.35rem 0.65rem; font-size: 0.78rem; background: #EFF6FF; border-color: #BFDBFE; color: #1E40AF;" title="Enquire about this car on WhatsApp">
+                Enquire
               </a>
               <button class="btn btn-outline btn-sm btn-delete-vehicle" data-id="${v.id}" style="padding: 0.35rem 0.55rem; font-size: 0.78rem; color: #DC2626; border-color: #FECACA; display: inline-flex; align-items: center; justify-content: center;" title="Delete Vehicle">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>

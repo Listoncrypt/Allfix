@@ -792,6 +792,146 @@
       .data-table {
         min-width: 620px;
       }
+      .vehicle-filter-toolbar .vehicle-search-group {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .vehicle-filter-toolbar .vehicle-search-group input {
+        grid-column: 1 / -1;
+      }
+      .vehicle-filter-toolbar .vehicle-search-group select {
+        min-width: 0;
+      }
+      .vehicle-filter-toolbar .vehicle-toolbar-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+      }
+      .vehicle-filter-toolbar .vehicle-toolbar-actions .btn {
+        width: 100%;
+        justify-content: center;
+      }
+      .vehicle-inventory-table {
+        min-width: 0;
+      }
+      .vehicle-inventory-table thead {
+        display: none;
+      }
+      .vehicle-inventory-table,
+      .vehicle-inventory-table tbody {
+        display: block;
+        width: 100%;
+      }
+      .vehicle-inventory-table tbody tr {
+        display: grid;
+        grid-template-columns: 64px minmax(0, 1fr) auto;
+        gap: 0.65rem 0.75rem;
+        align-items: start;
+        padding: 0.85rem;
+        margin-bottom: 0.75rem;
+        background: #fff;
+        border: 1px solid #DCE4DD;
+        border-radius: 12px;
+      }
+      .vehicle-inventory-table tbody tr.vehicle-inventory-empty {
+        display: block;
+        padding: 0;
+        border: 0;
+        background: transparent;
+      }
+      .vehicle-inventory-table tbody tr.vehicle-inventory-empty td {
+        width: 100%;
+        padding: 1.5rem;
+        background: #fff;
+        border: 1px solid #DCE4DD;
+        border-radius: 12px;
+        text-align: center;
+      }
+      .vehicle-inventory-table tbody td {
+        display: block;
+        min-width: 0;
+        padding: 0;
+        border: 0;
+      }
+      .vehicle-inventory-table tbody td:first-child {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+      }
+      .vehicle-inventory-table tbody td:nth-child(2) {
+        grid-column: 2;
+        grid-row: 1;
+      }
+      .vehicle-inventory-table tbody td:nth-child(3),
+      .vehicle-inventory-table tbody td:nth-child(4) {
+        display: none;
+      }
+      .vehicle-inventory-table tbody td:nth-child(5) {
+        grid-column: 1 / -1;
+        grid-row: 3;
+      }
+      .vehicle-inventory-table tbody td:nth-child(6) {
+        grid-column: 3;
+        grid-row: 1;
+        text-align: right;
+        white-space: nowrap;
+      }
+      .vehicle-inventory-table tbody td:nth-child(7),
+      .vehicle-inventory-table tbody td:nth-child(8) {
+        grid-column: 1 / -1;
+      }
+      .vehicle-inventory-table tbody td:nth-child(7) {
+        grid-row: 4;
+        color: #56645A;
+        font-size: 0.82rem;
+      }
+      .vehicle-inventory-table tbody td:nth-child(8) {
+        grid-row: 5;
+      }
+      .vehicle-inventory-table .vehicle-admin-thumb {
+        width: 64px !important;
+        height: 56px !important;
+      }
+      .vehicle-inventory-table .vehicle-admin-actions {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 0.5rem !important;
+      }
+      .vehicle-inventory-table .vehicle-admin-actions .btn {
+        justify-content: center;
+      }
+      .vehicle-admin-quick-specs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        margin-bottom: 0.55rem;
+      }
+      .vehicle-admin-quick-specs span {
+        padding: 0.2rem 0.4rem;
+        background: #F2F4F2;
+        border-radius: 4px;
+        color: #374151;
+        font-size: 0.72rem;
+      }
+      .vehicle-admin-description {
+        margin: 0.45rem 0;
+        color: #56645A;
+        font-size: 0.8rem;
+        line-height: 1.5;
+      }
+      .vehicle-admin-full-specs {
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+      }
+      .vehicle-admin-full-specs summary {
+        color: #166534;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .vehicle-admin-full-specs p {
+        margin: 0.4rem 0 0;
+        color: #56645A;
+        white-space: pre-line;
+      }
       .admin-modal-card {
         padding: 1.25rem 1rem;
         max-height: 92vh;
@@ -1281,7 +1421,7 @@
         </div>
 
         <div class="data-table-container">
-          <table class="data-table">
+          <table class="data-table vehicle-inventory-table">
             <thead>
               <tr>
                 <th style="width: 70px;">Image</th>
