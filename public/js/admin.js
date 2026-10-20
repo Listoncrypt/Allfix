@@ -83,8 +83,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (supabaseBackendLabel) supabaseBackendLabel.textContent = 'Storage: Supabase (Live)';
         if (supabaseUrlInput && json.url) supabaseUrlInput.value = json.url;
 
-        // Initialize Supabase Realtime Channel if not already active
-        initSupabaseRealtimeChannel(json.url, json.key);
       } else {
         if (supabaseIndicatorDot) supabaseIndicatorDot.style.background = '#929B93';
         if (supabaseBackendLabel) supabaseBackendLabel.textContent = 'Storage: Local (Connect Supabase)';
@@ -991,6 +989,18 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     }
 
     document.getElementById('modalLocation').textContent = item.location || 'Not provided';
+    document.getElementById('modalMeetingPerson').textContent = item.meetingPersonName
+      ? `${item.meetingPersonName} • ${item.meetingPersonPhone || 'No phone'}${item.isBookingForSomeoneElse && item.meetingPersonRelationship ? ` • Relationship: ${item.meetingPersonRelationship}` : ''}`
+      : 'Not provided';
+    document.getElementById('modalMeetingAddress').textContent = item.meetingAddress || 'Not provided';
+    const identityDetails = document.getElementById('modalIdentityDetails');
+    if (identityDetails) {
+      const links = [];
+      const identityUrl = `/api/identity-file?entity=request&id=${encodeURIComponent(item.id)}&kind=`;
+      if (item.identityDocumentPath) links.push(`<a href="${identityUrl}id" target="_blank" rel="noopener noreferrer">View ${escapeHtml(item.identityDocumentType || 'ID')}</a>`);
+      if (item.selfiePath) links.push(`<a href="${identityUrl}selfie" target="_blank" rel="noopener noreferrer">View selfie</a>`);
+      identityDetails.innerHTML = links.length ? links.join(' &nbsp;•&nbsp; ') : 'No identity files on record';
+    }
     document.getElementById('modalPhone').textContent = item.phone || '-';
     document.getElementById('modalEmail').textContent = item.email || 'None provided';
     document.getElementById('modalAgreementId').textContent = item.agreementId || 'AGR-C-RECORDED';
@@ -1134,6 +1144,11 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       const cleanPhone = cleanPhoneNumber(v.phone);
       const waLink = getVendorWhatsAppLink(v.phone, v.fullName, v.businessName, v.category);
       const callLink = cleanPhone ? `tel:${cleanPhone}` : '#';
+      const identityUrl = `/api/identity-file?entity=vendor&id=${encodeURIComponent(v.id)}&kind=`;
+      const identityLinks = [
+        v.identityDocumentPath ? `<a href="${identityUrl}id" target="_blank" rel="noopener noreferrer">View ${escapeHtml(v.identityDocumentType || 'ID')}</a>` : '',
+        v.selfiePath ? `<a href="${identityUrl}selfie" target="_blank" rel="noopener noreferrer">View selfie</a>` : ''
+      ].filter(Boolean).join(' &nbsp;•&nbsp; ');
 
       return `
         <tr>
@@ -1141,7 +1156,9 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
           <td>
             <strong style="font-size: 1rem;">${escapeHtml(v.businessName || v.fullName)}</strong><br>
             <span style="font-size: 0.85rem; color: #3E4D42;">Lead: ${escapeHtml(v.fullName)}</span><br>
-            <span style="font-size: 0.8rem; color: #68756B;"> ${escapeHtml(v.phone)}</span>
+            <span style="font-size: 0.8rem; color: #68756B;"> ${escapeHtml(v.phone)}</span><br>
+            <span style="font-size: 0.78rem; color: #68756B;">Home address: ${escapeHtml(v.residentialAddress || 'Not provided')}</span>
+            ${identityLinks ? `<br><span style="font-size: 0.78rem;">${identityLinks}</span>` : ''}
           </td>
           <td>
             <strong>${escapeHtml(v.category)}</strong><br>

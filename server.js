@@ -34,6 +34,8 @@ if (fs.existsSync(ENV_PATH)) {
 const PORT = process.env.PORT || 3000;
 const DB_PATH = path.join(__dirname, 'data', 'db.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
+const PRIVATE_IDENTITY_DIR = path.join(__dirname, 'data', 'private-identity');
+const IDENTITY_FILE_LIMIT = 4 * 1024 * 1024;
 
 // Admin portal auth configuration
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admintony';
@@ -41,6 +43,87 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Tx9#Abuja!Secure*Allfix987
 
 const activeSessions = new Map();
 const failedLoginAttempts = new Map();
+const otpSendLimits = new Map();
+const localEmailOtpChallenges = new Map();
+
+function normalizeNigerianPhone(value) {
+  let digits = String(value || '').replace(/[^0-9]/g, '');
+  if (digits.startsWith('0')) digits = '234' + digits.slice(1);
+  if (!/^234(?:70|80|81|90|91)\d{8}$/.test(digits)) return null;
+  return digits;
+}
+
+function normalizeEmail(value) {
+  const email = String(value || '').trim().toLowerCase();
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return null;
+  return email;
+}
+
+function hashEmailOtp(challengeId, email, phone, code) {
+  return crypto.createHmac('sha256', process.env.OTP_SESSION_SECRET)
+    .update(`${challengeId}:${email}:${phone}:${code}`)
+    .digest('hex');
+}
+
+function canSendEmailOtp(email, ip) {
+  const now = Date.now();
+  for (const [key, timestamps] of otpSendLimits) {
+    const recent = timestamps.filter(time => now - time < 60 * 60 * 1000);
+    if (recent.length) otpSendLimits.set(key, recent);
+    else otpSendLimits.delete(key);
+  }
+  const keys = [`email:${email}`, `ip:${ip}`];
+  if (keys.some(key => {
+    const timestamps = otpSendLimits.get(key) || [];
+    return timestamps.length >= (key.startsWith('email:') ? 5 : 15) ||
+      timestamps.some(time => now - time < 60_000);
+  })) return false;
+  for (const key of keys) otpSendLimits.set(key, [...(otpSendLimits.get(key) || []), now]);
+  return true;
+}
+
+function signedOtpPayload(payload) {
+  const secret = process.env.OTP_SESSION_SECRET;
+  if (!secret || secret.length < 32) return null;
+  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', secret).update(encoded).digest('base64url');
+  return `${encoded}.${signature}`;
+}
+
+function readSignedOtpPayload(token) {
+  if (typeof token !== 'string' || token.length > 2048) return null;
+  const [encoded, signature, extra] = token.split('.');
+  const secret = process.env.OTP_SESSION_SECRET;
+  if (!secret || secret.length < 32 || !encoded || !signature || extra) return null;
+  const expected = crypto.createHmac('sha256', secret).update(encoded).digest();
+  let received;
+  try { received = Buffer.from(signature, 'base64url'); } catch (_) { return null; }
+  if (received.length !== expected.length || !crypto.timingSafeEqual(received, expected)) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    if (!payload || !Number.isFinite(payload.issuedAt) || Date.now() - payload.issuedAt > 10 * 60 * 1000 || payload.issuedAt > Date.now() + 30_000) return null;
+    return payload;
+  } catch (_) {
+    return null;
+  }
+}
+
+function canSendOtp(phone, ip) {
+  const now = Date.now();
+  for (const [key, timestamps] of otpSendLimits) {
+    const recent = timestamps.filter(time => now - time < 60 * 60 * 1000);
+    if (recent.length) otpSendLimits.set(key, recent);
+    else otpSendLimits.delete(key);
+  }
+  const keys = [`phone:${phone}`, `ip:${ip}`];
+  if (keys.some(key => {
+    const timestamps = otpSendLimits.get(key) || [];
+    return timestamps.length >= (key.startsWith('phone:') ? 5 : 15) ||
+      timestamps.some(time => now - time < 60_000);
+  })) return false;
+  for (const key of keys) otpSendLimits.set(key, [...(otpSendLimits.get(key) || []), now]);
+  return true;
+}
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -85,6 +168,17 @@ function writeDb(data) {
   }
 }
 
+function localDatabaseIsAvailable() {
+  return process.env.VERCEL !== '1';
+}
+
+function localDatabaseUnavailable(res) {
+  return sendJson(res, 503, {
+    success: false,
+    error: 'Persistent storage is not configured. Connect Supabase before saving this data.'
+  });
+}
+
 function parseJsonBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
@@ -105,6 +199,71 @@ function parseJsonBody(req) {
     });
     req.on('error', reject);
   });
+}
+
+function decodeIdentityUpload(value, allowedTypes, label) {
+  if (typeof value !== 'string') throw new Error(`Please upload ${label}.`);
+  const match = value.match(/^data:([\w.+-]+\/[\w.+-]+);base64,([A-Za-z0-9+/=]+)$/);
+  if (!match || !allowedTypes.includes(match[1])) throw new Error(`${label} must be a JPG, PNG, WebP${allowedTypes.includes('application/pdf') ? ' or PDF' : ''} file.`);
+  const buffer = Buffer.from(match[2], 'base64');
+  if (!buffer.length || buffer.length > IDENTITY_FILE_LIMIT) throw new Error(`${label} must be 4 MB or smaller.`);
+
+  const isJpeg = buffer.length > 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  const isPng = buffer.length > 8 && buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  const isWebp = buffer.length > 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP';
+  const isPdf = buffer.length > 4 && buffer.toString('ascii', 0, 5) === '%PDF-';
+  const actualType = isJpeg ? 'image/jpeg' : isPng ? 'image/png' : isWebp ? 'image/webp' : isPdf ? 'application/pdf' : '';
+  if (!actualType || actualType !== match[1] || !allowedTypes.includes(actualType)) {
+    throw new Error(`${label} is not a valid supported file. Choose a JPG, PNG, WebP${allowedTypes.includes('application/pdf') ? ' or PDF' : ''}.`);
+  }
+  return { buffer, contentType: actualType, extension: actualType === 'image/jpeg' ? 'jpg' : actualType === 'image/png' ? 'png' : actualType === 'image/webp' ? 'webp' : 'pdf' };
+}
+
+async function saveIdentityUpload(entityType, entityId, kind, value, allowedTypes) {
+  const label = kind === 'id' ? 'your identity document' : 'your selfie';
+  const file = decodeIdentityUpload(value, allowedTypes, label);
+  const filename = `${kind}-${crypto.randomBytes(12).toString('hex')}.${file.extension}`;
+  const relativePath = `${entityType}/${entityId}/${filename}`;
+
+  if (supabase.isSupabaseConfigured()) {
+    if (!supabase.hasIdentityStorageCredentials()) throw new Error('Secure document storage is not ready. Please contact ALLFIX support.');
+    try {
+      await supabase.uploadIdentityFile(relativePath, file.buffer, file.contentType);
+    } catch (error) {
+      console.error('Private identity upload failed:', error.message);
+      throw new Error('Secure document storage is temporarily unavailable. Please contact ALLFIX support.');
+    }
+    return `supabase/${relativePath}`;
+  }
+
+  const targetDirectory = path.join(PRIVATE_IDENTITY_DIR, entityType, entityId);
+  await fs.promises.mkdir(targetDirectory, { recursive: true, mode: 0o700 });
+  await fs.promises.writeFile(path.join(targetDirectory, filename), file.buffer, { flag: 'wx', mode: 0o600 });
+  return `local/${relativePath}`;
+}
+
+async function saveIdentityUploads(entityType, entityId, idUpload, selfieUpload) {
+  const saved = [];
+  try {
+    const identityDocumentPath = await saveIdentityUpload(entityType, entityId, 'id', idUpload, ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+    saved.push(identityDocumentPath);
+    const selfiePath = await saveIdentityUpload(entityType, entityId, 'selfie', selfieUpload, ['image/jpeg', 'image/png', 'image/webp']);
+    saved.push(selfiePath);
+    return { identityDocumentPath, selfiePath };
+  } catch (error) {
+    await removeIdentityUploads(saved).catch(() => {});
+    throw error;
+  }
+}
+
+async function removeIdentityUploads(paths) {
+  const remotePaths = paths.filter(filePath => filePath.startsWith('supabase/')).map(filePath => filePath.slice('supabase/'.length));
+  if (remotePaths.length) await supabase.removeIdentityFiles(remotePaths);
+  for (const filePath of paths.filter(filePath => filePath.startsWith('local/'))) {
+    const localPath = path.resolve(PRIVATE_IDENTITY_DIR, ...filePath.slice('local/'.length).split('/'));
+    if (!localPath.startsWith(path.resolve(PRIVATE_IDENTITY_DIR) + path.sep)) continue;
+    await fs.promises.rm(localPath, { force: true });
+  }
 }
 
 function sendJson(res, statusCode, data) {
@@ -209,6 +368,129 @@ const server = http.createServer(async (req, res) => {
   }
   if (pathname.startsWith('/api/')) {
     try {
+      if ((pathname === '/api/otp/request' || pathname === '/api/otp/verify') && method === 'POST') {
+        if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL ||
+            !process.env.OTP_SESSION_SECRET || process.env.OTP_SESSION_SECRET.length < 32) {
+          return sendJson(res, 503, { success: false, error: 'Email verification is not configured yet.' });
+        }
+        const otpClient = supabase.getOtpClient();
+        if (process.env.VERCEL && !otpClient) {
+          return sendJson(res, 503, { success: false, error: 'Persistent OTP storage is not configured yet.' });
+        }
+
+        const body = await parseJsonBody(req);
+        if (pathname === '/api/otp/request') {
+          const email = normalizeEmail(body.email);
+          const phone = normalizeNigerianPhone(body.phone);
+          if (!email || !phone) {
+            return sendJson(res, 400, { success: false, error: 'Enter a valid email address and Nigerian mobile number.' });
+          }
+          if (!canSendEmailOtp(email, getClientIp(req))) {
+            return sendJson(res, 429, { success: false, error: 'Please wait before requesting another code.' });
+          }
+
+          const challengeId = crypto.randomBytes(24).toString('base64url');
+          const code = String(crypto.randomInt(100000, 1000000));
+          const issuedAt = Date.now();
+          const challenge = {
+            challenge_id: challengeId,
+            email,
+            phone,
+            code_hash: hashEmailOtp(challengeId, email, phone, code),
+            attempts: 0,
+            expires_at: new Date(issuedAt + 5 * 60 * 1000).toISOString(),
+            consumed_at: null,
+            created_at: new Date(issuedAt).toISOString()
+          };
+
+          if (otpClient) {
+            const { error } = await otpClient.from('email_otp_challenges').insert([challenge]);
+            if (error) {
+              console.error('Could not persist email OTP challenge:', error.message);
+              return sendJson(res, 503, { success: false, error: 'Email verification is temporarily unavailable.' });
+            }
+          } else {
+            localEmailOtpChallenges.set(challengeId, challenge);
+          }
+
+          const delivery = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              from: process.env.RESEND_FROM_EMAIL,
+              to: [email],
+              subject: 'Your ALLFIX verification code',
+              text: `Your ALLFIX verification code is ${code}. It expires in 5 minutes. If you did not request this code, ignore this email.`,
+              html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#17211a"><p style="font-size:18px;font-weight:700">Verify your email</p><p>Use this one-time code to continue with your ALLFIX service request:</p><p style="font-size:30px;font-weight:700;letter-spacing:8px;padding:16px 0">${code}</p><p>This code expires in 5 minutes. If you did not request it, you can ignore this email.</p><p style="font-size:12px;color:#66736a">ALLFIX Services Xpress</p></div>`
+            })
+          });
+          if (!delivery.ok) {
+            if (otpClient) {
+              await otpClient.from('email_otp_challenges').delete().eq('challenge_id', challengeId);
+            } else {
+              localEmailOtpChallenges.delete(challengeId);
+            }
+            return sendJson(res, 502, { success: false, error: 'We could not deliver the verification email. Please try again.' });
+          }
+          return sendJson(res, 200, { success: true, challengeId, message: 'Verification code sent to your email.' });
+        }
+
+        const challengeId = String(body.challengeId || '');
+        const code = String(body.code || '').trim();
+        if (!/^[A-Za-z0-9_-]{32}$/.test(challengeId) || !/^\d{6}$/.test(code)) {
+          return sendJson(res, 400, { success: false, verified: false, error: 'The code is invalid or has expired.' });
+        }
+
+        if (otpClient) {
+          const { data: row, error: readError } = await otpClient
+            .from('email_otp_challenges')
+            .select('email, phone, code_hash, expires_at, consumed_at, attempts')
+            .eq('challenge_id', challengeId)
+            .maybeSingle();
+          if (readError || !row || row.consumed_at || row.attempts >= 5 ||
+              Date.parse(row.expires_at) <= Date.now()) {
+            return sendJson(res, 400, { success: false, verified: false, error: 'The code is incorrect or has expired.' });
+          }
+          const attemptHash = hashEmailOtp(challengeId, row.email, row.phone, code);
+          const { data: verified, error: verifyError } = await otpClient.rpc(
+            'verify_allfix_email_otp',
+            { p_challenge_id: challengeId, p_code_hash: attemptHash },
+          );
+          if (verifyError) {
+            console.error('Could not verify email OTP:', verifyError.message);
+            return sendJson(res, 503, { success: false, verified: false, error: 'Email verification is temporarily unavailable.' });
+          }
+          if (!verified) {
+            return sendJson(res, 400, { success: false, verified: false, error: 'The code is incorrect or has expired.' });
+          }
+          const verificationToken = signedOtpPayload({
+            purpose: 'contact-verified', email: row.email, phone: row.phone, issuedAt: Date.now()
+          });
+          return sendJson(res, 200, { success: true, verified: true, verificationToken, message: 'Email address verified.' });
+        }
+
+        const challenge = localEmailOtpChallenges.get(challengeId);
+        if (!challenge || challenge.consumed_at || challenge.attempts >= 5 ||
+            Date.parse(challenge.expires_at) <= Date.now()) {
+          localEmailOtpChallenges.delete(challengeId);
+          return sendJson(res, 400, { success: false, verified: false, error: 'The code is incorrect or has expired.' });
+        }
+        const attemptHash = hashEmailOtp(challengeId, challenge.email, challenge.phone, code);
+        const matches = crypto.timingSafeEqual(Buffer.from(attemptHash, 'hex'), Buffer.from(challenge.code_hash, 'hex'));
+        if (!matches) {
+          challenge.attempts += 1;
+          return sendJson(res, 400, { success: false, verified: false, error: 'The code is incorrect or has expired.' });
+        }
+        challenge.consumed_at = new Date().toISOString();
+        const verificationToken = signedOtpPayload({
+          purpose: 'contact-verified', email: challenge.email, phone: challenge.phone, issuedAt: Date.now()
+        });
+        return sendJson(res, 200, { success: true, verified: true, verificationToken, message: 'Email address verified.' });
+      }
+
       if (pathname === '/api/requests' && method === 'POST') {
         const body = await parseJsonBody(req);
         const {
@@ -236,9 +518,28 @@ const server = http.createServer(async (req, res) => {
           landSize,
           landSizeOther,
           landStatus,
+          isBookingForSomeoneElse,
+          meetingPersonName,
+          meetingPersonPhone,
+          meetingPersonEmail,
+          meetingPersonRelationship,
+          meetingAddress,
+          identityDocumentType,
+          identityConsent,
+          representativeConsent,
+          identityDocumentUpload,
+          identitySelfieUpload,
           termsAccepted,
           termsVersion
         } = body;
+        if (body.contactVerificationToken) {
+          const verifiedContact = readSignedOtpPayload(body.contactVerificationToken);
+          if (!verifiedContact || verifiedContact.purpose !== 'contact-verified' ||
+              verifiedContact.phone !== normalizeNigerianPhone(phone) ||
+              verifiedContact.email !== normalizeEmail(email)) {
+            return sendJson(res, 401, { success: false, error: 'Email verification does not match this contact. Please verify again.' });
+          }
+        }
         if (!customerName || !phone || !category || !description) {
           return sendJson(res, 400, {
             success: false,
@@ -249,6 +550,17 @@ const server = http.createServer(async (req, res) => {
           return sendJson(res, 400, {
             success: false,
             error: 'Please accept the Client Terms & Conditions before submitting your request.'
+          });
+        }
+
+        const bookingForAnotherPerson = isBookingForSomeoneElse === true;
+        const validIdentityType = ['NIN', "Voters card", 'International passport', 'Drivers licence', 'Other valid ID'].includes(identityDocumentType);
+        if (!String(meetingAddress || '').trim() || !validIdentityType || identityConsent !== true ||
+            (bookingForAnotherPerson && (!String(meetingPersonName || '').trim() || !String(meetingPersonPhone || '').trim() ||
+              !String(meetingPersonRelationship || '').trim() || representativeConsent !== true))) {
+          return sendJson(res, 400, {
+            success: false,
+            error: 'Please provide the meeting address, identity details, and the required consent before submitting.'
           });
         }
 
@@ -263,10 +575,20 @@ const server = http.createServer(async (req, res) => {
           });
         }
 
-        const db = readDb();
+        if (!supabase.isSupabaseConfigured() && !localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+
         const isoNow = new Date().toISOString();
         const requestId = 'REQ-' + crypto.randomBytes(4).toString('hex').toUpperCase();
         const agreementId = 'AGR-C-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+        let identityFiles;
+        try {
+          identityFiles = await saveIdentityUploads('requests', requestId, identityDocumentUpload, identitySelfieUpload);
+        } catch (uploadError) {
+          const status = uploadError.message.startsWith('Secure document storage') ? 503 : 400;
+          return sendJson(res, status, { success: false, error: uploadError.message });
+        }
+
+        const db = readDb();
         const clientIp = getClientIp(req);
         const userAgent = req.headers['user-agent'] || 'Unknown';
         const agreementRecord = {
@@ -308,6 +630,17 @@ const server = http.createServer(async (req, res) => {
           landSize: (landSize || '').trim(),
           landSizeOther: (landSizeOther || '').trim(),
           landStatus: landStatus || '',
+          isBookingForSomeoneElse: bookingForAnotherPerson,
+          meetingPersonName: String(bookingForAnotherPerson ? meetingPersonName : customerName).trim(),
+          meetingPersonPhone: String(bookingForAnotherPerson ? meetingPersonPhone : phone).trim(),
+          meetingPersonEmail: String(bookingForAnotherPerson ? meetingPersonEmail : email || '').trim(),
+          meetingPersonRelationship: bookingForAnotherPerson ? String(meetingPersonRelationship).trim() : 'Self',
+          meetingAddress: String(meetingAddress).trim(),
+          identityDocumentType: String(identityDocumentType).trim(),
+          identityDocumentPath: identityFiles.identityDocumentPath,
+          selfiePath: identityFiles.selfiePath,
+          identityConsent: true,
+          identityConsentAt: isoNow,
           agreementType: 'Client Terms',
           version: 'v1.0',
           acceptedAt: isoNow,
@@ -321,7 +654,9 @@ const server = http.createServer(async (req, res) => {
             await supabase.insertAgreement(agreementRecord);
             await supabase.insertRequest(requestRecord);
           } catch (supaErr) {
-            console.error('Failed to sync to Supabase, saved to local db:', supaErr);
+            console.error('Failed to save verified service request to Supabase:', supaErr);
+            await removeIdentityUploads([identityFiles.identityDocumentPath, identityFiles.selfiePath]).catch(() => {});
+            return sendJson(res, 503, { success: false, error: 'Secure verification storage is being prepared. Please contact ALLFIX support before resubmitting.' });
           }
         }
 
@@ -349,6 +684,11 @@ const server = http.createServer(async (req, res) => {
           operatingAreas,
           regNumber,
           address,
+          residentialAddress,
+          identityDocumentType,
+          identityConsent,
+          identityDocumentUpload,
+          identitySelfieUpload,
           termsAccepted,
           termsVersion
         } = body;
@@ -365,10 +705,28 @@ const server = http.createServer(async (req, res) => {
           });
         }
 
-        const db = readDb();
+        const validIdentityType = ['NIN', "Voters card", 'International passport', 'Drivers licence', 'Other valid ID'].includes(identityDocumentType);
+        if (!String(residentialAddress || '').trim() || !validIdentityType || identityConsent !== true) {
+          return sendJson(res, 400, {
+            success: false,
+            error: 'Please provide your residential address, a valid ID type, and consent to the identity review.'
+          });
+        }
+
+        if (!supabase.isSupabaseConfigured() && !localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+
         const isoNow = new Date().toISOString();
         const vendorId = 'VEN-' + crypto.randomBytes(4).toString('hex').toUpperCase();
         const agreementId = 'AGR-V-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+        let identityFiles;
+        try {
+          identityFiles = await saveIdentityUploads('vendors', vendorId, identityDocumentUpload, identitySelfieUpload);
+        } catch (uploadError) {
+          const status = uploadError.message.startsWith('Secure document storage') ? 503 : 400;
+          return sendJson(res, status, { success: false, error: uploadError.message });
+        }
+
+        const db = readDb();
         const clientIp = getClientIp(req);
         const userAgent = req.headers['user-agent'] || 'Unknown';
         const agreementRecord = {
@@ -396,11 +754,17 @@ const server = http.createServer(async (req, res) => {
           operatingAreas: (operatingAreas || 'All major metropolitan areas').trim(),
           regNumber: (regNumber || '').trim(),
           address: (address || '').trim(),
+          residentialAddress: String(residentialAddress).trim(),
+          identityDocumentType: String(identityDocumentType).trim(),
+          identityDocumentPath: identityFiles.identityDocumentPath,
+          selfiePath: identityFiles.selfiePath,
+          identityConsent: true,
+          identityConsentAt: isoNow,
           agreementType: 'Vendor Terms',
           version: 'v1.0',
           acceptedAt: isoNow,
           agreementId: agreementId,
-          verificationStatus: 'pending_verification',
+          verificationStatus: 'pending',
           rating: 5.0,
           jobsCompleted: 0,
           createdAt: isoNow
@@ -411,7 +775,9 @@ const server = http.createServer(async (req, res) => {
             await supabase.insertAgreement(agreementRecord);
             await supabase.insertVendor(vendorRecord);
           } catch (supaErr) {
-            console.error('Failed to sync vendor to Supabase, saved to local db:', supaErr);
+            console.error('Failed to save verified vendor application to Supabase:', supaErr);
+            await removeIdentityUploads([identityFiles.identityDocumentPath, identityFiles.selfiePath]).catch(() => {});
+            return sendJson(res, 503, { success: false, error: 'Vendor verification storage is being prepared. Please contact ALLFIX support before resubmitting.' });
           }
         }
 
@@ -435,7 +801,6 @@ const server = http.createServer(async (req, res) => {
             error: 'Please provide your name, message, and at least one contact method (email or phone).'
           });
         }
-        const db = readDb();
         const msgId = 'MSG-' + crypto.randomBytes(3).toString('hex').toUpperCase();
         const msgRecord = {
           id: msgId,
@@ -448,15 +813,19 @@ const server = http.createServer(async (req, res) => {
         };
         if (supabase.isSupabaseConfigured()) {
           try {
-            await supabase.insertMessage(msgRecord);
+            const saved = await supabase.insertMessage(msgRecord);
+            if (!saved) throw new Error('Supabase did not confirm the message insert.');
           } catch (supaErr) {
             console.error('Failed to sync message to Supabase:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'Your message was not saved. Please try again later.' });
           }
+        } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+          const db = readDb();
+          db.messages = db.messages || [];
+          db.messages.push(msgRecord);
+          if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'Your message could not be saved.' });
         }
-
-        db.messages = db.messages || [];
-        db.messages.push(msgRecord);
-        writeDb(db);
         return sendJson(res, 201, {
           success: true,
           message: 'Message received! Our customer support desk will respond shortly.'
@@ -638,6 +1007,70 @@ const server = http.createServer(async (req, res) => {
         });
       }
 
+      if (pathname === '/api/identity-file' && method === 'GET') {
+        if (!requireAdminAuth(req, res)) return;
+        const entityType = urlObj.searchParams.get('entity');
+        const entityId = urlObj.searchParams.get('id') || '';
+        const kind = urlObj.searchParams.get('kind');
+        if (!['request', 'vendor'].includes(entityType) || !['id', 'selfie'].includes(kind) || !/^[A-Z0-9-]{1,40}$/i.test(entityId)) {
+          return sendJson(res, 400, { success: false, error: 'Invalid identity file reference.' });
+        }
+
+        let record;
+        if (supabase.isSupabaseConfigured()) {
+          try {
+            const records = entityType === 'request' ? await supabase.getRequests() : await supabase.getVendors();
+            record = (records || []).find(item => item.id === entityId);
+          } catch (_) {
+            return sendJson(res, 503, { success: false, error: 'Identity records are temporarily unavailable.' });
+          }
+        } else {
+          const db = readDb();
+          const records = entityType === 'request' ? db.requests : db.vendors;
+          record = (records || []).find(item => item.id === entityId);
+        }
+
+        const filePath = kind === 'id' ? record?.identityDocumentPath : record?.selfiePath;
+        if (!filePath) return sendJson(res, 404, { success: false, error: 'Identity file not found.' });
+        const entityFolder = entityType === 'request' ? 'requests' : 'vendors';
+        const prefix = `${entityFolder}/${entityId}/`;
+
+        if (filePath.startsWith(`supabase/${prefix}`)) {
+          try {
+            const signedUrl = await supabase.createIdentityFileSignedUrl(filePath.slice('supabase/'.length));
+            res.writeHead(302, {
+              Location: signedUrl,
+              'Cache-Control': 'private, no-store, max-age=0',
+              'Referrer-Policy': 'no-referrer'
+            });
+            return res.end();
+          } catch (_) {
+            return sendJson(res, 503, { success: false, error: 'Identity file is temporarily unavailable.' });
+          }
+        }
+
+        if (!filePath.startsWith(`local/${prefix}`)) return sendJson(res, 404, { success: false, error: 'Identity file not found.' });
+        const localPath = path.resolve(PRIVATE_IDENTITY_DIR, ...filePath.slice('local/'.length).split('/'));
+        if (!localPath.startsWith(path.resolve(PRIVATE_IDENTITY_DIR) + path.sep)) return sendJson(res, 404, { success: false, error: 'Identity file not found.' });
+        try {
+          const file = await fs.promises.readFile(localPath);
+          const extension = path.extname(localPath).toLowerCase();
+          const contentType = ({ '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.pdf': 'application/pdf' })[extension];
+          if (!contentType) return sendJson(res, 404, { success: false, error: 'Identity file not found.' });
+          res.writeHead(200, {
+            'Content-Type': contentType,
+            'Content-Length': file.length,
+            'Content-Disposition': 'inline',
+            'Cache-Control': 'private, no-store, max-age=0',
+            'Referrer-Policy': 'no-referrer',
+            'X-Content-Type-Options': 'nosniff'
+          });
+          return res.end(file);
+        } catch (_) {
+          return sendJson(res, 404, { success: false, error: 'Identity file not found.' });
+        }
+      }
+
       if (pathname === '/api/requests/update' && (method === 'POST' || method === 'PATCH')) {
         if (!requireAdminAuth(req, res)) return;
         const body = await parseJsonBody(req);
@@ -675,16 +1108,20 @@ const server = http.createServer(async (req, res) => {
         if (!id) {
           return sendJson(res, 400, { success: false, error: 'Request ID is required' });
         }
+        const localDb = readDb();
+        let deletedRequest = (localDb.requests || []).find(item => item.id === id);
         if (supabase.isSupabaseConfigured()) {
           try {
+            const records = await supabase.getRequests();
+            deletedRequest = deletedRequest || (records || []).find(item => item.id === id);
             await supabase.deleteRequest(id);
           } catch (supaErr) {
             console.error('Supabase deleteRequest error:', supaErr);
           }
         }
-        const db = readDb();
-        db.requests = (db.requests || []).filter(r => r.id !== id);
-        writeDb(db);
+        localDb.requests = (localDb.requests || []).filter(r => r.id !== id);
+        writeDb(localDb);
+        if (deletedRequest) await removeIdentityUploads([deletedRequest.identityDocumentPath, deletedRequest.selfiePath].filter(Boolean)).catch(err => console.error('Could not remove request identity files:', err.message));
         return sendJson(res, 200, { success: true, message: 'Request deleted successfully' });
       }
 
@@ -725,16 +1162,20 @@ const server = http.createServer(async (req, res) => {
         if (!id) {
           return sendJson(res, 400, { success: false, error: 'Vendor ID is required' });
         }
+        const localDb = readDb();
+        let deletedVendor = (localDb.vendors || []).find(item => item.id === id);
         if (supabase.isSupabaseConfigured()) {
           try {
+            const records = await supabase.getVendors();
+            deletedVendor = deletedVendor || (records || []).find(item => item.id === id);
             await supabase.deleteVendor(id);
           } catch (supaErr) {
             console.error('Supabase deleteVendor error:', supaErr);
           }
         }
-        const db = readDb();
-        db.vendors = (db.vendors || []).filter(v => v.id !== id);
-        writeDb(db);
+        localDb.vendors = (localDb.vendors || []).filter(v => v.id !== id);
+        writeDb(localDb);
+        if (deletedVendor) await removeIdentityUploads([deletedVendor.identityDocumentPath, deletedVendor.selfiePath].filter(Boolean)).catch(err => console.error('Could not remove vendor identity files:', err.message));
         return sendJson(res, 200, { success: true, message: 'Vendor deleted successfully' });
       }
 
@@ -784,7 +1225,6 @@ const server = http.createServer(async (req, res) => {
           success: true,
           configured,
           url: creds.url || '',
-          key: creds.key || '',
           backend: configured ? 'Supabase Database' : 'Local JSON Storage'
         });
       }
@@ -795,6 +1235,9 @@ const server = http.createServer(async (req, res) => {
         const { url, key } = body;
         if (!url || !key) {
           return sendJson(res, 400, { success: false, error: 'Both Supabase URL and Key are required' });
+        }
+        if (!supabase.isServerSupabaseKey(key)) {
+          return sendJson(res, 400, { success: false, error: 'Use a server-only Supabase service role or secret key. An anon/publishable key cannot access private identity storage.' });
         }
         const ok = supabase.saveSupabaseConfig(url, key);
         if (!ok) {
@@ -877,10 +1320,11 @@ const server = http.createServer(async (req, res) => {
           try {
             properties = await supabase.getProperties();
           } catch (e) {
-            const db = readDb();
-            properties = db.properties || [];
+            console.error('Failed to load properties from Supabase:', e);
+            return sendJson(res, 503, { success: false, error: 'Properties are temporarily unavailable. Check the Supabase inventory setup.' });
           }
         } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
           const db = readDb();
           properties = db.properties || [];
         }
@@ -899,7 +1343,6 @@ const server = http.createServer(async (req, res) => {
         if (!title || !location) {
           return sendJson(res, 400, { success: false, error: 'Property title and location are required.' });
         }
-        const db = readDb();
         const propId = 'PROP-' + crypto.randomBytes(4).toString('hex').toUpperCase();
         const isoNow = new Date().toISOString();
         const imagesList = Array.isArray(images) && images.length > 0 ? images.slice(0, 10) : (imageUrl ? [imageUrl] : []);
@@ -922,14 +1365,19 @@ const server = http.createServer(async (req, res) => {
         };
         if (supabase.isSupabaseConfigured()) {
           try {
-            await supabase.insertProperty(propRecord);
+            const saved = await supabase.insertProperty(propRecord);
+            if (!saved) throw new Error('Supabase did not confirm the property insert.');
           } catch (supaErr) {
             console.error('Failed to insert property to Supabase:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'Property was not saved. Check the Supabase properties table and server key, then try again.' });
           }
+        } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+          const db = readDb();
+          db.properties = db.properties || [];
+          db.properties.unshift(propRecord);
+          if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'Property could not be saved.' });
         }
-        db.properties = db.properties || [];
-        db.properties.unshift(propRecord);
-        writeDb(db);
         return sendJson(res, 201, {
           success: true,
           propertyId: propId,
@@ -944,12 +1392,6 @@ const server = http.createServer(async (req, res) => {
         const { id, title, location, propertyType, price, size, titleDocument, description, imageUrl, images, status } = body;
         if (!id) {
           return sendJson(res, 400, { success: false, error: 'Property ID is required.' });
-        }
-        const db = readDb();
-        db.properties = db.properties || [];
-        const index = db.properties.findIndex(p => p.id === id);
-        if (index === -1) {
-          return sendJson(res, 404, { success: false, error: 'Property not found.' });
         }
         const updates = { updatedAt: new Date().toISOString() };
         if (title !== undefined) updates.title = title.trim();
@@ -968,13 +1410,21 @@ const server = http.createServer(async (req, res) => {
 
         if (supabase.isSupabaseConfigured()) {
           try {
-            await supabase.updateProperty(id, updates);
+            const saved = await supabase.updateProperty(id, updates);
+            if (!saved) return sendJson(res, 404, { success: false, error: 'Property not found.' });
           } catch (supaErr) {
             console.error('Failed to update property in Supabase:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'Property could not be updated in Supabase.' });
           }
+        } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+          const db = readDb();
+          db.properties = db.properties || [];
+          const index = db.properties.findIndex(p => p.id === id);
+          if (index === -1) return sendJson(res, 404, { success: false, error: 'Property not found.' });
+          db.properties[index] = { ...db.properties[index], ...updates };
+          if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'Property could not be saved.' });
         }
-        db.properties[index] = { ...db.properties[index], ...updates };
-        writeDb(db);
         return sendJson(res, 200, {
           success: true,
           message: 'Property updated successfully!'
@@ -988,16 +1438,18 @@ const server = http.createServer(async (req, res) => {
         if (!id) {
           return sendJson(res, 400, { success: false, error: 'Property ID is required.' });
         }
-        const db = readDb();
-        db.properties = db.properties || [];
-        db.properties = db.properties.filter(p => p.id !== id);
-        writeDb(db);
         if (supabase.isSupabaseConfigured()) {
           try {
             await supabase.deleteProperty(id);
           } catch (supaErr) {
             console.error('Failed to delete property in Supabase:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'Property could not be deleted from Supabase.' });
           }
+        } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+          const db = readDb();
+          db.properties = (db.properties || []).filter(p => p.id !== id);
+          if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'Property could not be deleted.' });
         }
         return sendJson(res, 200, {
           success: true,
@@ -1014,10 +1466,11 @@ const server = http.createServer(async (req, res) => {
           try {
             vehicles = await supabase.getVehicles();
           } catch (e) {
-            const db = readDb();
-            vehicles = db.vehicles || [];
+            console.error('Failed to load vehicles from Supabase:', e);
+            return sendJson(res, 503, { success: false, error: 'Vehicles are temporarily unavailable. Check the Supabase inventory setup.' });
           }
         } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
           const db = readDb();
           vehicles = db.vehicles || [];
         }
@@ -1040,7 +1493,6 @@ const server = http.createServer(async (req, res) => {
         if (!title || !location) {
           return sendJson(res, 400, { success: false, error: 'Vehicle title and location are required.' });
         }
-        const db = readDb();
         const vehId = 'CAR-' + crypto.randomBytes(4).toString('hex').toUpperCase();
         const isoNow = new Date().toISOString();
         const imagesList = Array.isArray(images) && images.length > 0 ? images.slice(0, 10) : (imageUrl ? [imageUrl] : []);
@@ -1072,14 +1524,19 @@ const server = http.createServer(async (req, res) => {
 
         if (supabase.isSupabaseConfigured()) {
           try {
-            await supabase.insertVehicle(vehRecord);
+            const saved = await supabase.insertVehicle(vehRecord);
+            if (!saved) throw new Error('Supabase did not confirm the vehicle insert.');
           } catch (supaErr) {
             console.error('Failed to insert vehicle to Supabase:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'Vehicle was not saved. Check the Supabase vehicles table and server key, then try again.' });
           }
+        } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+          const db = readDb();
+          db.vehicles = db.vehicles || [];
+          db.vehicles.unshift(vehRecord);
+          if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'Vehicle could not be saved.' });
         }
-        db.vehicles = db.vehicles || [];
-        db.vehicles.unshift(vehRecord);
-        writeDb(db);
         return sendJson(res, 201, {
           success: true,
           vehicleId: vehId,
@@ -1098,12 +1555,6 @@ const server = http.createServer(async (req, res) => {
         } = body;
         if (!id) {
           return sendJson(res, 400, { success: false, error: 'Vehicle ID is required.' });
-        }
-        const db = readDb();
-        db.vehicles = db.vehicles || [];
-        const index = db.vehicles.findIndex(v => v.id === id);
-        if (index === -1) {
-          return sendJson(res, 404, { success: false, error: 'Vehicle not found.' });
         }
         const updates = { updatedAt: new Date().toISOString() };
         if (title !== undefined) updates.title = String(title).trim();
@@ -1130,13 +1581,21 @@ const server = http.createServer(async (req, res) => {
 
         if (supabase.isSupabaseConfigured()) {
           try {
-            await supabase.updateVehicle(id, updates);
+            const saved = await supabase.updateVehicle(id, updates);
+            if (!saved) return sendJson(res, 404, { success: false, error: 'Vehicle not found.' });
           } catch (supaErr) {
             console.error('Failed to update vehicle in Supabase:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'Vehicle could not be updated in Supabase.' });
           }
+        } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+          const db = readDb();
+          db.vehicles = db.vehicles || [];
+          const index = db.vehicles.findIndex(v => v.id === id);
+          if (index === -1) return sendJson(res, 404, { success: false, error: 'Vehicle not found.' });
+          db.vehicles[index] = { ...db.vehicles[index], ...updates };
+          if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'Vehicle could not be saved.' });
         }
-        db.vehicles[index] = { ...db.vehicles[index], ...updates };
-        writeDb(db);
         return sendJson(res, 200, {
           success: true,
           message: 'Vehicle updated successfully!'
@@ -1150,16 +1609,18 @@ const server = http.createServer(async (req, res) => {
         if (!id) {
           return sendJson(res, 400, { success: false, error: 'Vehicle ID is required.' });
         }
-        const db = readDb();
-        db.vehicles = db.vehicles || [];
-        db.vehicles = db.vehicles.filter(v => v.id !== id);
-        writeDb(db);
         if (supabase.isSupabaseConfigured()) {
           try {
             await supabase.deleteVehicle(id);
           } catch (supaErr) {
             console.error('Failed to delete vehicle from Supabase:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'Vehicle could not be deleted from Supabase.' });
           }
+        } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+          const db = readDb();
+          db.vehicles = (db.vehicles || []).filter(v => v.id !== id);
+          if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'Vehicle could not be deleted.' });
         }
         return sendJson(res, 200, {
           success: true,
@@ -1244,7 +1705,6 @@ const server = http.createServer(async (req, res) => {
           }
         }
 
-        const db = readDb();
         const isoNow = new Date().toISOString();
         const idPrefix = assetType === 'property' ? 'MKT-PROP-' : 'MKT-CAR-';
         const recordId = idPrefix + crypto.randomBytes(4).toString('hex').toUpperCase();
@@ -1303,17 +1763,26 @@ const server = http.createServer(async (req, res) => {
 
         if (supabase.isSupabaseConfigured()) {
           try {
-            await supabase.insertAgreement(agreementRecord);
-            await supabase.insertMarketingRequest(marketingRecord);
+            const savedMarketingRequest = await supabase.insertMarketingRequest(marketingRecord);
+            if (!savedMarketingRequest) throw new Error('Supabase did not confirm the owner submission.');
+            try {
+              await supabase.insertAgreement(agreementRecord);
+            } catch (agreementError) {
+              await supabase.deleteMarketingRequest(recordId).catch(() => {});
+              throw agreementError;
+            }
           } catch (supaErr) {
-            console.error('Failed to sync marketing request to Supabase, saved to local db:', supaErr);
+            console.error('Failed to save owner submission to Supabase:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'Your submission was not saved. The ALLFIX team has been notified; please try again later.' });
           }
+        } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+          const db = readDb();
+          db.agreements.push(agreementRecord);
+          db.marketingRequests = db.marketingRequests || [];
+          db.marketingRequests.unshift(marketingRecord);
+          if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'Your submission could not be saved. Please try again.' });
         }
-
-        db.agreements.push(agreementRecord);
-        db.marketingRequests = db.marketingRequests || [];
-        db.marketingRequests.unshift(marketingRecord);
-        writeDb(db);
 
         const assetLabel = assetType === 'property' ? 'property' : 'vehicle';
         return sendJson(res, 201, {
@@ -1332,13 +1801,13 @@ const server = http.createServer(async (req, res) => {
         if (supabase.isSupabaseConfigured()) {
           try {
             const data = await supabase.getMarketingRequests();
-            records = data || [];
+            records = data;
           } catch (supaErr) {
-            console.error('Supabase getMarketingRequests error, falling back:', supaErr);
-            const db = readDb();
-            records = db.marketingRequests || [];
+            console.error('Failed to load owner submissions from Supabase:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'Owner submissions are temporarily unavailable. Check the Supabase marketplace tables.' });
           }
         } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
           const db = readDb();
           records = db.marketingRequests || [];
         }
@@ -1371,24 +1840,24 @@ const server = http.createServer(async (req, res) => {
         if (supabase.isSupabaseConfigured()) {
           try {
             updatedItem = await supabase.updateMarketingRequest(id, { status, adminNotes, price, description });
+            if (!updatedItem) return sendJson(res, 404, { success: false, error: 'Marketing request not found' });
           } catch (supaErr) {
             console.error('Supabase updateMarketingRequest error:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'Owner submission could not be updated in Supabase.' });
           }
-        }
-        const db = readDb();
-        db.marketingRequests = db.marketingRequests || [];
-        const index = db.marketingRequests.findIndex(m => m.id === id);
-        if (index !== -1) {
+        } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+          const db = readDb();
+          db.marketingRequests = db.marketingRequests || [];
+          const index = db.marketingRequests.findIndex(m => m.id === id);
+          if (index === -1) return sendJson(res, 404, { success: false, error: 'Marketing request not found' });
           if (status !== undefined) db.marketingRequests[index].status = status;
           if (adminNotes !== undefined) db.marketingRequests[index].adminNotes = adminNotes;
           if (price !== undefined) db.marketingRequests[index].price = price;
           if (description !== undefined) db.marketingRequests[index].description = description;
           db.marketingRequests[index].updatedAt = new Date().toISOString();
-          writeDb(db);
-          if (!updatedItem) updatedItem = db.marketingRequests[index];
-        }
-        if (!updatedItem) {
-          return sendJson(res, 404, { success: false, error: 'Marketing request not found' });
+          if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'Owner submission could not be saved.' });
+          updatedItem = db.marketingRequests[index];
         }
         return sendJson(res, 200, { success: true, message: 'Marketing request updated', data: updatedItem });
       }
@@ -1405,11 +1874,14 @@ const server = http.createServer(async (req, res) => {
             await supabase.deleteMarketingRequest(id);
           } catch (supaErr) {
             console.error('Supabase deleteMarketingRequest error:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'Owner submission could not be deleted from Supabase.' });
           }
+        } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+          const db = readDb();
+          db.marketingRequests = (db.marketingRequests || []).filter(m => m.id !== id);
+          if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'Owner submission could not be deleted.' });
         }
-        const db = readDb();
-        db.marketingRequests = (db.marketingRequests || []).filter(m => m.id !== id);
-        writeDb(db);
         return sendJson(res, 200, { success: true, message: 'Marketing request deleted successfully' });
       }
 
@@ -1420,19 +1892,35 @@ const server = http.createServer(async (req, res) => {
         if (!id) {
           return sendJson(res, 400, { success: false, error: 'Marketing Request ID is required' });
         }
-        const db = readDb();
-        db.marketingRequests = db.marketingRequests || [];
-        const item = db.marketingRequests.find(m => m.id === id);
+        const useSupabase = supabase.isSupabaseConfigured();
+        if (!useSupabase && !localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+        const db = useSupabase ? null : readDb();
+        if (db) db.marketingRequests = db.marketingRequests || [];
+        let item;
+        if (useSupabase) {
+          try {
+            const requests = await supabase.getMarketingRequests();
+            item = requests.find(m => m.id === id);
+          } catch (supaErr) {
+            console.error('Failed to load owner submission for publishing:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'Owner submission could not be loaded from Supabase.' });
+          }
+        } else {
+          item = db.marketingRequests.find(m => m.id === id);
+        }
         if (!item) {
           return sendJson(res, 404, { success: false, error: 'Marketing request not found' });
         }
+        if (!['property', 'car'].includes((item.assetType || '').toLowerCase())) {
+          return sendJson(res, 400, { success: false, error: 'This submission has an unsupported asset type.' });
+        }
 
         const isoNow = new Date().toISOString();
-        let publishedId = '';
+        const suffix = String(item.id).split('-').pop();
+        const publishedId = item.publishedListingId || `${item.assetType === 'property' ? 'PROP' : 'CAR'}-${suffix}`;
         const finalPrice = targetPrice || item.price || '';
 
         if (item.assetType === 'property') {
-          publishedId = 'PROP-' + crypto.randomBytes(4).toString('hex').toUpperCase();
           const propRecord = {
             id: publishedId,
             title: `${item.propertyType || 'Property'} in ${item.location} (${item.listingPurpose || 'For Sale'})`,
@@ -1449,12 +1937,21 @@ const server = http.createServer(async (req, res) => {
             updatedAt: isoNow
           };
           if (supabase.isSupabaseConfigured()) {
-            try { await supabase.insertProperty(propRecord); } catch (e) {}
+            try {
+              const properties = await supabase.getProperties();
+              if (!properties.some(property => property.id === publishedId)) {
+                const saved = await supabase.insertProperty(propRecord);
+                if (!saved) throw new Error('Supabase did not confirm the property insert.');
+              }
+            } catch (e) {
+              console.error('Failed to publish property to Supabase:', e);
+              return sendJson(res, 503, { success: false, error: 'The property could not be published. Check the Supabase properties table and try again.' });
+            }
+          } else {
+            db.properties = db.properties || [];
+            if (!db.properties.some(property => property.id === publishedId)) db.properties.unshift(propRecord);
           }
-          db.properties = db.properties || [];
-          db.properties.unshift(propRecord);
         } else {
-          publishedId = 'CAR-' + crypto.randomBytes(4).toString('hex').toUpperCase();
           const vehRecord = {
             id: publishedId,
             title: `${item.carMakeModelYear || 'Vehicle'} (${item.carColour || ''})`,
@@ -1477,21 +1974,41 @@ const server = http.createServer(async (req, res) => {
             updatedAt: isoNow
           };
           if (supabase.isSupabaseConfigured()) {
-            try { await supabase.insertVehicle(vehRecord); } catch (e) {}
+            try {
+              const vehicles = await supabase.getVehicles();
+              if (!vehicles.some(vehicle => vehicle.id === publishedId)) {
+                const saved = await supabase.insertVehicle(vehRecord);
+                if (!saved) throw new Error('Supabase did not confirm the vehicle insert.');
+              }
+            } catch (e) {
+              console.error('Failed to publish vehicle to Supabase:', e);
+              return sendJson(res, 503, { success: false, error: 'The vehicle could not be published. Check the Supabase vehicles table and try again.' });
+            }
           }
-          db.vehicles = db.vehicles || [];
-          db.vehicles.unshift(vehRecord);
+          if (!useSupabase) {
+            db.vehicles = db.vehicles || [];
+            if (!db.vehicles.some(vehicle => vehicle.id === publishedId)) db.vehicles.unshift(vehRecord);
+          }
         }
 
-        item.status = 'published';
-        item.publishedListingId = publishedId;
-        item.updatedAt = isoNow;
         if (supabase.isSupabaseConfigured()) {
           try {
-            await supabase.updateMarketingRequest(id, { status: 'published', adminNotes: `Published as live listing ${publishedId}` });
-          } catch (e) {}
+            const updated = await supabase.updateMarketingRequest(id, {
+              status: 'published',
+              publishedListingId: publishedId,
+              adminNotes: `Published as live listing ${publishedId}`
+            });
+            if (!updated) throw new Error('Supabase did not confirm the owner submission update.');
+          } catch (e) {
+            console.error('Failed to mark owner submission as published:', e);
+            return sendJson(res, 503, { success: false, error: 'The listing was saved, but its review status could not be updated. Retry publishing to finish.' });
+          }
+        } else {
+          item.status = 'published';
+          item.publishedListingId = publishedId;
+          item.updatedAt = isoNow;
+          if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'The listing was created, but its submission status could not be saved.' });
         }
-        writeDb(db);
 
         return sendJson(res, 200, {
           success: true,
@@ -1508,14 +2025,13 @@ const server = http.createServer(async (req, res) => {
         let works = [];
         if (supabase.isSupabaseConfigured()) {
           try {
-            const data = await supabase.getVendorWorks();
-            works = (data && data.length > 0) ? data : (readDb().vendorWorks || []);
+            works = await supabase.getVendorWorks();
           } catch (supaErr) {
-            console.error('Supabase getVendorWorks error, falling back:', supaErr);
-            const db = readDb();
-            works = db.vendorWorks || [];
+            console.error('Failed to load vendor work from Supabase:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'The work gallery is temporarily unavailable. Check the Supabase marketplace tables.' });
           }
         } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
           const db = readDb();
           works = db.vendorWorks || [];
         }
@@ -1564,7 +2080,6 @@ const server = http.createServer(async (req, res) => {
           });
         }
 
-        const db = readDb();
         const workId = 'WORK-' + crypto.randomBytes(4).toString('hex').toUpperCase();
         const isoNow = new Date().toISOString();
         const rawImages = (Array.isArray(photos) && photos.length > 0)
@@ -1594,15 +2109,19 @@ const server = http.createServer(async (req, res) => {
 
         if (supabase.isSupabaseConfigured()) {
           try {
-            await supabase.insertVendorWork(workRecord);
+            const saved = await supabase.insertVendorWork(workRecord);
+            if (!saved) throw new Error('Supabase did not confirm the work gallery insert.');
           } catch (supaErr) {
             console.error('Failed to insert vendor work into Supabase:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'The work was not saved. Check the Supabase vendor_works table and server key, then try again.' });
           }
+        } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+          const db = readDb();
+          db.vendorWorks = db.vendorWorks || [];
+          db.vendorWorks.unshift(workRecord);
+          if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'The work could not be saved.' });
         }
-
-        db.vendorWorks = db.vendorWorks || [];
-        db.vendorWorks.unshift(workRecord);
-        writeDb(db);
 
         return sendJson(res, 201, {
           success: true,
@@ -1623,13 +2142,6 @@ const server = http.createServer(async (req, res) => {
 
         if (!id) {
           return sendJson(res, 400, { success: false, error: 'Job ID is required.' });
-        }
-
-        const db = readDb();
-        db.vendorWorks = db.vendorWorks || [];
-        const index = db.vendorWorks.findIndex(w => w.id === id);
-        if (index === -1) {
-          return sendJson(res, 404, { success: false, error: 'Vendor work not found.' });
         }
 
         const updates = { updatedAt: new Date().toISOString() };
@@ -1664,21 +2176,30 @@ const server = http.createServer(async (req, res) => {
         if (featured !== undefined) updates.featured = !!featured;
         if (status !== undefined) updates.status = String(status).trim();
 
+        let updatedWork;
         if (supabase.isSupabaseConfigured()) {
           try {
-            await supabase.updateVendorWork(id, updates);
+            updatedWork = await supabase.updateVendorWork(id, updates);
+            if (!updatedWork) return sendJson(res, 404, { success: false, error: 'Vendor work not found.' });
           } catch (supaErr) {
             console.error('Failed to update vendor work in Supabase:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'Vendor work could not be updated in Supabase.' });
           }
+        } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+          const db = readDb();
+          db.vendorWorks = db.vendorWorks || [];
+          const index = db.vendorWorks.findIndex(w => w.id === id);
+          if (index === -1) return sendJson(res, 404, { success: false, error: 'Vendor work not found.' });
+          Object.assign(db.vendorWorks[index], updates);
+          if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'Vendor work could not be saved.' });
+          updatedWork = db.vendorWorks[index];
         }
-
-        Object.assign(db.vendorWorks[index], updates);
-        writeDb(db);
 
         return sendJson(res, 200, {
           success: true,
-          work: db.vendorWorks[index],
-          data: db.vendorWorks[index],
+          work: updatedWork,
+          data: updatedWork,
           message: 'Vendor work updated successfully.'
         });
       }
@@ -1697,15 +2218,13 @@ const server = http.createServer(async (req, res) => {
             await supabase.deleteVendorWork(id);
           } catch (supaErr) {
             console.error('Failed to delete vendor work from Supabase:', supaErr);
+            return sendJson(res, 503, { success: false, error: 'Vendor work could not be deleted from Supabase.' });
           }
-        }
-
-        const db = readDb();
-        db.vendorWorks = db.vendorWorks || [];
-        const index = db.vendorWorks.findIndex(w => w.id === id);
-        if (index !== -1) {
-          db.vendorWorks.splice(index, 1);
-          writeDb(db);
+        } else {
+          if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
+          const db = readDb();
+          db.vendorWorks = (db.vendorWorks || []).filter(w => w.id !== id);
+          if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'Vendor work could not be deleted.' });
         }
 
         return sendJson(res, 200, {

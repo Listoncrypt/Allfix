@@ -190,9 +190,9 @@
 
             <div class="form-group">
               <label class="form-label" for="regNumber">
-                CAC Reg. / Govt ID Number <span style="font-size: 0.8rem; color: #929B93;">(For verification)</span>
+                CAC Registration Number <span style="font-size: 0.8rem; color: #929B93;">(if registered)</span>
               </label>
-              <input type="text" id="regNumber" class="form-control" placeholder="e.g. BN-349021 or NIN/Voter's Card">
+              <input type="text" id="regNumber" class="form-control" placeholder="e.g. BN-349021">
             </div>
           </div>
 
@@ -202,6 +202,44 @@
             </label>
             <textarea id="address" class="form-control" rows="2" placeholder="Physical location of your workshop, showroom, or business office"></textarea>
           </div>
+
+          <div class="form-group">
+            <label class="form-label" for="residentialAddress">Residential Address <span class="required">*</span></label>
+            <textarea id="residentialAddress" class="form-control" rows="2" placeholder="House number, street, area, city and state" required></textarea>
+            <small class="field-help">This is used for confidential identity and location checks. It will not appear on your public profile.</small>
+          </div>
+
+          <section class="identity-verification-section" aria-labelledby="vendorIdentityHeading">
+            <h3 id="vendorIdentityHeading">Identity verification</h3>
+            <p class="identity-intro">We review these documents to confirm who is joining the ALLFIX network and to help protect clients and artisans. Your uploads are kept private and reviewed by authorised ALLFIX staff.</p>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="identityDocumentType">Means of identification <span class="required">*</span></label>
+                <select id="identityDocumentType" class="form-control" required>
+                  <option value="">Choose an ID type</option>
+                  <option value="NIN">NIN slip or card</option>
+                  <option value="Voters card">Voter's card</option>
+                  <option value="International passport">International passport</option>
+                  <option value="Drivers licence">Driver's licence</option>
+                  <option value="Other valid ID">Other valid government ID</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="identityDocumentFile">Upload your ID <span class="required">*</span></label>
+                <input class="form-control file-control" type="file" id="identityDocumentFile" accept="image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf" required>
+                <small class="field-help">Clear photo or PDF, up to 4 MB.</small>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="identitySelfieFile">Upload a clear selfie <span class="required">*</span></label>
+                <input class="form-control file-control" type="file" id="identitySelfieFile" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" capture="user" required>
+                <small class="field-help">Face visible, without a filter, up to 4 MB.</small>
+              </div>
+            </div>
+            <label class="identity-consent-label">
+              <input type="checkbox" id="identityConsent" required>
+              <span>I confirm these documents belong to me and consent to ALLFIX reviewing them for vendor identity and safety checks. <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Read our Privacy Policy</a>.</span>
+            </label>
+          </section>
 
           
           <div class="terms-enforcement-box" id="termsEnforcementBox">

@@ -53,8 +53,41 @@ document.addEventListener('DOMContentLoaded', () => {
   const preferredDateInput = document.getElementById('preferredDate');
   const generalDescription = document.getElementById('description');
   const generalDescriptionLabel = document.getElementById('descriptionLabel') || (form ? form.querySelector('label[for="description"]') : null);
+  const bookingForInputs = form ? form.querySelectorAll('input[name="bookingFor"]') : [];
+  const meetingPersonDetails = document.getElementById('meetingPersonDetails');
+
+  function readUpload(input, label) {
+    const file = input?.files?.[0];
+    if (!file) throw new Error(`Please upload ${label}.`);
+    if (file.size > 4 * 1024 * 1024) throw new Error(`${label} must be 4 MB or smaller.`);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error(`Unable to read ${label}. Please choose the file again.`));
+      reader.readAsDataURL(file);
+    });
+  }
 
   if (!form || !checkbox || !submitBtn) return;
+
+  function updateMeetingPersonDetails() {
+    if (!meetingPersonDetails) return;
+    const isOther = form.querySelector('input[name="bookingFor"]:checked')?.value === 'someone-else';
+    meetingPersonDetails.hidden = !isOther;
+    meetingPersonDetails.setAttribute('aria-hidden', String(!isOther));
+    meetingPersonDetails.querySelectorAll('input').forEach(input => {
+      input.disabled = !isOther;
+      input.required = isOther && ['meetingPersonName', 'meetingPersonPhone', 'meetingPersonRelationship', 'representativeConsent'].includes(input.id);
+    });
+    const help = document.getElementById('identitySubjectHelp');
+    if (help) {
+      help.textContent = isOther
+        ? 'Upload the ID and selfie of the person who will meet the provider. Please use their documents.'
+        : 'Upload your own ID and selfie. These should belong to the person who will meet the provider.';
+    }
+  }
+  bookingForInputs.forEach(input => input.addEventListener('change', updateMeetingPersonDetails));
+  updateMeetingPersonDetails();
 
   function setSectionVisibility(section, isVisible) {
     if (!section) return;
@@ -264,6 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isProperty = category === 'Property Sales & Rentals';
     const isCar = category === 'Cars & Vehicles';
     const isConstruction = !constructionSection.hidden;
+    const isBookingForSomeoneElse = form.querySelector('input[name="bookingFor"]:checked')?.value === 'someone-else';
 
     // Collect Property specific data
     let bedrooms = '';
@@ -341,6 +375,15 @@ document.addEventListener('DOMContentLoaded', () => {
       customerName: document.getElementById('customerName').value.trim(),
       phone: document.getElementById('phone').value.trim(),
       email: document.getElementById('email').value.trim(),
+      isBookingForSomeoneElse,
+      meetingPersonName: isBookingForSomeoneElse ? document.getElementById('meetingPersonName').value.trim() : document.getElementById('customerName').value.trim(),
+      meetingPersonPhone: isBookingForSomeoneElse ? document.getElementById('meetingPersonPhone').value.trim() : document.getElementById('phone').value.trim(),
+      meetingPersonEmail: isBookingForSomeoneElse ? document.getElementById('meetingPersonEmail').value.trim() : document.getElementById('email').value.trim(),
+      meetingPersonRelationship: isBookingForSomeoneElse ? document.getElementById('meetingPersonRelationship').value.trim() : 'Self',
+      meetingAddress: document.getElementById('meetingAddress').value.trim(),
+      identityDocumentType: document.getElementById('requestIdentityType').value,
+      identityConsent: document.getElementById('requestIdentityConsent').checked,
+      representativeConsent: !isBookingForSomeoneElse || document.getElementById('representativeConsent').checked,
       category: category,
       service: finalService,
       location: finalLocation,
@@ -391,6 +434,17 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    if (isBookingForSomeoneElse && (!formData.meetingPersonName || !formData.meetingPersonPhone || !formData.meetingPersonRelationship || !formData.representativeConsent)) {
+      alert('Please provide the person meeting the provider, your relationship to them, and confirm you have permission to share their details.');
+      meetingPersonDetails.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    if (!formData.meetingAddress || !formData.identityDocumentType || !formData.identityConsent) {
+      alert('Please provide the meeting address, choose an ID type, and consent to the identity check.');
+      return;
+    }
+
     if (isConstruction) {
       if (!formData.constructionDescription) {
         alert('Please describe what you want to construct.');
@@ -420,10 +474,12 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
 
     try {
+      const identityDocumentUpload = await readUpload(document.getElementById('requestIdentityFile'), "the meeting person's ID");
+      const identitySelfieUpload = await readUpload(document.getElementById('requestSelfieFile'), "the meeting person's selfie");
       const response = await fetch('/api/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, identityDocumentUpload, identitySelfieUpload })
       });
 
       const result = await response.json();
@@ -440,6 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       modal.classList.add('open');
       form.reset();
+      updateMeetingPersonDetails();
       updateServiceDetails();
       checkbox.checked = false;
       submitBtn.disabled = true;

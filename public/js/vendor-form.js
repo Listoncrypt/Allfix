@@ -10,6 +10,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeModalBtn = document.getElementById('closeModalBtn');
 
   if (!form || !checkbox || !submitBtn) return;
+
+  function readUpload(input, label) {
+    const file = input?.files?.[0];
+    if (!file) throw new Error(`Please upload ${label}.`);
+    if (file.size > 4 * 1024 * 1024) throw new Error(`${label} must be 4 MB or smaller.`);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error(`Unable to read ${label}. Please choose the file again.`));
+      reader.readAsDataURL(file);
+    });
+  }
+
   const categorySelect = document.getElementById('category');
   if (categorySelect) {
     const urlParams = new URLSearchParams(window.location.search);
@@ -81,6 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
       operatingAreas: document.getElementById('operatingAreas').value.trim(),
       regNumber: document.getElementById('regNumber').value.trim(),
       address: document.getElementById('address').value.trim(),
+      residentialAddress: document.getElementById('residentialAddress').value.trim(),
+      identityDocumentType: document.getElementById('identityDocumentType').value,
+      identityConsent: document.getElementById('identityConsent').checked,
       termsAccepted: true,
       termsVersion: 'v1.0'
     };
@@ -99,10 +115,12 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
 
     try {
+      const identityDocumentUpload = await readUpload(document.getElementById('identityDocumentFile'), 'your ID');
+      const identitySelfieUpload = await readUpload(document.getElementById('identitySelfieFile'), 'your selfie');
       const response = await fetch('/api/vendors', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, identityDocumentUpload, identitySelfieUpload })
       });
 
       const result = await response.json();

@@ -33,6 +33,17 @@ CREATE TABLE IF NOT EXISTS public.requests (
   land_size TEXT,
   land_size_other TEXT,
   land_status TEXT,
+  is_booking_for_someone_else BOOLEAN NOT NULL DEFAULT FALSE,
+  meeting_person_name TEXT,
+  meeting_person_phone TEXT,
+  meeting_person_email TEXT,
+  meeting_person_relationship TEXT,
+  meeting_address TEXT,
+  identity_document_type TEXT,
+  identity_document_path TEXT,
+  selfie_path TEXT,
+  identity_consent BOOLEAN NOT NULL DEFAULT FALSE,
+  identity_consent_at TIMESTAMPTZ,
   status TEXT DEFAULT 'pending_matching',
   admin_notes TEXT,
   agreement_id TEXT,
@@ -51,6 +62,17 @@ ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS car_model_year TEXT;
 ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS is_electric_vehicle TEXT;
 ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS car_colours JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS car_budget TEXT;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS is_booking_for_someone_else BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS meeting_person_name TEXT;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS meeting_person_phone TEXT;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS meeting_person_email TEXT;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS meeting_person_relationship TEXT;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS meeting_address TEXT;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS identity_document_type TEXT;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS identity_document_path TEXT;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS selfie_path TEXT;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS identity_consent BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS identity_consent_at TIMESTAMPTZ;
 
 -- Index for speedy queries by status and date
 CREATE INDEX IF NOT EXISTS idx_requests_status ON public.requests(status);
@@ -69,6 +91,12 @@ CREATE TABLE IF NOT EXISTS public.vendors (
   operating_areas TEXT,
   reg_number TEXT,
   address TEXT,
+  residential_address TEXT,
+  identity_document_type TEXT,
+  identity_document_path TEXT,
+  selfie_path TEXT,
+  identity_consent BOOLEAN NOT NULL DEFAULT FALSE,
+  identity_consent_at TIMESTAMPTZ,
   verification_status TEXT DEFAULT 'pending',
   admin_notes TEXT,
   agreement_id TEXT,
@@ -78,6 +106,13 @@ CREATE TABLE IF NOT EXISTS public.vendors (
 );
 
 CREATE INDEX IF NOT EXISTS idx_vendors_verification ON public.vendors(verification_status);
+
+ALTER TABLE public.vendors ADD COLUMN IF NOT EXISTS residential_address TEXT;
+ALTER TABLE public.vendors ADD COLUMN IF NOT EXISTS identity_document_type TEXT;
+ALTER TABLE public.vendors ADD COLUMN IF NOT EXISTS identity_document_path TEXT;
+ALTER TABLE public.vendors ADD COLUMN IF NOT EXISTS selfie_path TEXT;
+ALTER TABLE public.vendors ADD COLUMN IF NOT EXISTS identity_consent BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.vendors ADD COLUMN IF NOT EXISTS identity_consent_at TIMESTAMPTZ;
 
 -- 4. Terms & Conditions Compliance Audit Table
 CREATE TABLE IF NOT EXISTS public.agreements (
@@ -190,10 +225,13 @@ CREATE TABLE IF NOT EXISTS public.marketing_requests (
   status TEXT DEFAULT 'pending_review',      -- 'pending_review', 'contacted', 'inspected', 'published', 'rejected'
   admin_notes TEXT,
   agreement_id TEXT,
+  published_listing_id TEXT,
   terms_version TEXT DEFAULT 'v1.0',
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()),
   updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
+
+ALTER TABLE public.marketing_requests ADD COLUMN IF NOT EXISTS published_listing_id TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_marketing_requests_type ON public.marketing_requests(asset_type);
 CREATE INDEX IF NOT EXISTS idx_marketing_requests_status ON public.marketing_requests(status);
@@ -233,18 +271,6 @@ ALTER TABLE public.vendor_works ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public operations on requests') THEN
-    CREATE POLICY "Allow public operations on requests" ON public.requests FOR ALL USING (true) WITH CHECK (true);
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public operations on vendors') THEN
-    CREATE POLICY "Allow public operations on vendors" ON public.vendors FOR ALL USING (true) WITH CHECK (true);
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public operations on agreements') THEN
-    CREATE POLICY "Allow public operations on agreements" ON public.agreements FOR ALL USING (true) WITH CHECK (true);
-  END IF;
-
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public operations on messages') THEN
     CREATE POLICY "Allow public operations on messages" ON public.messages FOR ALL USING (true) WITH CHECK (true);
   END IF;
@@ -253,18 +279,44 @@ BEGIN
     CREATE POLICY "Allow public operations on properties" ON public.properties FOR ALL USING (true) WITH CHECK (true);
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public operations on vehicles') THEN
-    CREATE POLICY "Allow public operations on vehicles" ON public.vehicles FOR ALL USING (true) WITH CHECK (true);
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public operations on marketing_requests') THEN
-    CREATE POLICY "Allow public operations on marketing_requests" ON public.marketing_requests FOR ALL USING (true) WITH CHECK (true);
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public operations on vendor_works') THEN
-    CREATE POLICY "Allow public operations on vendor_works" ON public.vendor_works FOR ALL USING (true) WITH CHECK (true);
-  END IF;
 END $$;
+
+DROP POLICY IF EXISTS "Allow public operations on vehicles" ON public.vehicles;
+DROP POLICY IF EXISTS "Allow public operations on marketing_requests" ON public.marketing_requests;
+DROP POLICY IF EXISTS "Allow public operations on vendor_works" ON public.vendor_works;
+REVOKE ALL ON TABLE public.vehicles FROM anon, authenticated;
+REVOKE ALL ON TABLE public.marketing_requests FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vendor_works FROM anon, authenticated;
+GRANT ALL ON TABLE public.vehicles TO service_role;
+GRANT ALL ON TABLE public.marketing_requests TO service_role;
+GRANT ALL ON TABLE public.vendor_works TO service_role;
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('identity-verification', 'identity-verification', FALSE, 4194304,
+  ARRAY['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+ON CONFLICT (id) DO UPDATE SET
+  public = FALSE,
+  file_size_limit = EXCLUDED.file_size_limit,
+  allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+DROP POLICY IF EXISTS "Block identity files for anonymous users" ON storage.objects;
+CREATE POLICY "Block identity files for anonymous users"
+  ON storage.objects AS RESTRICTIVE FOR ALL TO anon
+  USING (bucket_id <> 'identity-verification')
+  WITH CHECK (bucket_id <> 'identity-verification');
+
+DROP POLICY IF EXISTS "Block identity files for authenticated users" ON storage.objects;
+CREATE POLICY "Block identity files for authenticated users"
+  ON storage.objects AS RESTRICTIVE FOR ALL TO authenticated
+  USING (bucket_id <> 'identity-verification')
+  WITH CHECK (bucket_id <> 'identity-verification');
+
+DROP POLICY IF EXISTS "Allow public operations on requests" ON public.requests;
+DROP POLICY IF EXISTS "Allow public operations on vendors" ON public.vendors;
+DROP POLICY IF EXISTS "Allow public operations on agreements" ON public.agreements;
+REVOKE ALL ON TABLE public.requests FROM anon, authenticated;
+REVOKE ALL ON TABLE public.vendors FROM anon, authenticated;
+REVOKE ALL ON TABLE public.agreements FROM anon, authenticated;
 
 -- ==============================================================================
 -- 7. Supabase Realtime Replication Setup (Fail-Safe & Idempotent)

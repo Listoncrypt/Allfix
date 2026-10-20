@@ -34,12 +34,25 @@ let envConfig = loadEnvFile();
 function getSupabaseCredentials() {
   envConfig = loadEnvFile();
   const url = process.env.SUPABASE_URL || envConfig.SUPABASE_URL || '';
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY ||
-              envConfig.SUPABASE_SERVICE_ROLE_KEY || envConfig.SUPABASE_KEY || envConfig.SUPABASE_ANON_KEY || '';
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || envConfig.SUPABASE_SERVICE_ROLE_KEY ||
+              process.env.SUPABASE_KEY || envConfig.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || envConfig.SUPABASE_ANON_KEY || '';
   return { url, key };
 }
 
+function isServerSupabaseKey(key) {
+  if (typeof key !== 'string') return false;
+  if (key.startsWith('sb_secret_')) return true;
+  const tokenParts = key.split('.');
+  if (tokenParts.length !== 3) return false;
+  try {
+    return JSON.parse(Buffer.from(tokenParts[1], 'base64url').toString('utf8')).role === 'service_role';
+  } catch (_) {
+    return false;
+  }
+}
+
 let client = null;
+let identityStorageClient = null;
 
 function initClient() {
   const { url, key } = getSupabaseCredentials();
@@ -59,6 +72,40 @@ function initClient() {
 
 initClient();
 
+function getOtpClient() {
+  const fileEnv = loadEnvFile();
+  const url = process.env.SUPABASE_URL || fileEnv.SUPABASE_URL || '';
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || fileEnv.SUPABASE_SERVICE_ROLE_KEY || '';
+  if (!url || !serviceRoleKey || !url.startsWith('http')) return null;
+  try {
+    return createClient(url, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+  } catch (_) {
+    return null;
+  }
+}
+
+function getIdentityStorageClient() {
+  const fileEnv = loadEnvFile();
+  const url = process.env.SUPABASE_URL || fileEnv.SUPABASE_URL || '';
+  const serviceRoleKey = (isServerSupabaseKey(process.env.SUPABASE_SERVICE_ROLE_KEY) ? process.env.SUPABASE_SERVICE_ROLE_KEY : '') ||
+    (isServerSupabaseKey(fileEnv.SUPABASE_SERVICE_ROLE_KEY) ? fileEnv.SUPABASE_SERVICE_ROLE_KEY : '') ||
+    (isServerSupabaseKey(process.env.SUPABASE_KEY) ? process.env.SUPABASE_KEY : '') ||
+    (isServerSupabaseKey(fileEnv.SUPABASE_KEY) ? fileEnv.SUPABASE_KEY : '');
+  if (!url || !serviceRoleKey || !url.startsWith('http')) return null;
+  try {
+    if (!identityStorageClient) {
+      identityStorageClient = createClient(url, serviceRoleKey, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
+    }
+    return identityStorageClient;
+  } catch (_) {
+    return null;
+  }
+}
+
 function isSupabaseConfigured() {
   const { url, key } = getSupabaseCredentials();
   return Boolean(url && key && url.startsWith('http'));
@@ -70,9 +117,9 @@ function saveSupabaseConfig(url, key) {
     if (fs.existsSync(ENV_PATH)) {
       existing = fs.readFileSync(ENV_PATH, 'utf-8');
     }
-    const lines = existing.split('\n').filter(l => !l.startsWith('SUPABASE_URL=') && !l.startsWith('SUPABASE_KEY=') && !l.startsWith('SUPABASE_ANON_KEY='));
+    const lines = existing.split('\n').filter(l => !l.startsWith('SUPABASE_URL=') && !l.startsWith('SUPABASE_KEY=') && !l.startsWith('SUPABASE_ANON_KEY=') && !l.startsWith('SUPABASE_SERVICE_ROLE_KEY='));
     lines.push(`SUPABASE_URL=${url.trim()}`);
-    lines.push(`SUPABASE_KEY=${key.trim()}`);
+    lines.push(`SUPABASE_SERVICE_ROLE_KEY=${key.trim()}`);
     fs.writeFileSync(ENV_PATH, lines.join('\n').trim() + '\n', 'utf-8');
     initClient();
     return true;
@@ -111,6 +158,17 @@ function mapRequestFromDb(row) {
     landSize: row.land_size || '',
     landSizeOther: row.land_size_other || '',
     landStatus: row.land_status || '',
+    isBookingForSomeoneElse: Boolean(row.is_booking_for_someone_else),
+    meetingPersonName: row.meeting_person_name || '',
+    meetingPersonPhone: row.meeting_person_phone || '',
+    meetingPersonEmail: row.meeting_person_email || '',
+    meetingPersonRelationship: row.meeting_person_relationship || '',
+    meetingAddress: row.meeting_address || '',
+    identityDocumentType: row.identity_document_type || '',
+    identityDocumentPath: row.identity_document_path || '',
+    selfiePath: row.selfie_path || '',
+    identityConsent: Boolean(row.identity_consent),
+    identityConsentAt: row.identity_consent_at || '',
     agreementType: 'Client Terms',
     version: row.terms_version || 'v1.0',
     agreementId: row.agreement_id || '',
@@ -135,6 +193,12 @@ function mapVendorFromDb(row) {
     operatingAreas: row.operating_areas || '',
     regNumber: row.reg_number || '',
     address: row.address || '',
+    residentialAddress: row.residential_address || '',
+    identityDocumentType: row.identity_document_type || '',
+    identityDocumentPath: row.identity_document_path || '',
+    selfiePath: row.selfie_path || '',
+    identityConsent: Boolean(row.identity_consent),
+    identityConsentAt: row.identity_consent_at || '',
     verificationStatus: row.verification_status || 'pending',
     adminNotes: row.admin_notes || '',
     agreementId: row.agreement_id || '',
@@ -223,6 +287,7 @@ function mapMarketingRequestFromDb(row) {
     status: row.status || 'pending_review',
     adminNotes: row.admin_notes || '',
     agreementId: row.agreement_id || '',
+    publishedListingId: row.published_listing_id || '',
     termsVersion: row.terms_version || 'v1.0',
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -249,9 +314,39 @@ function mapVendorWorkFromDb(row) {
 
 module.exports = {
   isSupabaseConfigured,
+  isServerSupabaseKey,
+  hasIdentityStorageCredentials: () => Boolean(getIdentityStorageClient()),
   getSupabaseCredentials,
   saveSupabaseConfig,
   getClient: () => client || initClient(),
+  getOtpClient,
+
+  async uploadIdentityFile(storagePath, buffer, contentType) {
+    const c = getIdentityStorageClient();
+    if (!c) throw new Error('Private identity storage is not configured.');
+    const { data, error } = await c.storage.from('identity-verification').upload(storagePath, buffer, {
+      cacheControl: '0',
+      contentType,
+      upsert: false
+    });
+    if (error) throw error;
+    return data.path;
+  },
+
+  async createIdentityFileSignedUrl(storagePath) {
+    const c = getIdentityStorageClient();
+    if (!c) throw new Error('Private identity storage is not configured.');
+    const { data, error } = await c.storage.from('identity-verification').createSignedUrl(storagePath, 60);
+    if (error) throw error;
+    return data.signedUrl;
+  },
+
+  async removeIdentityFiles(storagePaths) {
+    const c = getIdentityStorageClient();
+    if (!c || !storagePaths.length) return;
+    const { error } = await c.storage.from('identity-verification').remove(storagePaths);
+    if (error) throw error;
+  },
 
   async getRequests() {
     const c = client || initClient();
@@ -281,6 +376,17 @@ module.exports = {
       land_size: r.landSize || '',
       land_size_other: r.landSizeOther || '',
       land_status: r.landStatus || '',
+      is_booking_for_someone_else: Boolean(r.isBookingForSomeoneElse),
+      meeting_person_name: r.meetingPersonName || '',
+      meeting_person_phone: r.meetingPersonPhone || '',
+      meeting_person_email: r.meetingPersonEmail || '',
+      meeting_person_relationship: r.meetingPersonRelationship || '',
+      meeting_address: r.meetingAddress || '',
+      identity_document_type: r.identityDocumentType || '',
+      identity_document_path: r.identityDocumentPath || '',
+      selfie_path: r.selfiePath || '',
+      identity_consent: Boolean(r.identityConsent),
+      identity_consent_at: r.identityConsentAt || '',
       status: r.status || 'pending_matching',
       admin_notes: r.adminNotes || '',
       agreement_id: r.agreementId,
@@ -355,6 +461,12 @@ module.exports = {
       operating_areas: v.operatingAreas,
       reg_number: v.regNumber || '',
       address: v.address || '',
+      residential_address: v.residentialAddress || '',
+      identity_document_type: v.identityDocumentType || '',
+      identity_document_path: v.identityDocumentPath || '',
+      selfie_path: v.selfiePath || '',
+      identity_consent: Boolean(v.identityConsent),
+      identity_consent_at: v.identityConsentAt || '',
       verification_status: v.verificationStatus || 'pending',
       agreement_id: v.agreementId,
       terms_version: v.termsVersion || 'v1.0'
@@ -460,7 +572,7 @@ module.exports = {
 
   async getProperties() {
     const c = client || initClient();
-    if (!c) return null;
+    if (!c) throw new Error('Supabase is not configured.');
     const { data, error } = await c.from('properties').select('*').order('created_at', { ascending: false });
     if (error) throw error;
     return (data || []).map(mapPropertyFromDb);
@@ -468,7 +580,7 @@ module.exports = {
 
   async insertProperty(p) {
     const c = client || initClient();
-    if (!c) return null;
+    if (!c) throw new Error('Supabase is not configured.');
     const imagesList = Array.isArray(p.images) ? p.images : (p.imageUrl ? [p.imageUrl] : []);
     const row = {
       id: p.id,
@@ -501,7 +613,7 @@ module.exports = {
 
   async updateProperty(id, updates) {
     const c = client || initClient();
-    if (!c) return null;
+    if (!c) throw new Error('Supabase is not configured.');
     const row = { updated_at: new Date().toISOString() };
     if (updates.title !== undefined) row.title = updates.title;
     if (updates.location !== undefined) row.location = updates.location;
@@ -529,7 +641,7 @@ module.exports = {
 
   async deleteProperty(id) {
     const c = client || initClient();
-    if (!c) return null;
+    if (!c) throw new Error('Supabase is not configured.');
     const { error } = await c.from('properties').delete().eq('id', id);
     if (error) throw error;
     return true;
@@ -540,20 +652,15 @@ module.exports = {
   // ==============================================================================
   async getVehicles() {
     const c = client || initClient();
-    if (!c) return null;
-    try {
-      const { data, error } = await c.from('vehicles').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data || []).map(mapVehicleFromDb);
-    } catch (e) {
-      console.warn('Supabase getVehicles warning:', e.message);
-      return [];
-    }
+    if (!c) throw new Error('Supabase is not configured.');
+    const { data, error } = await c.from('vehicles').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(mapVehicleFromDb);
   },
 
   async insertVehicle(v) {
     const c = client || initClient();
-    if (!c) return null;
+    if (!c) throw new Error('Supabase is not configured.');
     const imagesList = Array.isArray(v.images) ? v.images : (v.imageUrl ? [v.imageUrl] : []);
     const row = {
       id: v.id,
@@ -578,19 +685,14 @@ module.exports = {
       created_at: v.createdAt || new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    try {
-      const { data, error } = await c.from('vehicles').insert([row]).select();
-      if (error) throw error;
-      return mapVehicleFromDb(data[0]);
-    } catch (err) {
-      console.error('Supabase insertVehicle error:', err.message);
-      return null;
-    }
+    const { data, error } = await c.from('vehicles').insert([row]).select();
+    if (error) throw error;
+    return mapVehicleFromDb(data[0]);
   },
 
   async updateVehicle(id, updates) {
     const c = client || initClient();
-    if (!c) return null;
+    if (!c) throw new Error('Supabase is not configured.');
     const row = { updated_at: new Date().toISOString() };
     if (updates.title !== undefined) row.title = updates.title;
     if (updates.make !== undefined) row.make = updates.make;
@@ -611,45 +713,30 @@ module.exports = {
     if (updates.images !== undefined) row.images = updates.images;
     if (updates.status !== undefined) row.status = updates.status;
 
-    try {
-      const { data, error } = await c.from('vehicles').update(row).eq('id', id).select();
-      if (error) throw error;
-      return mapVehicleFromDb(data[0]);
-    } catch (err) {
-      console.error('Supabase updateVehicle error:', err.message);
-      return null;
-    }
+    const { data, error } = await c.from('vehicles').update(row).eq('id', id).select();
+    if (error) throw error;
+    return data?.[0] ? mapVehicleFromDb(data[0]) : null;
   },
 
   async deleteVehicle(id) {
     const c = client || initClient();
-    if (!c) return null;
-    try {
-      const { error } = await c.from('vehicles').delete().eq('id', id);
-      if (error) throw error;
-      return true;
-    } catch (e) {
-      console.error('Supabase deleteVehicle error:', e.message);
-      return false;
-    }
+    if (!c) throw new Error('Supabase is not configured.');
+    const { error } = await c.from('vehicles').delete().eq('id', id);
+    if (error) throw error;
+    return true;
   },
 
   async getMarketingRequests() {
     const c = client || initClient();
-    if (!c) return null;
-    try {
-      const { data, error } = await c.from('marketing_requests').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data || []).map(mapMarketingRequestFromDb);
-    } catch (err) {
-      console.error('Supabase getMarketingRequests error:', err.message);
-      return null;
-    }
+    if (!c) throw new Error('Supabase is not configured.');
+    const { data, error } = await c.from('marketing_requests').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(mapMarketingRequestFromDb);
   },
 
   async insertMarketingRequest(m) {
     const c = client || initClient();
-    if (!c) return null;
+    if (!c) throw new Error('Supabase is not configured.');
     const row = {
       id: m.id,
       asset_type: m.assetType,
@@ -678,72 +765,54 @@ module.exports = {
       status: m.status || 'pending_review',
       admin_notes: m.adminNotes || '',
       agreement_id: m.agreementId || '',
+      published_listing_id: m.publishedListingId || '',
       terms_version: m.termsVersion || 'v1.0',
       created_at: m.createdAt || new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    try {
-      const { data, error } = await c.from('marketing_requests').insert([row]).select();
-      if (error) throw error;
-      return mapMarketingRequestFromDb(data[0]);
-    } catch (err) {
-      console.error('Supabase insertMarketingRequest error:', err.message);
-      return null;
-    }
+    const { data, error } = await c.from('marketing_requests').insert([row]).select();
+    if (error) throw error;
+    return mapMarketingRequestFromDb(data[0]);
   },
 
   async updateMarketingRequest(id, updates) {
     const c = client || initClient();
-    if (!c) return null;
+    if (!c) throw new Error('Supabase is not configured.');
     const row = { updated_at: new Date().toISOString() };
     if (updates.status !== undefined) row.status = updates.status;
     if (updates.adminNotes !== undefined) row.admin_notes = updates.adminNotes;
     if (updates.price !== undefined) row.price = updates.price;
     if (updates.description !== undefined) row.description = updates.description;
     if (updates.images !== undefined) row.images = updates.images;
-    try {
-      const { data, error } = await c.from('marketing_requests').update(row).eq('id', id).select();
-      if (error) throw error;
-      return mapMarketingRequestFromDb(data[0]);
-    } catch (err) {
-      console.error('Supabase updateMarketingRequest error:', err.message);
-      return null;
-    }
+    if (updates.publishedListingId !== undefined) row.published_listing_id = updates.publishedListingId;
+    const { data, error } = await c.from('marketing_requests').update(row).eq('id', id).select();
+    if (error) throw error;
+    return data?.[0] ? mapMarketingRequestFromDb(data[0]) : null;
   },
 
   async deleteMarketingRequest(id) {
     const c = client || initClient();
-    if (!c) return null;
-    try {
-      const { error } = await c.from('marketing_requests').delete().eq('id', id);
-      if (error) throw error;
-      return true;
-    } catch (err) {
-      console.error('Supabase deleteMarketingRequest error:', err.message);
-      return false;
-    }
+    if (!c) throw new Error('Supabase is not configured.');
+    const { error } = await c.from('marketing_requests').delete().eq('id', id);
+    if (error) throw error;
+    return true;
   },
 
   async getVendorWorks(jobType) {
     const c = client || initClient();
-    if (!c) return null;
-    try {
-      let query = c.from('vendor_works').select('*').order('created_at', { ascending: false });
-      if (jobType && jobType !== 'all') {
-        query = query.ilike('job_type', `%${jobType}%`);
-      }
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data || []).map(mapVendorWorkFromDb);
-    } catch (err) {
-      console.warn('Supabase getVendorWorks error:', err.message);
-      return null;
+    if (!c) throw new Error('Supabase is not configured.');
+    let query = c.from('vendor_works').select('*').order('created_at', { ascending: false });
+    if (jobType && jobType !== 'all') {
+      query = query.ilike('job_type', `%${jobType}%`);
     }
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []).map(mapVendorWorkFromDb);
   },
 
   async insertVendorWork(w) {
     const c = client || initClient();
-    if (!c) return null;
+    if (!c) throw new Error('Supabase is not configured.');
     const row = {
       id: w.id,
       job_type: w.jobType,
@@ -758,19 +827,14 @@ module.exports = {
       created_at: w.createdAt || new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    try {
-      const { data, error } = await c.from('vendor_works').insert([row]).select();
-      if (error) throw error;
-      return mapVendorWorkFromDb(data[0]);
-    } catch (err) {
-      console.error('Supabase insertVendorWork error:', err.message);
-      return null;
-    }
+    const { data, error } = await c.from('vendor_works').insert([row]).select();
+    if (error) throw error;
+    return mapVendorWorkFromDb(data[0]);
   },
 
   async updateVendorWork(id, updates) {
     const c = client || initClient();
-    if (!c) return null;
+    if (!c) throw new Error('Supabase is not configured.');
     const row = { updated_at: new Date().toISOString() };
     if (updates.jobType !== undefined) row.job_type = updates.jobType;
     if (updates.title !== undefined) row.title = updates.title;
@@ -782,26 +846,16 @@ module.exports = {
     if (updates.images !== undefined) row.images = updates.images;
     if (updates.status !== undefined) row.status = updates.status;
 
-    try {
-      const { data, error } = await c.from('vendor_works').update(row).eq('id', id).select();
-      if (error) throw error;
-      return mapVendorWorkFromDb(data[0]);
-    } catch (err) {
-      console.error('Supabase updateVendorWork error:', err.message);
-      return null;
-    }
+    const { data, error } = await c.from('vendor_works').update(row).eq('id', id).select();
+    if (error) throw error;
+    return data?.[0] ? mapVendorWorkFromDb(data[0]) : null;
   },
 
   async deleteVendorWork(id) {
     const c = client || initClient();
-    if (!c) return null;
-    try {
-      const { error } = await c.from('vendor_works').delete().eq('id', id);
-      if (error) throw error;
-      return true;
-    } catch (err) {
-      console.error('Supabase deleteVendorWork error:', err.message);
-      return false;
-    }
+    if (!c) throw new Error('Supabase is not configured.');
+    const { error } = await c.from('vendor_works').delete().eq('id', id);
+    if (error) throw error;
+    return true;
   }
 };

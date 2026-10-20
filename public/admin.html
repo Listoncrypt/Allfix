@@ -1615,6 +1615,15 @@
         <dt>Location Address:</dt>
         <dd id="modalLocation">-</dd>
 
+        <dt>Person meeting the provider:</dt>
+        <dd id="modalMeetingPerson">-</dd>
+
+        <dt>Full meeting address:</dt>
+        <dd id="modalMeetingAddress">-</dd>
+
+        <dt>Identity check:</dt>
+        <dd id="modalIdentityDetails">-</dd>
+
         <dt>Phone (WhatsApp):</dt>
         <dd id="modalPhone">-</dd>
 
@@ -2149,10 +2158,10 @@
 
         <div class="form-group" style="margin-bottom: 1.25rem;">
           <label class="form-label" for="supabaseKeyInput" style="font-size: 0.85rem;">
-            Supabase Anon / Service Role Key <span class="required">*</span>
+            Supabase Server Secret / Service Role Key <span class="required">*</span>
           </label>
           <input type="password" id="supabaseKeyInput" class="form-control" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." required style="font-size: 0.88rem;">
-          <span style="font-size: 0.78rem; color: #68756B;">Found in Supabase: Project Settings &rarr; API &rarr; Project API keys</span>
+          <span style="font-size: 0.78rem; color: #68756B;">Use a service role key or server secret key. Never enter the anon or publishable key here.</span>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #E2E7E3; padding-top: 1rem;">

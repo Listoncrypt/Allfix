@@ -120,9 +120,50 @@
             <input type="email" id="email" class="form-control" placeholder="adeola.o@gmail.com">
           </div>
 
+          <h3 class="form-section-heading">Who will meet the service provider?</h3>
+          <fieldset class="booking-choice-group">
+            <legend class="form-label">Who is this request for? <span class="required">*</span></legend>
+            <div class="booking-choice-options">
+              <label><input type="radio" name="bookingFor" value="self" checked> I am meeting the provider</label>
+              <label><input type="radio" name="bookingFor" value="someone-else"> I am booking for someone else</label>
+            </div>
+          </fieldset>
+
+          <div id="meetingPersonDetails" class="conditional-fields" hidden aria-hidden="true">
+            <h4>Details of the person who will meet the provider</h4>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="meetingPersonName">Full name <span class="required">*</span></label>
+                <input type="text" id="meetingPersonName" class="form-control" autocomplete="name" placeholder="Full name of the person receiving the service" disabled>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="meetingPersonPhone">Phone number <span class="required">*</span></label>
+                <input type="tel" id="meetingPersonPhone" class="form-control" autocomplete="tel" placeholder="Phone number the provider can reach" disabled>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="meetingPersonEmail">Email address</label>
+                <input type="email" id="meetingPersonEmail" class="form-control" autocomplete="email" placeholder="Optional email address" disabled>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="meetingPersonRelationship">Your relationship to them <span class="required">*</span></label>
+                <input type="text" id="meetingPersonRelationship" class="form-control" placeholder="e.g. parent, spouse, colleague" disabled>
+              </div>
+            </div>
+            <label class="identity-consent-label">
+              <input type="checkbox" id="representativeConsent" disabled>
+              <span>I have the person's permission to share their details and verification documents for this service request.</span>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="meetingAddress">Full address where the provider should meet you <span class="required">*</span></label>
+            <textarea id="meetingAddress" class="form-control" rows="2" autocomplete="street-address" placeholder="House/office number, street, area, city and state" required></textarea>
+            <small class="field-help">For property or vehicle viewings, enter the agreed meeting location if it is different from your home.</small>
+          </div>
+
           
           <h3 style="font-size: 1.25rem; margin: 2rem 0 1.25rem 0; color: #151B17; display: flex; align-items: center; gap: 0.5rem;">
-            <span style="width: 28px; height: 28px; background: #DCFCE7; color: #16883D; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700;">2</span>
+            <span style="width: 28px; height: 28px; background: #DCFCE7; color: #16883D; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700;">3</span>
             Service & Location Requirements
           </h3>
 
@@ -458,6 +499,48 @@
             </label>
             <textarea id="description" class="form-control" rows="4" placeholder="Please describe the requirements in detail (e.g. location, timing, specific preferences)." required></textarea>
           </div>
+
+          <section class="identity-verification-section" aria-labelledby="clientIdentityHeading">
+            <h3 id="clientIdentityHeading">Identity check for the person meeting the provider</h3>
+            <div class="identity-privacy-notice">
+              <h4>Your Safety Matters to ALLFIX</h4>
+              <p>At ALLFIX Services Xpress, the safety of our clients and service providers is a priority.</p>
+              <p>Before connecting you with a service provider, we may ask you to verify your identity by submitting a valid means of identification and completing facial verification.</p>
+              <p><strong>Why do we require this?</strong></p>
+              <p>This verification process helps us confirm your identity, reduce the risk of impersonation and fraudulent requests, and provide an additional layer of security for the vetted professionals who may visit your home, office or other specified location.</p>
+              <p>Our goal is to build a trusted platform where clients and service providers can connect with greater confidence.</p>
+              <p>Your privacy matters too. Your identification and facial verification information will be handled in accordance with our privacy policy and applicable data protection requirements.</p>
+              <p>Thank you for helping us make ALLFIX a safer platform for everyone.</p>
+            </div>
+            <p id="identitySubjectHelp" class="field-help">Upload the ID and selfie of the person who will meet the provider. If you are booking for someone else, use their documents.</p>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="requestIdentityType">Means of identification <span class="required">*</span></label>
+                <select id="requestIdentityType" class="form-control" required>
+                  <option value="">Choose an ID type</option>
+                  <option value="NIN">NIN slip or card</option>
+                  <option value="Voters card">Voter's card</option>
+                  <option value="International passport">International passport</option>
+                  <option value="Drivers licence">Driver's licence</option>
+                  <option value="Other valid ID">Other valid government ID</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="requestIdentityFile">Upload the ID <span class="required">*</span></label>
+                <input class="form-control file-control" type="file" id="requestIdentityFile" accept="image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf" required>
+                <small class="field-help">Clear photo or PDF, up to 4 MB.</small>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="requestSelfieFile">Upload a clear selfie <span class="required">*</span></label>
+                <input class="form-control file-control" type="file" id="requestSelfieFile" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" capture="user" required>
+                <small class="field-help">Face visible, without a filter, up to 4 MB.</small>
+              </div>
+            </div>
+            <label class="identity-consent-label">
+              <input type="checkbox" id="requestIdentityConsent" required>
+              <span>I consent to ALLFIX reviewing these documents to confirm identity and help protect clients and service providers. <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Read our Privacy Policy</a>.</span>
+            </label>
+          </section>
 
           
           <div class="terms-enforcement-box" id="termsEnforcementBox">
