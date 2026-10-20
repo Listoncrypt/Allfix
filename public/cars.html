@@ -310,17 +310,23 @@
       // Lightbox state
       let currentGallery = [];
       let currentGalleryIndex = 0;
+      let currentGalleryTitle = '';
       const lightbox = document.getElementById('vehicleLightbox');
       const lightboxImg = document.getElementById('lightboxImg');
       const lightboxCaption = document.getElementById('lightboxCaption');
       const closeLightboxBtn = document.getElementById('closeLightboxBtn');
       const prevLightboxBtn = document.getElementById('prevLightboxBtn');
       const nextLightboxBtn = document.getElementById('nextLightboxBtn');
+      let lightboxTouchStart = null;
+      let cardTouchStart = null;
+      let suppressCardClickUntil = 0;
+      const cardImageIndexes = {};
 
       function openLightbox(images, startIndex, title) {
         if (!images || images.length === 0) return;
         currentGallery = images;
         currentGalleryIndex = startIndex || 0;
+        currentGalleryTitle = title || 'Vehicle Photo';
         updateLightboxView(title);
         lightbox.classList.add('open');
       }
@@ -328,7 +334,7 @@
       function updateLightboxView(title) {
         if (!currentGallery.length) return;
         lightboxImg.src = currentGallery[currentGalleryIndex];
-        lightboxCaption.textContent = `${title || 'Vehicle Photo'} (${currentGalleryIndex + 1} of ${currentGallery.length})`;
+        lightboxCaption.textContent = `${title || currentGalleryTitle} (${currentGalleryIndex + 1} of ${currentGallery.length})`;
       }
 
       function closeLightbox() {
@@ -339,6 +345,21 @@
       lightbox.addEventListener('click', (e) => {
         if (e.target === lightbox) closeLightbox();
       });
+
+      lightbox.addEventListener('touchstart', (e) => {
+        const touch = e.changedTouches[0];
+        lightboxTouchStart = { x: touch.clientX, y: touch.clientY };
+      }, { passive: true });
+      lightbox.addEventListener('touchend', (e) => {
+        if (!lightboxTouchStart || !currentGallery.length) return;
+        const touch = e.changedTouches[0];
+        const dx = touch.clientX - lightboxTouchStart.x;
+        const dy = touch.clientY - lightboxTouchStart.y;
+        lightboxTouchStart = null;
+        if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy)) return;
+        currentGalleryIndex = (currentGalleryIndex + (dx < 0 ? 1 : -1) + currentGallery.length) % currentGallery.length;
+        updateLightboxView();
+      }, { passive: true });
 
       prevLightboxBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -397,6 +418,7 @@ Please share the full specifications, vehicle history and available inspection t
 
       function renderVehicles(list) {
         visibleVehicles = list || [];
+        Object.keys(cardImageIndexes).forEach(index => delete cardImageIndexes[index]);
         if (!list || list.length === 0) {
           container.innerHTML = `
             <div class="property-empty-state">
@@ -436,7 +458,7 @@ Please share the full specifications, vehicle history and available inspection t
 
           return `
             <article class="vehicle-card" data-card-index="${cardIdx}">
-              <div class="card-image-gallery" onclick="window.viewCarGallery(${cardIdx}, 0)">
+              <div class="card-image-gallery" data-card-index="${cardIdx}" onclick="window.viewCarGallery(${cardIdx}, ${cardImageIndexes[cardIdx] || 0})">
                 ${photosMarkup}
                 <span class="vehicle-condition-tag">${conditionBadge}</span>
                 ${images.length > 1 ? `<span class="gallery-counter-tag"> ${images.length} Photos</span>` : ''}
@@ -480,7 +502,24 @@ Please share the full specifications, vehicle history and available inspection t
       }
 
       // Card gallery stepper
-      const cardImageIndexes = {};
+      container.addEventListener('touchstart', (e) => {
+        const gallery = e.target.closest('.card-image-gallery[data-card-index]');
+        if (!gallery) return;
+        const touch = e.changedTouches[0];
+        cardTouchStart = { x: touch.clientX, y: touch.clientY, index: Number(gallery.dataset.cardIndex) };
+      }, { passive: true });
+      container.addEventListener('touchend', (e) => {
+        if (!cardTouchStart) return;
+        const start = cardTouchStart;
+        const touch = e.changedTouches[0];
+        const dx = touch.clientX - start.x;
+        const dy = touch.clientY - start.y;
+        cardTouchStart = null;
+        if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy)) return;
+        suppressCardClickUntil = Date.now() + 450;
+        window.stepCarImage({ stopPropagation() {} }, start.index, dx < 0 ? 1 : -1);
+      }, { passive: true });
+
       window.stepCarImage = function(e, cardIdx, step) {
         if (e) e.stopPropagation();
         const veh = visibleVehicles[cardIdx];
@@ -505,6 +544,7 @@ Please share the full specifications, vehicle history and available inspection t
       };
 
       window.viewCarGallery = function(cardIdx, startIdx) {
+        if (Date.now() < suppressCardClickUntil) return;
         const veh = visibleVehicles[cardIdx];
         if (!veh) return;
         const images = (Array.isArray(veh.images) && veh.images.length > 0)

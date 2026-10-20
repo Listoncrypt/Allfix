@@ -36,6 +36,8 @@ Local development can use `data/db.json`. Production writes use Supabase; the se
 
 Run `supabase-marketplace-migration.sql` in the Supabase SQL Editor when upgrading an existing database. It creates the owner-submission, vehicle, and vendor-work tables used by the site and adds the published-listing reference. New installations can use `supabase-schema.sql`.
 
+Run `supabase-listing-images-migration.sql` for an existing database before posting new property or vehicle photos. Uploaded listing photos are stored in the public `listing-images` bucket using unique object paths, while browser clients are blocked from changing or deleting those files. The database stores image URLs rather than large Base64 photo data.
+
 Submissions from **List With Us** are saved as `pending_review`. An administrator must review and publish each submission before it appears in the public properties or cars inventory. Publishing creates the public inventory record and marks the submission as published.
 
 Production needs `SUPABASE_URL` and the server-only `SUPABASE_SERVICE_ROLE_KEY` configured in Vercel. If a Supabase write fails, the API returns an error instead of reporting that the submission succeeded.

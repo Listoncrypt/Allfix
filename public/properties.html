@@ -206,6 +206,7 @@
       const container = document.getElementById('propertiesContainer');
       const filterPills = document.querySelectorAll('.property-filter-pill');
       let allProperties = [];
+      let visibleProperties = [];
       const cardImageIndices = {};
 
       // Lightbox state
@@ -217,6 +218,9 @@
       const closeLightboxBtn = document.getElementById('closePropLightboxBtn');
       const prevLightboxBtn = document.getElementById('prevPropLightboxBtn');
       const nextLightboxBtn = document.getElementById('nextPropLightboxBtn');
+      let lightboxTouchStart = null;
+      let cardTouchStart = null;
+      let suppressCardClickUntil = 0;
 
       function openLightbox(images, startIndex, title) {
         if (!images || images.length === 0) return;
@@ -243,6 +247,20 @@
         lightbox.addEventListener('click', (e) => {
           if (e.target === lightbox) closeLightbox();
         });
+        lightbox.addEventListener('touchstart', (e) => {
+          const touch = e.changedTouches[0];
+          lightboxTouchStart = { x: touch.clientX, y: touch.clientY };
+        }, { passive: true });
+        lightbox.addEventListener('touchend', (e) => {
+          if (!lightboxTouchStart || !currentGallery.length) return;
+          const touch = e.changedTouches[0];
+          const dx = touch.clientX - lightboxTouchStart.x;
+          const dy = touch.clientY - lightboxTouchStart.y;
+          lightboxTouchStart = null;
+          if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy)) return;
+          currentGalleryIndex = (currentGalleryIndex + (dx < 0 ? 1 : -1) + currentGallery.length) % currentGallery.length;
+          updateLightboxView();
+        }, { passive: true });
       }
 
       if (prevLightboxBtn) {
@@ -264,7 +282,8 @@
       }
 
       window.viewPropGallery = function(cardIdx, imgIdx) {
-        const prop = allProperties[cardIdx];
+        if (Date.now() < suppressCardClickUntil) return;
+        const prop = visibleProperties[cardIdx];
         if (!prop) return;
         const images = (Array.isArray(prop.images) && prop.images.length > 0)
           ? prop.images
@@ -273,8 +292,8 @@
       };
 
       window.stepPropImage = function(e, cardIdx, delta) {
-        e.stopPropagation();
-        const prop = allProperties[cardIdx];
+        if (e?.stopPropagation) e.stopPropagation();
+        const prop = visibleProperties[cardIdx];
         if (!prop) return;
         const images = (Array.isArray(prop.images) && prop.images.length > 0)
           ? prop.images
@@ -286,11 +305,33 @@
         cardImageIndices[cardIdx] = next;
 
         const imgEl = document.getElementById(`propImg_${cardIdx}`);
-        if (imgEl) imgEl.src = images[next];
+        if (imgEl) {
+          imgEl.style.visibility = '';
+          imgEl.parentElement.classList.remove('image-load-error');
+          imgEl.src = images[next];
+        }
 
         const counterEl = document.getElementById(`propCounter_${cardIdx}`);
         if (counterEl) counterEl.textContent = ` ${next + 1} / ${images.length}`;
       };
+
+      container.addEventListener('touchstart', (e) => {
+        const gallery = e.target.closest('.card-image-gallery[data-card-index]');
+        if (!gallery) return;
+        const touch = e.changedTouches[0];
+        cardTouchStart = { x: touch.clientX, y: touch.clientY, index: Number(gallery.dataset.cardIndex) };
+      }, { passive: true });
+      container.addEventListener('touchend', (e) => {
+        if (!cardTouchStart) return;
+        const start = cardTouchStart;
+        const touch = e.changedTouches[0];
+        const dx = touch.clientX - start.x;
+        const dy = touch.clientY - start.y;
+        cardTouchStart = null;
+        if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy)) return;
+        suppressCardClickUntil = Date.now() + 450;
+        window.stepPropImage(null, start.index, dx < 0 ? 1 : -1);
+      }, { passive: true });
 
       function formatPriceDisplay(rawPrice) {
         if (!rawPrice || String(rawPrice).trim() === '') {
@@ -301,6 +342,12 @@
           return `<span class="property-price-val">₦${Number(cleaned).toLocaleString('en-NG')}</span>`;
         }
         return `<span class="property-price-val">${rawPrice}</span>`;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, char => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[char]);
       }
 
       function buildWhatsAppLink(prop) {
@@ -324,6 +371,8 @@ Please share title documents and schedule an inspection.`;
       }
 
       function renderProperties(list) {
+        visibleProperties = list || [];
+        Object.keys(cardImageIndices).forEach(index => delete cardImageIndices[index]);
         if (!list || list.length === 0) {
           container.innerHTML = `
             <div class="property-empty-state">
@@ -338,7 +387,7 @@ Please share title documents and schedule an inspection.`;
         container.innerHTML = list.map((prop, cardIdx) => {
           const images = (Array.isArray(prop.images) && prop.images.length > 0)
             ? prop.images
-            : (prop.imageUrl ? [prop.imageUrl] : ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80']);
+            : (prop.imageUrl ? [prop.imageUrl] : []);
           const primaryImg = images[0];
           const typeBadge = prop.propertyType || 'Property';
           const waLink = buildWhatsAppLink(prop);
@@ -346,14 +395,14 @@ Please share title documents and schedule an inspection.`;
 
           return `
             <article class="property-card" data-type="${prop.propertyType || ''}" data-hasprice="${prop.price && String(prop.price).trim() !== '' ? 'yes' : 'no'}">
-              <div class="property-image-wrap card-image-gallery" onclick="window.viewPropGallery(${cardIdx}, cardImageIndices[${cardIdx}] || 0)">
-                <img id="propImg_${cardIdx}" src="${primaryImg}" alt="${prop.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80'">
+              <div class="property-image-wrap card-image-gallery" data-card-index="${cardIdx}" onclick="window.viewPropGallery(${cardIdx}, cardImageIndices[${cardIdx}] || 0)">
+                ${primaryImg ? `<img id="propImg_${cardIdx}" src="${escapeHtml(primaryImg)}" alt="${escapeHtml(prop.title)}" loading="lazy" onerror="this.parentElement.classList.add('image-load-error')">` : '<div class="property-photo-empty">Property photos will be added shortly.</div>'}
                 <span class="property-type-tag">${typeBadge}</span>
                 <span class="property-verified-tag">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
                   Verified
                 </span>
-                ${images.length > 1 ? `<span class="gallery-counter-tag" id="propCounter_${cardIdx}"> 1 / ${images.length}</span>` : ''}
+                ${images.length > 1 ? `<span class="gallery-counter-tag" id="propCounter_${cardIdx}"> ${(cardImageIndices[cardIdx] || 0) + 1} / ${images.length}</span>` : ''}
                 ${images.length > 1 ? `
                   <button type="button" class="gallery-nav-btn gallery-nav-prev" onclick="window.stepPropImage(event, ${cardIdx}, -1)">&lsaquo;</button>
                   <button type="button" class="gallery-nav-btn gallery-nav-next" onclick="window.stepPropImage(event, ${cardIdx}, 1)">&rsaquo;</button>

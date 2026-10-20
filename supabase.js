@@ -348,6 +348,25 @@ module.exports = {
     if (error) throw error;
   },
 
+  async uploadListingImage(storagePath, buffer, contentType) {
+    const c = getIdentityStorageClient();
+    if (!c) throw new Error('Listing image storage is not configured.');
+    const { data, error } = await c.storage.from('listing-images').upload(storagePath, buffer, {
+      cacheControl: '31536000',
+      contentType,
+      upsert: false
+    });
+    if (error) throw error;
+    return c.storage.from('listing-images').getPublicUrl(data.path).data.publicUrl;
+  },
+
+  async removeListingImages(storagePaths) {
+    const c = getIdentityStorageClient();
+    if (!c || !storagePaths.length) return;
+    const { error } = await c.storage.from('listing-images').remove(storagePaths);
+    if (error) throw error;
+  },
+
   async getRequests() {
     const c = client || initClient();
     if (!c) return null;
@@ -597,18 +616,9 @@ module.exports = {
       created_at: p.createdAt || new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    try {
-      const { data, error } = await c.from('properties').insert([row]).select();
-      if (error) throw error;
-      return mapPropertyFromDb(data[0]);
-    } catch (err) {
-      // Fallback without images column if not yet migrated
-      const fallbackRow = { ...row };
-      delete fallbackRow.images;
-      const { data, error } = await c.from('properties').insert([fallbackRow]).select();
-      if (error) throw error;
-      return mapPropertyFromDb(data[0]);
-    }
+    const { data, error } = await c.from('properties').insert([row]).select();
+    if (error) throw error;
+    return mapPropertyFromDb(data[0]);
   },
 
   async updateProperty(id, updates) {
@@ -626,17 +636,9 @@ module.exports = {
     if (updates.images !== undefined) row.images = updates.images;
     if (updates.status !== undefined) row.status = updates.status;
 
-    try {
-      const { data, error } = await c.from('properties').update(row).eq('id', id).select();
-      if (error) throw error;
-      return mapPropertyFromDb(data[0]);
-    } catch (err) {
-      const fallbackRow = { ...row };
-      delete fallbackRow.images;
-      const { data, error } = await c.from('properties').update(fallbackRow).eq('id', id).select();
-      if (error) throw error;
-      return mapPropertyFromDb(data[0]);
-    }
+    const { data, error } = await c.from('properties').update(row).eq('id', id).select();
+    if (error) throw error;
+    return data?.[0] ? mapPropertyFromDb(data[0]) : null;
   },
 
   async deleteProperty(id) {

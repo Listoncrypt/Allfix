@@ -266,9 +266,53 @@ async function removeIdentityUploads(paths) {
   }
 }
 
+async function persistListingImages(images, entityType, entityId) {
+  const sourceImages = Array.isArray(images) ? images.slice(0, 10) : [];
+  if (!supabase.isSupabaseConfigured()) return sourceImages;
+
+  const uploadedPaths = [];
+  try {
+    const savedImages = [];
+    for (const [index, value] of sourceImages.entries()) {
+      if (typeof value !== 'string' || !value.trim()) continue;
+      const image = value.trim();
+      if (/^https?:\/\//i.test(image)) {
+        savedImages.push(image);
+        continue;
+      }
+
+      const match = image.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/i);
+      if (!match) throw new Error(`Photo ${index + 1} is not a supported image.`);
+      const buffer = Buffer.from(match[2], 'base64');
+      if (!buffer.length || buffer.length > 8 * 1024 * 1024) {
+        throw new Error(`Photo ${index + 1} must be 8 MB or smaller.`);
+      }
+      const mime = match[1].toLowerCase();
+      const signatures = {
+        'image/jpeg': buffer.length > 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff,
+        'image/png': buffer.length > 8 && buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])),
+        'image/webp': buffer.length > 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP'
+      };
+      if (!signatures[mime]) throw new Error(`Photo ${index + 1} could not be validated.`);
+
+      const extension = mime === 'image/jpeg' ? 'jpg' : mime.slice('image/'.length);
+      const storagePath = `${entityType}/${entityId}/${String(index + 1).padStart(2, '0')}-${crypto.randomBytes(8).toString('hex')}.${extension}`;
+      const publicUrl = await supabase.uploadListingImage(storagePath, buffer, mime);
+      uploadedPaths.push(storagePath);
+      savedImages.push(publicUrl);
+    }
+    return savedImages;
+  } catch (error) {
+    await supabase.removeListingImages(uploadedPaths).catch(() => {});
+    throw error;
+  }
+}
+
 function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store, max-age=0, must-revalidate',
+    'Pragma': 'no-cache',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS'
@@ -1345,8 +1389,14 @@ const server = http.createServer(async (req, res) => {
         }
         const propId = 'PROP-' + crypto.randomBytes(4).toString('hex').toUpperCase();
         const isoNow = new Date().toISOString();
-        const imagesList = Array.isArray(images) && images.length > 0 ? images.slice(0, 10) : (imageUrl ? [imageUrl] : []);
-        const primaryImage = (imageUrl && imageUrl.trim()) || (imagesList.length > 0 ? imagesList[0] : '');
+        let imagesList = Array.isArray(images) && images.length > 0 ? images.slice(0, 10) : (imageUrl ? [imageUrl] : []);
+        try {
+          imagesList = await persistListingImages(imagesList, 'properties', propId);
+        } catch (imageError) {
+          console.error('Failed to store property photos:', imageError.message);
+          return sendJson(res, 400, { success: false, error: imageError.message || 'Property photos could not be saved.' });
+        }
+        const primaryImage = imagesList[0] || '';
 
         const propRecord = {
           id: propId,
@@ -1402,10 +1452,16 @@ const server = http.createServer(async (req, res) => {
         if (titleDocument !== undefined) updates.titleDocument = titleDocument.trim();
         if (description !== undefined) updates.description = description.trim();
         if (images !== undefined) {
-          updates.images = Array.isArray(images) ? images.slice(0, 10) : [];
-          if (!imageUrl && updates.images.length > 0) updates.imageUrl = updates.images[0];
+          try {
+            updates.images = await persistListingImages(Array.isArray(images) ? images.slice(0, 10) : [], 'properties', id);
+          } catch (imageError) {
+            console.error('Failed to store property photos:', imageError.message);
+            return sendJson(res, 400, { success: false, error: imageError.message || 'Property photos could not be saved.' });
+          }
+          updates.imageUrl = updates.images[0] || '';
+        } else if (imageUrl !== undefined) {
+          updates.imageUrl = imageUrl.trim();
         }
-        if (imageUrl !== undefined) updates.imageUrl = imageUrl.trim();
         if (status !== undefined) updates.status = status.trim();
 
         if (supabase.isSupabaseConfigured()) {
@@ -1495,8 +1551,14 @@ const server = http.createServer(async (req, res) => {
         }
         const vehId = 'CAR-' + crypto.randomBytes(4).toString('hex').toUpperCase();
         const isoNow = new Date().toISOString();
-        const imagesList = Array.isArray(images) && images.length > 0 ? images.slice(0, 10) : (imageUrl ? [imageUrl] : []);
-        const primaryImage = (imageUrl && imageUrl.trim()) || (imagesList.length > 0 ? imagesList[0] : '');
+        let imagesList = Array.isArray(images) && images.length > 0 ? images.slice(0, 10) : (imageUrl ? [imageUrl] : []);
+        try {
+          imagesList = await persistListingImages(imagesList, 'vehicles', vehId);
+        } catch (imageError) {
+          console.error('Failed to store vehicle photos:', imageError.message);
+          return sendJson(res, 400, { success: false, error: imageError.message || 'Vehicle photos could not be saved.' });
+        }
+        const primaryImage = imagesList[0] || '';
 
         const vehRecord = {
           id: vehId,
@@ -1573,10 +1635,16 @@ const server = http.createServer(async (req, res) => {
         if (description !== undefined) updates.description = String(description).trim();
         if (fullSpecifications !== undefined) updates.fullSpecifications = String(fullSpecifications).trim();
         if (images !== undefined) {
-          updates.images = Array.isArray(images) ? images.slice(0, 10) : [];
-          if (!imageUrl && updates.images.length > 0) updates.imageUrl = updates.images[0];
+          try {
+            updates.images = await persistListingImages(Array.isArray(images) ? images.slice(0, 10) : [], 'vehicles', id);
+          } catch (imageError) {
+            console.error('Failed to store vehicle photos:', imageError.message);
+            return sendJson(res, 400, { success: false, error: imageError.message || 'Vehicle photos could not be saved.' });
+          }
+          updates.imageUrl = updates.images[0] || '';
+        } else if (imageUrl !== undefined) {
+          updates.imageUrl = imageUrl.trim();
         }
-        if (imageUrl !== undefined) updates.imageUrl = imageUrl.trim();
         if (status !== undefined) updates.status = status.trim();
 
         if (supabase.isSupabaseConfigured()) {
@@ -1726,7 +1794,13 @@ const server = http.createServer(async (req, res) => {
           relatedEntityId: recordId
         };
 
-        const imagesList = Array.isArray(images) ? images.slice(0, 10) : [];
+        let imagesList = Array.isArray(images) ? images.slice(0, 10) : [];
+        try {
+          imagesList = await persistListingImages(imagesList, assetType === 'property' ? 'properties' : 'vehicles', recordId);
+        } catch (imageError) {
+          console.error('Failed to store owner submission photos:', imageError.message);
+          return sendJson(res, 400, { success: false, error: imageError.message || 'Your photos could not be saved.' });
+        }
 
         const marketingRecord = {
           id: recordId,
