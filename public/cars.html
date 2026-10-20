@@ -455,18 +455,26 @@ Please share the full specifications, vehicle history and available inspection t
           const photosMarkup = images.length
             ? `<img id="carImg_${cardIdx}" src="${escapeHtml(images[0])}" alt="${safeTitle} — exterior photo" loading="lazy">`
             : `<div class="vehicle-photo-empty">Photos for this vehicle will be added shortly.</div>`;
+          const photoStrip = images.length ? `
+            <div class="listing-photo-strip">
+              <div class="listing-photo-strip-heading"><span>Photos</span><strong>${images.length} photo${images.length === 1 ? '' : 's'}</strong></div>
+              <div class="listing-photo-thumbnails" aria-label="Vehicle photos">
+                ${images.map((image, photoIdx) => `<button type="button" class="listing-photo-thumb ${photoIdx === 0 ? 'active' : ''}" aria-label="View photo ${photoIdx + 1} of ${images.length}" aria-pressed="${photoIdx === 0}" onclick="window.selectCarImage(event, ${cardIdx}, ${photoIdx})"><img src="${escapeHtml(image)}" alt="" loading="lazy"></button>`).join('')}
+              </div>
+            </div>` : '';
+          const descriptionMarkup = veh.description
+            ? (veh.description.length > 180
+              ? `<details class="listing-description"><summary><span>${description}</span></summary><p>${description}</p></details>`
+              : `<p class="listing-description-short">${description}</p>`)
+            : '';
 
           return `
             <article class="vehicle-card" data-card-index="${cardIdx}">
               <div class="card-image-gallery" data-card-index="${cardIdx}" onclick="window.viewCarGallery(${cardIdx}, ${cardImageIndexes[cardIdx] || 0})">
                 ${photosMarkup}
                 <span class="vehicle-condition-tag">${conditionBadge}</span>
-                ${images.length > 1 ? `<span class="gallery-counter-tag"> ${images.length} Photos</span>` : ''}
-                ${images.length > 1 ? `
-                  <button type="button" class="gallery-nav-btn gallery-nav-prev" onclick="window.stepCarImage(event, ${cardIdx}, -1)">&lsaquo;</button>
-                  <button type="button" class="gallery-nav-btn gallery-nav-next" onclick="window.stepCarImage(event, ${cardIdx}, 1)">&rsaquo;</button>
-                ` : ''}
               </div>
+              ${photoStrip}
               <div class="vehicle-content">
                 <div class="vehicle-listing-head">
                   <h3 class="vehicle-title">${safeTitle}</h3>
@@ -481,7 +489,7 @@ Please share the full specifications, vehicle history and available inspection t
                   ${quickSpecs.map(spec => `<span class="vehicle-spec-chip">${escapeHtml(spec)}</span>`).join('')}
                 </div>
 
-                ${veh.description ? `<p class="vehicle-description">${description}</p>` : ''}
+                ${descriptionMarkup}
                 ${(fullSpecs || veh.color || veh.vehicleType || veh.location) ? `
                   <details class="vehicle-full-specs">
                     <summary>Full specifications</summary>
@@ -532,15 +540,26 @@ Please share the full specifications, vehicle history and available inspection t
         const current = cardImageIndexes[cardIdx] || 0;
         const next = (current + step + images.length) % images.length;
         cardImageIndexes[cardIdx] = next;
+        window.selectCarImage(null, cardIdx, next);
+      };
 
+      window.selectCarImage = function(e, cardIdx, photoIdx) {
+        if (e?.stopPropagation) e.stopPropagation();
+        const veh = visibleVehicles[cardIdx];
+        if (!veh) return;
+        const images = Array.isArray(veh.images) && veh.images.length > 0 ? veh.images : (veh.imageUrl ? [veh.imageUrl] : []);
+        if (!images[photoIdx]) return;
+        cardImageIndexes[cardIdx] = photoIdx;
         const imgEl = document.getElementById(`carImg_${cardIdx}`);
         if (imgEl) {
-          imgEl.style.opacity = '0.5';
-          setTimeout(() => {
-            imgEl.src = images[next];
-            imgEl.style.opacity = '1';
-          }, 120);
+          imgEl.src = images[photoIdx];
+          imgEl.alt = `${veh.title || 'Vehicle'} — photo ${photoIdx + 1}`;
         }
+        const card = container.querySelector(`.vehicle-card[data-card-index="${cardIdx}"]`);
+        card?.querySelectorAll('.listing-photo-thumb').forEach((thumb, index) => {
+          thumb.classList.toggle('active', index === photoIdx);
+          thumb.setAttribute('aria-pressed', String(index === photoIdx));
+        });
       };
 
       window.viewCarGallery = function(cardIdx, startIdx) {

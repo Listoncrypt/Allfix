@@ -8,6 +8,9 @@
   let allWorks = [];
   let currentFilter = 'all';
   let currentSearch = '';
+  let visibleWorks = [];
+  const workCardIndexes = {};
+  let lightboxTouchStart = null;
 
   // Lightbox state
   let currentLightboxImages = [];
@@ -90,6 +93,8 @@
 
   function renderWorks() {
     const list = getFilteredWorks();
+    visibleWorks = list;
+    Object.keys(workCardIndexes).forEach(index => delete workCardIndexes[index]);
 
     if (countBadge) {
       countBadge.textContent = `Showing ${list.length} of ${allWorks.length} verified jobs`;
@@ -107,11 +112,18 @@
     worksGrid.innerHTML = list.map((work, idx) => {
       const images = Array.isArray(work.images) && work.images.length > 0
         ? work.images
-        : (work.imageUrl ? [work.imageUrl] : ['https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&w=800&q=80']);
+        : (work.imageUrl ? [work.imageUrl] : []);
 
       const primaryPhoto = images[0];
       const photoCount = images.length;
       const catSlug = getServiceCategorySlug(work.jobType);
+      const photoStrip = images.length ? `
+        <div class="work-photo-strip">
+          <div class="work-photo-strip-heading"><span>Photos</span><strong>${photoCount} photo${photoCount === 1 ? '' : 's'}</strong></div>
+          <div class="work-photo-thumbnails" aria-label="Work photos">
+            ${images.map((image, photoIdx) => `<button type="button" class="work-photo-thumb ${photoIdx === 0 ? 'active' : ''}" aria-label="View photo ${photoIdx + 1} of ${photoCount}" aria-pressed="${photoIdx === 0}" data-work-index="${idx}" data-photo-index="${photoIdx}"><img src="${escapeHtml(image)}" alt="" loading="lazy"></button>`).join('')}
+          </div>
+        </div>` : '';
 
       const encodedMsg = encodeURIComponent(
         `Hello ALLFIX, I saw the "${work.title}" completed by your verified artisan in ${work.location || 'Abuja'} on your Work Gallery. I would like to request a similar service.`
@@ -122,12 +134,9 @@
         <article class="work-card" data-id="${work.id}">
           <div class="work-media-container" data-action="open-lightbox" data-work-index="${idx}" title="Click to view full photos">
             <span class="work-type-badge">${escapeHtml(work.jobType || 'Craftsmanship')}</span>
-            <img src="${escapeHtml(primaryPhoto)}" alt="${escapeHtml(work.title)}" loading="lazy">
-            <span class="work-photo-count-badge">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-              <span>${photoCount} Photo${photoCount > 1 ? 's' : ''}</span>
-            </span>
+            ${primaryPhoto ? `<img id="workCardImage_${idx}" src="${escapeHtml(primaryPhoto)}" alt="${escapeHtml(work.title)}" loading="lazy">` : '<div class="work-photo-empty">Photos will be added shortly.</div>'}
           </div>
+          ${photoStrip}
 
           <div class="work-body">
             <div class="work-meta-row">
@@ -161,9 +170,27 @@
         const idx = parseInt(el.getAttribute('data-work-index'), 10);
         const work = list[idx];
         if (work) {
-          const imgs = Array.isArray(work.images) && work.images.length > 0 ? work.images : [work.imageUrl];
-          openLightbox(imgs, 0, work.title);
+          const imgs = Array.isArray(work.images) && work.images.length > 0 ? work.images : (work.imageUrl ? [work.imageUrl] : []);
+          openLightbox(imgs, workCardIndexes[idx] || 0, work.title);
         }
+      });
+    });
+
+    document.querySelectorAll('.work-photo-thumb').forEach(button => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const workIdx = Number(button.dataset.workIndex);
+        const photoIdx = Number(button.dataset.photoIndex);
+        const work = visibleWorks[workIdx];
+        const images = Array.isArray(work?.images) && work.images.length > 0 ? work.images : (work?.imageUrl ? [work.imageUrl] : []);
+        if (!images[photoIdx]) return;
+        workCardIndexes[workIdx] = photoIdx;
+        const image = document.getElementById(`workCardImage_${workIdx}`);
+        if (image) image.src = images[photoIdx];
+        button.closest('.work-photo-thumbnails')?.querySelectorAll('.work-photo-thumb').forEach((thumb, index) => {
+          thumb.classList.toggle('active', index === photoIdx);
+          thumb.setAttribute('aria-pressed', String(index === photoIdx));
+        });
       });
     });
   }
@@ -256,6 +283,21 @@
   lightboxModal.addEventListener('click', (e) => {
     if (e.target === lightboxModal) closeLightbox();
   });
+
+  lightboxModal.addEventListener('touchstart', (e) => {
+    const touch = e.changedTouches[0];
+    lightboxTouchStart = { x: touch.clientX, y: touch.clientY };
+  }, { passive: true });
+  lightboxModal.addEventListener('touchend', (e) => {
+    if (!lightboxTouchStart || currentLightboxImages.length < 2) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - lightboxTouchStart.x;
+    const dy = touch.clientY - lightboxTouchStart.y;
+    lightboxTouchStart = null;
+    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0) nextImage();
+    else prevImage();
+  }, { passive: true });
 
   window.addEventListener('keydown', (e) => {
     if (!lightboxModal.classList.contains('active')) return;

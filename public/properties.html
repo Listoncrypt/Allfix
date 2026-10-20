@@ -310,10 +310,46 @@
           imgEl.parentElement.classList.remove('image-load-error');
           imgEl.src = images[next];
         }
-
-        const counterEl = document.getElementById(`propCounter_${cardIdx}`);
-        if (counterEl) counterEl.textContent = ` ${next + 1} / ${images.length}`;
+        updatePropertyPhotoSelection(cardIdx, next);
       };
+
+      window.selectPropertyImage = function(e, cardIdx, photoIdx) {
+        if (e?.stopPropagation) e.stopPropagation();
+        const prop = visibleProperties[cardIdx];
+        if (!prop) return;
+        const images = Array.isArray(prop.images) && prop.images.length > 0 ? prop.images : (prop.imageUrl ? [prop.imageUrl] : []);
+        if (!images[photoIdx]) return;
+        cardImageIndices[cardIdx] = photoIdx;
+        const imgEl = document.getElementById(`propImg_${cardIdx}`);
+        if (imgEl) {
+          imgEl.style.visibility = '';
+          imgEl.parentElement.classList.remove('image-load-error');
+          imgEl.src = images[photoIdx];
+          imgEl.alt = `${prop.title || 'Property'} — photo ${photoIdx + 1}`;
+        }
+        updatePropertyPhotoSelection(cardIdx, photoIdx);
+      };
+
+      window.togglePropertyDescription = function(button) {
+        const description = button.closest('.property-description-expand');
+        if (!description) return;
+        const expanded = button.getAttribute('aria-expanded') === 'true';
+        const preview = description.querySelector('.property-description-preview');
+        const full = description.querySelector('.property-description-full');
+        if (!preview || !full) return;
+        preview.hidden = !expanded;
+        full.hidden = expanded;
+        button.setAttribute('aria-expanded', String(!expanded));
+        button.textContent = expanded ? 'See more' : 'See less';
+      };
+
+      function updatePropertyPhotoSelection(cardIdx, photoIdx) {
+        const card = container.querySelector(`.property-image-wrap[data-card-index="${cardIdx}"]`)?.closest('.property-card');
+        card?.querySelectorAll('.listing-photo-thumb').forEach((thumb, index) => {
+          thumb.classList.toggle('active', index === photoIdx);
+          thumb.setAttribute('aria-pressed', String(index === photoIdx));
+        });
+      }
 
       container.addEventListener('touchstart', (e) => {
         const gallery = e.target.closest('.card-image-gallery[data-card-index]');
@@ -392,6 +428,18 @@ Please share title documents and schedule an inspection.`;
           const typeBadge = prop.propertyType || 'Property';
           const waLink = buildWhatsAppLink(prop);
           const priceHtml = formatPriceDisplay(prop.price);
+          const photoStrip = images.length ? `
+            <div class="listing-photo-strip">
+              <div class="listing-photo-strip-heading"><span>Photos</span><strong>${images.length} photo${images.length === 1 ? '' : 's'}</strong></div>
+              <div class="listing-photo-thumbnails" aria-label="Property photos">
+                ${images.map((image, photoIdx) => `<button type="button" class="listing-photo-thumb ${photoIdx === 0 ? 'active' : ''}" aria-label="View photo ${photoIdx + 1} of ${images.length}" aria-pressed="${photoIdx === 0}" onclick="window.selectPropertyImage(event, ${cardIdx}, ${photoIdx})"><img src="${escapeHtml(image)}" alt="" loading="lazy"></button>`).join('')}
+              </div>
+            </div>` : '';
+          const rawDescription = prop.description || 'Verified property ready for inspection. Contact desk for complete title documentation.';
+          const description = escapeHtml(rawDescription);
+          const descriptionMarkup = String(rawDescription).trim().length > 100
+            ? `<div class="property-description-expand"><p class="property-description-preview">${description}</p><p class="property-description-full" hidden>${description}</p><button type="button" class="property-description-toggle" aria-expanded="false" onclick="window.togglePropertyDescription(this)">See more</button></div>`
+            : `<p class="listing-description-short">${description}</p>`;
 
           return `
             <article class="property-card" data-type="${prop.propertyType || ''}" data-hasprice="${prop.price && String(prop.price).trim() !== '' ? 'yes' : 'no'}">
@@ -402,12 +450,8 @@ Please share title documents and schedule an inspection.`;
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
                   Verified
                 </span>
-                ${images.length > 1 ? `<span class="gallery-counter-tag" id="propCounter_${cardIdx}"> ${(cardImageIndices[cardIdx] || 0) + 1} / ${images.length}</span>` : ''}
-                ${images.length > 1 ? `
-                  <button type="button" class="gallery-nav-btn gallery-nav-prev" onclick="window.stepPropImage(event, ${cardIdx}, -1)">&lsaquo;</button>
-                  <button type="button" class="gallery-nav-btn gallery-nav-next" onclick="window.stepPropImage(event, ${cardIdx}, 1)">&rsaquo;</button>
-                ` : ''}
               </div>
+              ${photoStrip}
               <div class="property-content">
                 <h3 class="property-title">${prop.title}</h3>
                 <div class="property-location">
@@ -420,7 +464,7 @@ Please share title documents and schedule an inspection.`;
                   ${prop.titleDocument ? `<span class="property-spec-chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-1px;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>${prop.titleDocument}</span>` : ''}
                 </div>
 
-                <p class="property-description">${prop.description || 'Verified property ready for inspection. Contact desk for complete title documentation.'}</p>
+                ${descriptionMarkup}
 
                 <div class="property-footer-row">
                   <div class="property-price-box">
