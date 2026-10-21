@@ -34,8 +34,15 @@ let envConfig = loadEnvFile();
 function getSupabaseCredentials() {
   envConfig = loadEnvFile();
   const url = process.env.SUPABASE_URL || envConfig.SUPABASE_URL || '';
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || envConfig.SUPABASE_SERVICE_ROLE_KEY ||
-              process.env.SUPABASE_KEY || envConfig.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || envConfig.SUPABASE_ANON_KEY || '';
+  const keys = [
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    envConfig.SUPABASE_SERVICE_ROLE_KEY,
+    process.env.SUPABASE_KEY,
+    envConfig.SUPABASE_KEY,
+    process.env.SUPABASE_ANON_KEY,
+    envConfig.SUPABASE_ANON_KEY
+  ].filter(Boolean);
+  const key = keys.find(isServerSupabaseKey) || keys[0] || '';
   return { url, key };
 }
 
@@ -315,6 +322,7 @@ function mapVendorWorkFromDb(row) {
 module.exports = {
   isSupabaseConfigured,
   isServerSupabaseKey,
+  hasServerSupabaseKey: () => isServerSupabaseKey(getSupabaseCredentials().key),
   hasIdentityStorageCredentials: () => Boolean(getIdentityStorageClient()),
   getSupabaseCredentials,
   saveSupabaseConfig,

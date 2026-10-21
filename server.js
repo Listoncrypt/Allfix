@@ -320,6 +320,28 @@ function sendJson(res, statusCode, data) {
   res.end(JSON.stringify(data));
 }
 
+function describeSupabaseWriteError(error, resourceName) {
+  if (!supabase.hasServerSupabaseKey()) {
+    return `${resourceName} was not saved. Set a valid Supabase service-role key as SUPABASE_SERVICE_ROLE_KEY in the hosting environment.`;
+  }
+
+  const code = String(error?.code || '').trim();
+  const message = String(error?.message || '').trim();
+  if (code === '42501') {
+    return `${resourceName} was not saved because Supabase denied the write. Run the property permissions SQL and confirm the server uses the service-role key.`;
+  }
+  if (['42P01', 'PGRST205'].includes(code)) {
+    return `${resourceName} was not saved because the Supabase table is missing. Run the latest schema SQL.`;
+  }
+  if (['42703', 'PGRST204'].includes(code)) {
+    return `${resourceName} was not saved because the Supabase table is missing a required column. Run the latest schema SQL.`;
+  }
+  const detail = [code && `[${code}]`, message].filter(Boolean).join(' ');
+  return detail
+    ? `${resourceName} was not saved: ${detail.slice(0, 280)}`
+    : `${resourceName} was not saved. Check the Supabase server logs for details.`;
+}
+
 function getClientIp(req) {
   return (
     req.headers['x-forwarded-for'] ||
@@ -1418,8 +1440,13 @@ const server = http.createServer(async (req, res) => {
             const saved = await supabase.insertProperty(propRecord);
             if (!saved) throw new Error('Supabase did not confirm the property insert.');
           } catch (supaErr) {
-            console.error('Failed to insert property to Supabase:', supaErr);
-            return sendJson(res, 503, { success: false, error: 'Property was not saved. Check the Supabase properties table and server key, then try again.' });
+            console.error('Failed to insert property to Supabase:', {
+              code: supaErr?.code,
+              message: supaErr?.message,
+              details: supaErr?.details,
+              hint: supaErr?.hint
+            });
+            return sendJson(res, 503, { success: false, error: describeSupabaseWriteError(supaErr, 'Property') });
           }
         } else {
           if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
@@ -1469,8 +1496,13 @@ const server = http.createServer(async (req, res) => {
             const saved = await supabase.updateProperty(id, updates);
             if (!saved) return sendJson(res, 404, { success: false, error: 'Property not found.' });
           } catch (supaErr) {
-            console.error('Failed to update property in Supabase:', supaErr);
-            return sendJson(res, 503, { success: false, error: 'Property could not be updated in Supabase.' });
+            console.error('Failed to update property in Supabase:', {
+              code: supaErr?.code,
+              message: supaErr?.message,
+              details: supaErr?.details,
+              hint: supaErr?.hint
+            });
+            return sendJson(res, 503, { success: false, error: describeSupabaseWriteError(supaErr, 'Property') });
           }
         } else {
           if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);

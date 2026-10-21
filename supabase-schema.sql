@@ -161,6 +161,9 @@ CREATE TABLE IF NOT EXISTS public.properties (
 
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
 
+REVOKE ALL ON TABLE public.properties FROM anon, authenticated;
+GRANT ALL ON TABLE public.properties TO service_role;
+
 CREATE INDEX IF NOT EXISTS idx_properties_status ON public.properties(status);
 CREATE INDEX IF NOT EXISTS idx_properties_created_at ON public.properties(created_at DESC);
 
