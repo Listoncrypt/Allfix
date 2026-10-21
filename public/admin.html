@@ -1504,6 +1504,16 @@
         </button>
       </div>
 
+      <button id="modalMktEditBtn" type="button" class="btn btn-outline btn-sm" style="margin-bottom: 0.75rem;">Edit post details</button>
+
+      <form id="modalMktEditForm" hidden style="border: 1px solid #DDE5DE; border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
+        <div id="modalMktEditFields" class="grid-cols-2-mobile" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;"></div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 0.9rem;">
+          <button id="modalMktCancelEditBtn" type="button" class="btn btn-outline btn-sm">Cancel</button>
+          <button id="modalMktSaveEditBtn" type="submit" class="btn btn-primary btn-sm">Save post</button>
+        </div>
+      </form>
+
       <dl class="details-dl" id="modalMktDetailsList">
         <!-- Dynamically populated -->
       </dl>

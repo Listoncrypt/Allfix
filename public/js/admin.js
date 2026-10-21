@@ -2404,6 +2404,11 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
   const modalMktAdminNotes = document.getElementById('modalMktAdminNotes');
   const saveModalMktStatusBtn = document.getElementById('saveModalMktStatusBtn');
   const deleteMktRequestBtn = document.getElementById('deleteMktRequestBtn');
+  const modalMktEditBtn = document.getElementById('modalMktEditBtn');
+  const modalMktEditForm = document.getElementById('modalMktEditForm');
+  const modalMktEditFields = document.getElementById('modalMktEditFields');
+  const modalMktCancelEditBtn = document.getElementById('modalMktCancelEditBtn');
+  const modalMktSaveEditBtn = document.getElementById('modalMktSaveEditBtn');
 
   async function loadMarketingRequests() {
     try {
@@ -2605,6 +2610,9 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
 
     currentModalMarketingId = id;
     const isCar = item.assetType === 'car';
+    if (modalMktEditForm) modalMktEditForm.hidden = true;
+    if (modalMktDetailsList) modalMktDetailsList.hidden = false;
+    if (modalMktEditBtn) modalMktEditBtn.hidden = false;
 
     modalMktId.textContent = item.id;
     modalMktAssetBadge.textContent = isCar ? ' Automobile' : ' Property';
@@ -2718,6 +2726,96 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     marketingDetailModal.classList.add('open');
   };
 
+  function renderMarketingEditFields(item) {
+    const fields = [
+      ['ownerName', 'Owner name', item.ownerName, 'text'],
+      ['phone', 'Phone', item.phone, 'tel'],
+      ['email', 'Email', item.email, 'email'],
+      ['location', 'Location', item.location, 'text'],
+      ['price', 'Price', item.price, 'text'],
+      ...(item.assetType === 'car'
+        ? [
+            ['carMakeModelYear', 'Year, make and model', item.carMakeModelYear, 'text'],
+            ['carType', 'Body type', item.carType, 'text'],
+            ['carColour', 'Colour', item.carColour, 'text'],
+            ['carCondition', 'Condition', item.carCondition, 'text'],
+            ['customDutyPaid', 'Customs duty status', item.customDutyPaid, 'text'],
+            ['accidentHistory', 'Accident history', item.accidentHistory, 'text'],
+            ['engineGearStatus', 'Engine and gear status', item.engineGearStatus, 'text'],
+            ['firstBody', 'First body', item.firstBody, 'text']
+          ]
+        : [
+            ['propertyType', 'Property type', item.propertyType, 'text'],
+            ['listingPurpose', 'Listing purpose', item.listingPurpose, 'text'],
+            ['titleDocument', 'Title document', item.titleDocument, 'text'],
+            ['landSize', 'Land size', item.landSize, 'text']
+          ]),
+      ['description', 'Description', item.description, 'textarea']
+    ];
+
+    modalMktEditFields.innerHTML = fields.map(([key, label, value, type]) => {
+      const control = type === 'textarea'
+        ? `<textarea class="form-control" rows="4" data-mkt-field="${key}" aria-label="${label}">${escapeHtml(value || '')}</textarea>`
+        : `<input class="form-control" type="${type}" data-mkt-field="${key}" aria-label="${label}" value="${escapeHtml(value || '')}">`;
+      return `<label class="form-group" style="display:block; margin:0; font-size:0.82rem; color:#3E4D42;">${label}${control}</label>`;
+    }).join('');
+  }
+
+  if (modalMktEditBtn) {
+    modalMktEditBtn.addEventListener('click', () => {
+      const item = allMarketingRequests.find(entry => entry.id === currentModalMarketingId);
+      if (!item) return;
+      renderMarketingEditFields(item);
+      modalMktDetailsList.hidden = true;
+      modalMktEditForm.hidden = false;
+      modalMktEditBtn.hidden = true;
+    });
+  }
+
+  if (modalMktCancelEditBtn) {
+    modalMktCancelEditBtn.addEventListener('click', () => {
+      modalMktEditForm.hidden = true;
+      modalMktDetailsList.hidden = false;
+      modalMktEditBtn.hidden = false;
+    });
+  }
+
+  if (modalMktEditForm) {
+    modalMktEditForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!currentModalMarketingId) return;
+      const itemId = currentModalMarketingId;
+      const updates = {};
+      modalMktEditFields.querySelectorAll('[data-mkt-field]').forEach(field => {
+        updates[field.dataset.mktField] = field.value.trim();
+      });
+      if (!updates.ownerName || !updates.phone || !updates.location) {
+        alert('Owner name, phone, and location are required.');
+        return;
+      }
+
+      modalMktSaveEditBtn.disabled = true;
+      modalMktSaveEditBtn.textContent = 'Saving...';
+      try {
+        const response = await fetch('/api/marketing-requests/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: itemId, ...updates })
+        });
+        const result = await response.json();
+        if (!result.success) throw new Error(result.error || 'Could not update post.');
+        await loadMarketingRequests();
+        window.openMarketingModal(itemId);
+        showAdminToast(`Updated post <strong>${escapeHtml(itemId)}</strong>`);
+      } catch (error) {
+        alert(`Could not update post: ${error.message}`);
+      } finally {
+        modalMktSaveEditBtn.disabled = false;
+        modalMktSaveEditBtn.textContent = 'Save post';
+      }
+    });
+  }
+
   // Close marketing modal
   if (closeMarketingModalBtn) {
     closeMarketingModalBtn.addEventListener('click', () => {
@@ -2807,7 +2905,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
   if (deleteMktRequestBtn) {
     deleteMktRequestBtn.addEventListener('click', async () => {
       if (!currentModalMarketingId) return;
-      const confirmDel = confirm(`Permanently delete owner submission ${currentModalMarketingId}?`);
+      const confirmDel = confirm(`Permanently delete post ${currentModalMarketingId}? If it is published, its live property or car listing will also be removed.`);
       if (!confirmDel) return;
 
       try {

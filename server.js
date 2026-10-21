@@ -1941,18 +1941,61 @@ const server = http.createServer(async (req, res) => {
       if (pathname === '/api/marketing-requests/update' && (method === 'POST' || method === 'PATCH')) {
         if (!requireAdminAuth(req, res)) return;
         const body = await parseJsonBody(req);
-        const { id, status, adminNotes, price, description } = body;
+        const {
+          id, status, adminNotes, ownerName, phone, email, location, price, description,
+          propertyType, listingPurpose, titleDocument, landSize, carType, carColour,
+          carMakeModelYear, customDutyPaid, carCondition, accidentHistory, engineGearStatus, firstBody
+        } = body;
         if (!id) {
           return sendJson(res, 400, { success: false, error: 'Marketing Request ID is required' });
         }
+        const updates = {};
+        if (status !== undefined) updates.status = status;
+        if (adminNotes !== undefined) updates.adminNotes = adminNotes;
+        const editableFields = {
+          ownerName, phone, email, location, price, description, propertyType, listingPurpose,
+          titleDocument, landSize, carType, carColour, carMakeModelYear, customDutyPaid,
+          carCondition, accidentHistory, engineGearStatus, firstBody
+        };
+        Object.entries(editableFields).forEach(([key, value]) => {
+          if (value !== undefined) updates[key] = String(value).trim();
+        });
         let updatedItem = null;
         if (supabase.isSupabaseConfigured()) {
           try {
-            updatedItem = await supabase.updateMarketingRequest(id, { status, adminNotes, price, description });
+            updatedItem = await supabase.updateMarketingRequest(id, updates);
             if (!updatedItem) return sendJson(res, 404, { success: false, error: 'Marketing request not found' });
+            if (updatedItem.publishedListingId) {
+              if (updatedItem.assetType === 'property') {
+                const savedListing = await supabase.updateProperty(updatedItem.publishedListingId, {
+                  title: `${updatedItem.propertyType || 'Property'} in ${updatedItem.location} (${updatedItem.listingPurpose || 'For Sale'})`,
+                  location: updatedItem.location,
+                  propertyType: updatedItem.propertyType,
+                  price: updatedItem.price,
+                  size: updatedItem.landSize,
+                  titleDocument: updatedItem.titleDocument,
+                  description: updatedItem.description
+                });
+                if (!savedListing) throw new Error('The linked published property was not found.');
+              } else if (updatedItem.assetType === 'car') {
+                const makeModel = (updatedItem.carMakeModelYear || '').trim().split(/\s+/);
+                const savedListing = await supabase.updateVehicle(updatedItem.publishedListingId, {
+                  title: `${updatedItem.carMakeModelYear || 'Vehicle'}${updatedItem.carColour ? ` (${updatedItem.carColour})` : ''}`,
+                  make: makeModel[0] || '',
+                  model: makeModel.slice(1).join(' '),
+                  vehicleType: updatedItem.carType,
+                  price: updatedItem.price,
+                  color: updatedItem.carColour,
+                  condition: updatedItem.carCondition,
+                  location: updatedItem.location,
+                  description: updatedItem.description
+                });
+                if (!savedListing) throw new Error('The linked published vehicle was not found.');
+              }
+            }
           } catch (supaErr) {
             console.error('Supabase updateMarketingRequest error:', supaErr);
-            return sendJson(res, 503, { success: false, error: 'Owner submission could not be updated in Supabase.' });
+            return sendJson(res, 503, { success: false, error: `Post could not be updated: ${supaErr.message || 'Supabase update failed.'}` });
           }
         } else {
           if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
@@ -1960,10 +2003,25 @@ const server = http.createServer(async (req, res) => {
           db.marketingRequests = db.marketingRequests || [];
           const index = db.marketingRequests.findIndex(m => m.id === id);
           if (index === -1) return sendJson(res, 404, { success: false, error: 'Marketing request not found' });
-          if (status !== undefined) db.marketingRequests[index].status = status;
-          if (adminNotes !== undefined) db.marketingRequests[index].adminNotes = adminNotes;
-          if (price !== undefined) db.marketingRequests[index].price = price;
-          if (description !== undefined) db.marketingRequests[index].description = description;
+          Object.assign(db.marketingRequests[index], updates);
+          const savedItem = db.marketingRequests[index];
+          if (savedItem.publishedListingId && savedItem.assetType === 'property') {
+            const listing = (db.properties || []).find(property => property.id === savedItem.publishedListingId);
+            if (listing) Object.assign(listing, {
+              title: `${savedItem.propertyType || 'Property'} in ${savedItem.location} (${savedItem.listingPurpose || 'For Sale'})`,
+              location: savedItem.location, propertyType: savedItem.propertyType, price: savedItem.price,
+              size: savedItem.landSize, titleDocument: savedItem.titleDocument, description: savedItem.description
+            });
+          } else if (savedItem.publishedListingId && savedItem.assetType === 'car') {
+            const listing = (db.vehicles || []).find(vehicle => vehicle.id === savedItem.publishedListingId);
+            const makeModel = (savedItem.carMakeModelYear || '').trim().split(/\s+/);
+            if (listing) Object.assign(listing, {
+              title: `${savedItem.carMakeModelYear || 'Vehicle'}${savedItem.carColour ? ` (${savedItem.carColour})` : ''}`,
+              make: makeModel[0] || '', model: makeModel.slice(1).join(' '), vehicleType: savedItem.carType,
+              price: savedItem.price, color: savedItem.carColour, condition: savedItem.carCondition,
+              location: savedItem.location, description: savedItem.description
+            });
+          }
           db.marketingRequests[index].updatedAt = new Date().toISOString();
           if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'Owner submission could not be saved.' });
           updatedItem = db.marketingRequests[index];
@@ -1980,6 +2038,12 @@ const server = http.createServer(async (req, res) => {
         }
         if (supabase.isSupabaseConfigured()) {
           try {
+            const requests = await supabase.getMarketingRequests();
+            const submission = requests.find(item => item.id === id);
+            if (submission?.publishedListingId) {
+              if (submission.assetType === 'property') await supabase.deleteProperty(submission.publishedListingId);
+              if (submission.assetType === 'car') await supabase.deleteVehicle(submission.publishedListingId);
+            }
             await supabase.deleteMarketingRequest(id);
           } catch (supaErr) {
             console.error('Supabase deleteMarketingRequest error:', supaErr);
@@ -1988,6 +2052,13 @@ const server = http.createServer(async (req, res) => {
         } else {
           if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
           const db = readDb();
+          const submission = (db.marketingRequests || []).find(item => item.id === id);
+          if (submission?.publishedListingId && submission.assetType === 'property') {
+            db.properties = (db.properties || []).filter(item => item.id !== submission.publishedListingId);
+          }
+          if (submission?.publishedListingId && submission.assetType === 'car') {
+            db.vehicles = (db.vehicles || []).filter(item => item.id !== submission.publishedListingId);
+          }
           db.marketingRequests = (db.marketingRequests || []).filter(m => m.id !== id);
           if (!writeDb(db)) return sendJson(res, 500, { success: false, error: 'Owner submission could not be deleted.' });
         }
