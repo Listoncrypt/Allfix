@@ -334,7 +334,10 @@ function describeSupabaseWriteError(error, resourceName) {
     return `${resourceName} was not saved because the Supabase table is missing. Run the latest schema SQL.`;
   }
   if (['42703', 'PGRST204'].includes(code)) {
-    return `${resourceName} was not saved because the Supabase table is missing a required column. Run the latest schema SQL.`;
+    const missingColumn = message.match(/["']([a-z_]+)["']\s+column/i)?.[1] ||
+      message.match(/column\s+["']?([a-z_]+)/i)?.[1];
+    const columnDetail = missingColumn ? ` Missing column: ${missingColumn}.` : '';
+    return `${resourceName} was not saved because the Supabase table is missing a required column.${columnDetail} Run supabase-properties-migration.sql in the Supabase SQL Editor.`;
   }
   const detail = [code && `[${code}]`, message].filter(Boolean).join(' ');
   return detail
