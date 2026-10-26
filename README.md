@@ -47,3 +47,7 @@ Production needs `SUPABASE_URL` and the server-only `SUPABASE_SERVICE_ROLE_KEY` 
 Run `supabase-identity-verification-migration.sql` in the Supabase SQL Editor for an existing database. New installations can use the updated `supabase-schema.sql`. The server needs `SUPABASE_URL` and a server-only `SUPABASE_SERVICE_ROLE_KEY`; identity files are uploaded to the private `identity-verification` bucket and can only be opened from the authenticated admin dashboard. Do not use an anon key for server-side identity storage.
 
 When Supabase is not configured, identity files are stored under `data/private-identity/`, outside the public website directory. This folder is excluded from version control.
+
+## Vendor onboarding migration
+
+For an existing Supabase project, run `supabase-vendor-onboarding-migration.sql` in the Supabase SQL Editor if vendor applications fail to save or the admin portal cannot load vendors. It creates or adds the vendor and agreement schema and configures the private identity file bucket. The migration is safe to rerun. After it completes, reload the admin portal and check the Vendors tab before asking an applicant to submit again.

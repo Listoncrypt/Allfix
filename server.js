@@ -1065,7 +1065,11 @@ const server = http.createServer(async (req, res) => {
             const data = await supabase.getVendors();
             return sendJson(res, 200, { success: true, total: data.length, data });
           } catch (supaErr) {
-            console.error('Supabase getVendors error, falling back:', supaErr);
+            console.error('Supabase getVendors error:', supaErr);
+            return sendJson(res, 503, {
+              success: false,
+              error: 'Vendor records could not be loaded from Supabase. Apply supabase-vendor-onboarding-migration.sql, then reload the admin portal.'
+            });
           }
         }
         const db = readDb();

@@ -18,8 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error(`Unable to read ${label}. Please choose the file again.`));
-      reader.readAsDataURL(file);
+      reader.onerror = () => reject(new Error(`Your browser could not read ${label}. Please choose a JPG, PNG, WebP${label === 'your ID' ? ' or PDF' : ''} file and try again.`));
+      try {
+        reader.readAsDataURL(file);
+      } catch (_) {
+        reject(new Error(`Your browser could not read ${label}. Please choose a JPG, PNG, WebP${label === 'your ID' ? ' or PDF' : ''} file and try again.`));
+      }
     });
   }
 
@@ -141,8 +145,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (err) {
       statusMsg.className = 'terms-status-msg error';
-      statusMsg.textContent = err.message || 'An error occurred while submitting your application.';
-      alert(err.message);
+      const errorMessage = err.message || '';
+      statusMsg.textContent = /string did not match|expected pattern|notreadableerror/i.test(errorMessage)
+        ? 'Your browser could not process one of the uploaded files. Please choose a JPG, PNG, or WebP image (PDF is accepted for ID) and try again.'
+        : errorMessage || 'An error occurred while submitting your application.';
+      // Keep errors in the page: mobile browsers can turn low-level file or fetch
+      // exceptions into an opaque native alert such as "string did not match...".
     } finally {
       submitBtn.innerHTML = originalBtnText;
       submitBtn.disabled = !checkbox.checked;

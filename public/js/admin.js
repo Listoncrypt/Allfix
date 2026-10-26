@@ -1103,7 +1103,9 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     try {
       const res = await fetch('/api/vendors');
       const json = await res.json();
-      if (!json.success) return;
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'The vendor list could not be loaded.');
+      }
 
       allVendors = json.data || [];
       const badgeCount = document.getElementById('badgeVendorsCount');
@@ -1112,7 +1114,8 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       renderFilteredVendors();
     } catch (err) {
       if (vendorsTable) {
-        vendorsTable.innerHTML = `<tr><td colspan="6" style="color:red; text-align:center;">Failed to load vendors: ${err.message}</td></tr>`;
+        const message = String(err.message || 'Unknown error').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+        vendorsTable.innerHTML = `<tr><td colspan="6" style="color:red; text-align:center;">Failed to load vendors: ${message}</td></tr>`;
       }
     }
   }
