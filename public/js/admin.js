@@ -1418,7 +1418,8 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
         }
       }
 
-      const waMsg = `Hello ALLFIX Services Xpress! I am interested in purchasing: ${p.title} (${p.location || 'Abuja'}, Ref: ${p.id}). Price: ${p.price || 'Price on Request'}. Please share title documents.`;
+      const listingAction = /rent|lease/i.test(p.listingPurpose || '') ? 'renting' : 'purchasing';
+      const waMsg = `Hello ALLFIX Services Xpress! I am interested in ${listingAction}: ${p.title} (${p.location || 'Abuja'}, Ref: ${p.id}). Price: ${p.price || 'Price on Request'}. Please share the listing details.`;
       const waLink = `https://wa.me/2347058099045?text=${encodeURIComponent(waMsg)}`;
 
       return `
@@ -1674,6 +1675,8 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     document.getElementById('propFormId').value = prop.id;
     document.getElementById('propFormTitle').value = prop.title || '';
     document.getElementById('propFormLocation').value = prop.location || '';
+    document.getElementById('propFormState').value = prop.state || '';
+    document.getElementById('propFormPurpose').value = prop.listingPurpose || 'For Sale';
     document.getElementById('propFormType').value = prop.propertyType || 'Residential';
     document.getElementById('propFormPrice').value = prop.price || '';
     document.getElementById('propFormSize').value = prop.size || '';
@@ -1749,6 +1752,8 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       const propId = document.getElementById('propFormId').value.trim();
       const title = document.getElementById('propFormTitle').value.trim();
       const location = document.getElementById('propFormLocation').value.trim();
+      const state = document.getElementById('propFormState').value.trim();
+      const listingPurpose = document.getElementById('propFormPurpose').value;
       const propertyType = document.getElementById('propFormType').value;
       const price = document.getElementById('propFormPrice').value.trim();
       const size = document.getElementById('propFormSize').value.trim();
@@ -1769,6 +1774,8 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
         const payload = {
           title,
           location,
+          state,
+          listingPurpose,
           propertyType,
           price,
           size,

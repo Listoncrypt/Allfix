@@ -1412,7 +1412,7 @@ const server = http.createServer(async (req, res) => {
       if (pathname === '/api/properties' && method === 'POST') {
         if (!requireAdminAuth(req, res)) return;
         const body = await parseJsonBody(req);
-        const { title, location, propertyType, price, size, titleDocument, description, imageUrl, images, status } = body;
+        const { title, location, state, listingPurpose, propertyType, price, size, titleDocument, description, imageUrl, images, status } = body;
         if (!title || !location) {
           return sendJson(res, 400, { success: false, error: 'Property title and location are required.' });
         }
@@ -1431,6 +1431,8 @@ const server = http.createServer(async (req, res) => {
           id: propId,
           title: title.trim(),
           location: location.trim(),
+          state: (state || '').trim(),
+          listingPurpose: (listingPurpose || 'For Sale').trim(),
           propertyType: (propertyType || 'Residential House').trim(),
           price: (price || '').trim(),
           size: (size || '').trim(),
@@ -1473,13 +1475,15 @@ const server = http.createServer(async (req, res) => {
       if (pathname === '/api/properties/update' && method === 'POST') {
         if (!requireAdminAuth(req, res)) return;
         const body = await parseJsonBody(req);
-        const { id, title, location, propertyType, price, size, titleDocument, description, imageUrl, images, status } = body;
+        const { id, title, location, state, listingPurpose, propertyType, price, size, titleDocument, description, imageUrl, images, status } = body;
         if (!id) {
           return sendJson(res, 400, { success: false, error: 'Property ID is required.' });
         }
         const updates = { updatedAt: new Date().toISOString() };
         if (title !== undefined) updates.title = title.trim();
         if (location !== undefined) updates.location = location.trim();
+        if (state !== undefined) updates.state = state.trim();
+        if (listingPurpose !== undefined) updates.listingPurpose = listingPurpose.trim();
         if (propertyType !== undefined) updates.propertyType = propertyType.trim();
         if (price !== undefined) updates.price = price.trim();
         if (size !== undefined) updates.size = size.trim();
@@ -1974,6 +1978,8 @@ const server = http.createServer(async (req, res) => {
                 const savedListing = await supabase.updateProperty(updatedItem.publishedListingId, {
                   title: `${updatedItem.propertyType || 'Property'} in ${updatedItem.location} (${updatedItem.listingPurpose || 'For Sale'})`,
                   location: updatedItem.location,
+                state: updatedItem.location.includes(',') ? updatedItem.location.split(',').pop().trim() : '',
+                listingPurpose: updatedItem.listingPurpose || 'For Sale',
                   propertyType: updatedItem.propertyType,
                   price: updatedItem.price,
                   size: updatedItem.landSize,
@@ -2013,7 +2019,10 @@ const server = http.createServer(async (req, res) => {
             const listing = (db.properties || []).find(property => property.id === savedItem.publishedListingId);
             if (listing) Object.assign(listing, {
               title: `${savedItem.propertyType || 'Property'} in ${savedItem.location} (${savedItem.listingPurpose || 'For Sale'})`,
-              location: savedItem.location, propertyType: savedItem.propertyType, price: savedItem.price,
+              location: savedItem.location,
+              state: savedItem.location.includes(',') ? savedItem.location.split(',').pop().trim() : '',
+              listingPurpose: savedItem.listingPurpose || 'For Sale',
+              propertyType: savedItem.propertyType, price: savedItem.price,
               size: savedItem.landSize, titleDocument: savedItem.titleDocument, description: savedItem.description
             });
           } else if (savedItem.publishedListingId && savedItem.assetType === 'car') {
@@ -2109,6 +2118,8 @@ const server = http.createServer(async (req, res) => {
             id: publishedId,
             title: `${item.propertyType || 'Property'} in ${item.location} (${item.listingPurpose || 'For Sale'})`,
             location: item.location,
+            state: item.location.includes(',') ? item.location.split(',').pop().trim() : '',
+            listingPurpose: item.listingPurpose || 'For Sale',
             propertyType: item.propertyType || 'Residential',
             price: finalPrice,
             size: item.landSize || '',

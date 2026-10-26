@@ -223,6 +223,8 @@ function mapPropertyFromDb(row) {
     id: row.id,
     title: row.title,
     location: row.location,
+    state: row.state || '',
+    listingPurpose: row.listing_purpose || 'For Sale',
     propertyType: row.property_type || 'Residential',
     price: row.price || '',
     size: row.size || '',
@@ -613,6 +615,8 @@ module.exports = {
       id: p.id,
       title: p.title,
       location: p.location,
+      state: p.state || '',
+      listing_purpose: p.listingPurpose || 'For Sale',
       property_type: p.propertyType || 'Residential',
       price: p.price || '',
       size: p.size || '',
@@ -635,6 +639,8 @@ module.exports = {
     const row = { updated_at: new Date().toISOString() };
     if (updates.title !== undefined) row.title = updates.title;
     if (updates.location !== undefined) row.location = updates.location;
+    if (updates.state !== undefined) row.state = updates.state;
+    if (updates.listingPurpose !== undefined) row.listing_purpose = updates.listingPurpose;
     if (updates.propertyType !== undefined) row.property_type = updates.propertyType;
     if (updates.price !== undefined) row.price = updates.price;
     if (updates.size !== undefined) row.size = updates.size;

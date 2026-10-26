@@ -34,7 +34,7 @@ Local development can use `data/db.json`. Production writes use Supabase; the se
 
 ## Property and vehicle listings
 
-Run `supabase-marketplace-migration.sql` in the Supabase SQL Editor when upgrading an existing database. It creates the owner-submission, vehicle, and vendor-work tables used by the site and adds the published-listing reference. New installations can use `supabase-schema.sql`.
+Run `supabase-marketplace-migration.sql` and `supabase-properties-migration.sql` in the Supabase SQL Editor when upgrading an existing database. They create the owner-submission, vehicle, and vendor-work tables, add the published-listing reference, and add the property state and listing-purpose fields used by the sale/rent filters. New installations can use `supabase-schema.sql`.
 
 Run `supabase-listing-images-migration.sql` for an existing database before posting new property or vehicle photos. Uploaded listing photos are stored in the public `listing-images` bucket using unique object paths, while browser clients are blocked from changing or deleting those files. The database stores image URLs rather than large Base64 photo data.
 

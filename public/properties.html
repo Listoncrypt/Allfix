@@ -23,6 +23,13 @@
       color: #fff !important;
       border-color: var(--brand-600) !important;
     }
+    .listing-filter-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 0.75rem; align-items: end; }
+    .listing-filter-controls label { display: grid; gap: 0.35rem; color: var(--navy-700); font-size: 0.76rem; font-weight: 700; text-align: left; }
+    .listing-filter-controls select { width: 100%; min-height: 44px; padding: 0.65rem 0.75rem; border: 1px solid var(--gray-300); border-radius: 10px; background: white; color: var(--navy-900); font: inherit; }
+    .property-purpose-tag { position: absolute; top: 52px; left: 14px; padding: 0.35rem 0.7rem; border-radius: 999px; background: rgba(240, 253, 244, 0.96); color: #166534; font-size: 0.72rem; font-weight: 800; }
+    .property-purpose-tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 0.8rem; }
+    .property-purpose-tab { border: 1px solid var(--gray-300); border-radius: 999px; background: #fff; color: var(--navy-700); padding: 0.65rem 1rem; font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+    .property-purpose-tab.active { border-color: var(--brand-600); background: var(--brand-600); color: #fff; }
   </style>
 </head>
 <body>
@@ -100,12 +107,37 @@
         </div>
 
         <!-- Filters -->
-        <div class="properties-filter-wrap">
-          <button class="property-filter-pill filter-active" data-filter="all">All Listings</button>
-          <button class="property-filter-pill" data-filter="Residential">Residential</button>
-          <button class="property-filter-pill" data-filter="Land / Plot">Land / Plots</button>
-          <button class="property-filter-pill" data-filter="Commercial">Commercial</button>
-          <button class="property-filter-pill" data-filter="Price on Request">Price on Request</button>
+        <div class="property-purpose-tabs" role="group" aria-label="Property listing type">
+          <button type="button" class="property-purpose-tab active" data-purpose="all">All listings</button>
+          <button type="button" class="property-purpose-tab" data-purpose="sale">For sale</button>
+          <button type="button" class="property-purpose-tab" data-purpose="rent">For rent</button>
+        </div>
+        <div class="properties-filter-wrap listing-filter-controls" aria-label="Filter properties">
+          <label>State
+            <select id="propertyStateFilter" aria-label="Filter by state"><option value="all">All states</option></select>
+          </label>
+          <label>Area / location
+            <select id="propertyAreaFilter" aria-label="Filter by area"><option value="all">All areas</option></select>
+          </label>
+          <label>Price range
+            <select id="propertyPriceFilter" aria-label="Filter by price">
+              <option value="all">Any price</option>
+              <option value="10000000-50000000">₦10M–₦50M</option>
+              <option value="100000000-500000000">₦100M–₦500M</option>
+              <option value="500000000-2000000000">₦500M–₦2B</option>
+              <option value="2000000000-5000000000">₦2B–₦5B</option>
+              <option value="5000000000-20000000000">₦5B–₦20B</option>
+              <option value="20000000000-50000000000">₦20B–₦50B</option>
+            </select>
+          </label>
+          <label>Property type
+            <select id="propertyTypeBrowseFilter" aria-label="Filter by property type">
+              <option value="all">All types</option>
+              <option value="residential">Residential</option>
+              <option value="land / plot">Land / plots</option>
+              <option value="commercial">Commercial</option>
+            </select>
+          </label>
         </div>
       </div>
     </section>
@@ -204,10 +236,100 @@
   <script>
     (function() {
       const container = document.getElementById('propertiesContainer');
-      const filterPills = document.querySelectorAll('.property-filter-pill');
+      const purposeTabs = document.querySelectorAll('.property-purpose-tab');
+      const stateFilter = document.getElementById('propertyStateFilter');
+      const areaFilter = document.getElementById('propertyAreaFilter');
+      const priceFilter = document.getElementById('propertyPriceFilter');
+      const typeFilter = document.getElementById('propertyTypeBrowseFilter');
+      let selectedPurpose = 'all';
       let allProperties = [];
       let visibleProperties = [];
       const cardImageIndices = {};
+      const nigerianStates = [
+        'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
+        'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'Gombe', 'Imo', 'Jigawa',
+        'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos', 'Nasarawa', 'Niger',
+        'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto', 'Taraba', 'Yobe',
+        'Zamfara', 'Abuja'
+      ];
+
+      function canonicalState(value) {
+        const normalized = String(value || '').toLowerCase().replace(/[^a-z]+/g, ' ').trim();
+        if (normalized === 'fct' || normalized === 'federal capital territory') return 'Abuja';
+        return nigerianStates.find(state => state.toLowerCase() === normalized) || '';
+      }
+
+      function findState(text) {
+        const normalized = ' ' + String(text || '').toLowerCase().replace(/[^a-z]+/g, ' ').trim() + ' ';
+        return [...nigerianStates].reverse().find(state => normalized.includes(' ' + state.toLowerCase() + ' ')) || '';
+      }
+
+      function propertyPlace(property) {
+        const parts = String(property.location || '').split(',').map(part => part.trim()).filter(Boolean);
+        const stateFromLocation = parts.map(canonicalState).find(Boolean) || '';
+        const state = canonicalState(property.state) || stateFromLocation || findState([property.location, property.title, property.description].join(' '));
+        const statePartIndex = parts.findIndex(part => canonicalState(part));
+        const area = property.area || (statePartIndex >= 0
+          ? parts.slice(0, statePartIndex).join(', ')
+          : (canonicalState(property.location) ? '' : property.location || ''));
+        return {
+          state,
+          area: String(area || '').trim()
+        };
+      }
+
+      function propertyPurpose(property) {
+        const purpose = String(property.listingPurpose || '').toLowerCase();
+        const titleAndDescription = String((property.title || '') + ' ' + (property.description || '')).toLowerCase();
+        return (purpose ? /rent|lease/.test(purpose) : /for rent|lease/.test(titleAndDescription)) ? 'For Rent / Lease' : 'For Sale';
+      }
+
+      function parsePrice(value) {
+        if (typeof value === 'number') return value;
+        const text = String(value || '').toLowerCase().replace(/,/g, '').trim();
+        const number = Number((text.match(/[0-9]+(?:\.[0-9]+)?/) || [])[0]);
+        if (!Number.isFinite(number)) return null;
+        if (/billion|\bb\b/.test(text)) return number * 1e9;
+        if (/million|\bm\b/.test(text)) return number * 1e6;
+        if (/thousand|\bk\b/.test(text)) return number * 1e3;
+        return number;
+      }
+
+      function populatePropertyLocations() {
+        const states = [...new Set(allProperties.map(propertyPlace).map(place => place.state).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        stateFilter.innerHTML = '<option value="all">All states</option>' + states.map(state => `<option value="${escapeHtml(state)}">${escapeHtml(state)}</option>`).join('');
+        updateAreaOptions();
+      }
+
+      function updateAreaOptions() {
+        const selectedState = stateFilter.value;
+        const areas = [...new Set(allProperties
+          .filter(property => selectedState === 'all' || propertyPlace(property).state.toLowerCase() === selectedState.toLowerCase())
+          .map(propertyPlace).map(place => place.area).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        areaFilter.innerHTML = '<option value="all">All areas</option>' + areas.map(area => `<option value="${escapeHtml(area)}">${escapeHtml(area)}</option>`).join('');
+        // Keep area search available before a state is chosen; with a state selected,
+        // this list narrows to that state's locations.
+        areaFilter.disabled = false;
+        areaFilter.value = 'all';
+      }
+
+      function applyPropertyFilters() {
+        const selectedState = stateFilter.value;
+        const selectedArea = areaFilter.value;
+        const selectedType = typeFilter.value.toLowerCase();
+        const [minPrice, maxPrice] = priceFilter.value === 'all' ? [null, null] : priceFilter.value.split('-').map(Number);
+        const filtered = allProperties.filter(property => {
+          const place = propertyPlace(property);
+          const isRent = propertyPurpose(property) !== 'For Sale';
+          const value = parsePrice(property.price);
+          return (selectedPurpose === 'all' || (selectedPurpose === 'rent' ? isRent : !isRent)) &&
+            (selectedState === 'all' || place.state.toLowerCase() === selectedState.toLowerCase()) &&
+            (selectedArea === 'all' || place.area.toLowerCase() === selectedArea.toLowerCase()) &&
+            (selectedType === 'all' || String(property.propertyType || '').toLowerCase().includes(selectedType)) &&
+            (minPrice === null || (value !== null && value >= minPrice && value <= maxPrice));
+        });
+        renderProperties(filtered);
+      }
 
       // Lightbox state
       let currentGallery = [];
@@ -394,7 +516,8 @@
           priceText = cleaned ? `₦${Number(cleaned).toLocaleString('en-NG')}` : prop.price;
         }
 
-        const msg = `Hello ALLFIX Services Xpress! I am interested in purchasing this property:
+        const action = propertyPurpose(prop) === 'For Rent / Lease' ? 'renting' : 'purchasing';
+        const msg = `Hello ALLFIX Services Xpress! I am interested in ${action} this property:
 • Title: ${prop.title}
 • Location: ${prop.location || 'Abuja'}
 • Ref ID: ${prop.id || 'N/A'}
@@ -426,6 +549,9 @@ Please share title documents and schedule an inspection.`;
             : (prop.imageUrl ? [prop.imageUrl] : []);
           const primaryImg = images[0];
           const typeBadge = prop.propertyType || 'Property';
+          const purposeBadge = propertyPurpose(prop);
+          const place = propertyPlace(prop);
+          const locationLabel = [place.area || prop.location, place.state].filter(Boolean).join(', ');
           const waLink = buildWhatsAppLink(prop);
           const priceHtml = formatPriceDisplay(prop.price);
           const photoStrip = images.length ? `
@@ -446,6 +572,7 @@ Please share title documents and schedule an inspection.`;
               <div class="property-image-wrap card-image-gallery" data-card-index="${cardIdx}" onclick="window.viewPropGallery(${cardIdx}, cardImageIndices[${cardIdx}] || 0)">
                 ${primaryImg ? `<img id="propImg_${cardIdx}" src="${escapeHtml(primaryImg)}" alt="${escapeHtml(prop.title)}" loading="lazy" onerror="this.parentElement.classList.add('image-load-error')">` : '<div class="property-photo-empty">Property photos will be added shortly.</div>'}
                 <span class="property-type-tag">${typeBadge}</span>
+                <span class="property-purpose-tag">${escapeHtml(purposeBadge)}</span>
                 <span class="property-verified-tag">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
                   Verified
@@ -456,7 +583,7 @@ Please share title documents and schedule an inspection.`;
                 <h3 class="property-title">${prop.title}</h3>
                 <div class="property-location">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                  <span>${prop.location || 'Abuja, Nigeria'}</span>
+                  <span>${escapeHtml(locationLabel || 'Nigeria')}</span>
                 </div>
                 
                 <div class="property-specs-chips">
@@ -488,31 +615,24 @@ Please share title documents and schedule an inspection.`;
         .then(data => {
           const list = (data && (data.properties || data.data)) || [];
           allProperties = list;
-          renderProperties(allProperties);
+          populatePropertyLocations();
+          applyPropertyFilters();
         })
         .catch(err => {
           console.warn('Using local fallback listings:', err);
           renderProperties([]);
         });
 
-      // Filter handling
-      filterPills.forEach(pill => {
-        pill.addEventListener('click', () => {
-          filterPills.forEach(p => p.classList.remove('filter-active'));
-          pill.classList.add('filter-active');
-          const filter = pill.getAttribute('data-filter');
-
-          if (filter === 'all') {
-            renderProperties(allProperties);
-          } else if (filter === 'Price on Request') {
-            const filtered = allProperties.filter(p => !p.price || String(p.price).trim() === '');
-            renderProperties(filtered);
-          } else {
-            const filtered = allProperties.filter(p => (p.propertyType || '').toLowerCase().includes(filter.toLowerCase()));
-            renderProperties(filtered);
-          }
-        });
-      });
+      purposeTabs.forEach(tab => tab.addEventListener('click', () => {
+        purposeTabs.forEach(item => item.classList.remove('active'));
+        tab.classList.add('active');
+        selectedPurpose = tab.dataset.purpose;
+        applyPropertyFilters();
+      }));
+      stateFilter.addEventListener('change', () => { updateAreaOptions(); applyPropertyFilters(); });
+      areaFilter.addEventListener('change', applyPropertyFilters);
+      priceFilter.addEventListener('change', applyPropertyFilters);
+      typeFilter.addEventListener('change', applyPropertyFilters);
     })();
   </script>
 </body>
