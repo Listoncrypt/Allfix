@@ -177,6 +177,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(waBtn);
   }
 
+  // Floating SOS button opens an emergency WhatsApp message to the ALLFIX desk.
+  if (!window.location.pathname.startsWith('/admin') && !document.querySelector('.floating-sos-btn')) {
+    const sosBtn = document.createElement('a');
+    const emergencyMessage = 'Hello ALLFIX, I need emergency assistance. Please contact me immediately.';
+    sosBtn.href = `https://wa.me/2347058099045?text=${encodeURIComponent(emergencyMessage)}`;
+    sosBtn.target = '_blank';
+    sosBtn.rel = 'noopener noreferrer';
+    sosBtn.className = 'floating-sos-btn';
+    sosBtn.setAttribute('aria-label', 'SOS emergency: contact ALLFIX immediately on WhatsApp');
+    sosBtn.innerHTML = '<span class="floating-sos-icon" aria-hidden="true">SOS</span><span>Emergency</span>';
+    document.body.appendChild(sosBtn);
+  }
+
   const footer = document.querySelector('.site-footer');
   const supportButton = document.querySelector('.floating-whatsapp-btn');
   if (footer && supportButton && 'IntersectionObserver' in window) {
