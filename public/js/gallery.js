@@ -117,6 +117,8 @@
       const primaryPhoto = images[0];
       const photoCount = images.length;
       const catSlug = getServiceCategorySlug(work.jobType);
+      const listingAnchor = work.id ? `#work-${encodeURIComponent(work.id)}` : '';
+      const listingUrl = `${window.location.origin}/gallery${listingAnchor}`;
       const photoStrip = images.length ? `
         <div class="work-photo-strip">
           <div class="work-photo-strip-heading"><span>Photos</span><strong>${photoCount} photo${photoCount === 1 ? '' : 's'}</strong></div>
@@ -126,12 +128,12 @@
         </div>` : '';
 
       const encodedMsg = encodeURIComponent(
-        `Hello ALLFIX, I saw the "${work.title}" completed by your verified artisan in ${work.location || 'Abuja'} on your Work Gallery. I would like to request a similar service.`
+        `Hello ALLFIX, I saw the "${work.title}" completed by your verified artisan in ${work.location || 'Abuja'} on your Work Gallery. I would like to request a similar service.\nListing: ${listingUrl}`
       );
       const waLink = `https://wa.me/2347058099045?text=${encodedMsg}`;
 
       return `
-        <article class="work-card" data-id="${work.id}">
+        <article id="${work.id ? `work-${escapeHtml(encodeURIComponent(work.id))}` : ''}" class="work-card" data-id="${escapeHtml(work.id || '')}">
           <div class="work-media-container" data-action="open-lightbox" data-work-index="${idx}" title="Click to view full photos">
             <span class="work-type-badge">${escapeHtml(work.jobType || 'Craftsmanship')}</span>
             ${primaryPhoto ? `<img id="workCardImage_${idx}" src="${escapeHtml(primaryPhoto)}" alt="${escapeHtml(work.title)}" loading="lazy">` : '<div class="work-photo-empty">Photos will be added shortly.</div>'}
@@ -163,6 +165,12 @@
         </article>
       `;
     }).join('');
+
+    const sharedListing = window.location.hash && document.getElementById(window.location.hash.slice(1));
+    if (sharedListing && !sharedListing.dataset.sharedLinkScrolled) {
+      sharedListing.dataset.sharedLinkScrolled = 'true';
+      requestAnimationFrame(() => sharedListing.scrollIntoView({ block: 'center' }));
+    }
 
     // Attach click events for lightbox on media containers
     document.querySelectorAll('[data-action="open-lightbox"]').forEach(el => {

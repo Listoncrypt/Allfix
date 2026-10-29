@@ -471,6 +471,8 @@
 
       function buildWhatsAppLink(veh) {
         const phone = '2347058099045';
+        const listingAnchor = veh.id ? `#vehicle-${encodeURIComponent(veh.id)}` : '';
+        const listingUrl = `${window.location.origin}/cars${listingAnchor}`;
         let priceText = 'Price on Request';
         if (veh.price && String(veh.price).trim() !== '') {
           const num = Number(String(veh.price).replace(/[^\d.]/g, ''));
@@ -487,6 +489,7 @@
 • Transmission / Fuel: ${veh.transmission || 'Not listed'} / ${veh.fuelType || 'Not listed'}
 • Seating: ${veh.seatingCapacity || 'Not listed'}
 • Location: ${veh.location || 'Abuja'}
+• Listing: ${listingUrl}
 
 Please share the full specifications, vehicle history and available inspection times.`;
 
@@ -552,7 +555,7 @@ Please share the full specifications, vehicle history and available inspection t
             : '';
 
           return `
-            <article class="vehicle-card" data-card-index="${cardIdx}">
+            <article id="${veh.id ? `vehicle-${escapeHtml(encodeURIComponent(veh.id))}` : ''}" class="vehicle-card" data-card-index="${cardIdx}">
               <div class="card-image-gallery" data-card-index="${cardIdx}" onclick="window.viewCarGallery(${cardIdx}, ${cardImageIndexes[cardIdx] || 0})">
                 ${photosMarkup}
                 <span class="vehicle-condition-tag">${conditionBadge}</span>
@@ -590,6 +593,11 @@ Please share the full specifications, vehicle history and available inspection t
             </article>
           `;
         }).join('');
+        const sharedListing = window.location.hash && document.getElementById(window.location.hash.slice(1));
+        if (sharedListing && !sharedListing.dataset.sharedLinkScrolled) {
+          sharedListing.dataset.sharedLinkScrolled = 'true';
+          requestAnimationFrame(() => sharedListing.scrollIntoView({ block: 'center' }));
+        }
       }
 
       // Card gallery stepper

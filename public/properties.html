@@ -510,6 +510,8 @@
 
       function buildWhatsAppLink(prop) {
         const phone = '2347058099045';
+        const listingAnchor = prop.id ? `#property-${encodeURIComponent(prop.id)}` : '';
+        const listingUrl = `${window.location.origin}/properties${listingAnchor}`;
         let priceText = 'Price on Request';
         if (prop.price && String(prop.price).trim() !== '') {
           const cleaned = String(prop.price).replace(/[^0-9]/g, '');
@@ -523,6 +525,7 @@
 • Ref ID: ${prop.id || 'N/A'}
 • Price: ${priceText}
 • Specs: ${prop.size || 'Standard'} / ${prop.titleDocument || 'Verified Title'}
+• Listing: ${listingUrl}
 
 Please share title documents and schedule an inspection.`;
 
@@ -568,7 +571,7 @@ Please share title documents and schedule an inspection.`;
             : `<p class="listing-description-short">${description}</p>`;
 
           return `
-            <article class="property-card" data-type="${prop.propertyType || ''}" data-hasprice="${prop.price && String(prop.price).trim() !== '' ? 'yes' : 'no'}">
+            <article id="${prop.id ? `property-${escapeHtml(encodeURIComponent(prop.id))}` : ''}" class="property-card" data-type="${prop.propertyType || ''}" data-hasprice="${prop.price && String(prop.price).trim() !== '' ? 'yes' : 'no'}">
               <div class="property-image-wrap card-image-gallery" data-card-index="${cardIdx}" onclick="window.viewPropGallery(${cardIdx}, cardImageIndices[${cardIdx}] || 0)">
                 ${primaryImg ? `<img id="propImg_${cardIdx}" src="${escapeHtml(primaryImg)}" alt="${escapeHtml(prop.title)}" loading="lazy" onerror="this.parentElement.classList.add('image-load-error')">` : '<div class="property-photo-empty">Property photos will be added shortly.</div>'}
                 <span class="property-type-tag">${typeBadge}</span>
@@ -607,6 +610,11 @@ Please share title documents and schedule an inspection.`;
             </article>
           `;
         }).join('');
+        const sharedListing = window.location.hash && document.getElementById(window.location.hash.slice(1));
+        if (sharedListing && !sharedListing.dataset.sharedLinkScrolled) {
+          sharedListing.dataset.sharedLinkScrolled = 'true';
+          requestAnimationFrame(() => sharedListing.scrollIntoView({ block: 'center' }));
+        }
       }
 
       // Fetch from API
