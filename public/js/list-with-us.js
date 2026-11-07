@@ -104,23 +104,55 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function handleFiles(files, existingPhotos, maxPhotos, onUpdate) {
+  async function compressListingPhoto(file) {
+    if (!file.type.startsWith('image/')) throw new Error('Choose JPG, PNG, or WebP photos only.');
+    if (typeof createImageBitmap !== 'function') {
+      throw new Error('This browser cannot prepare photos for upload. Please try JPG images in an updated browser.');
+    }
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext('2d');
+      context.fillStyle = '#fff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      for (const quality of [0.78, 0.68, 0.58, 0.48]) {
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+        if (blob && (blob.size <= 240 * 1024 || quality === 0.48)) {
+          return await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('A photo could not be prepared. Please try another image.'));
+            reader.readAsDataURL(blob);
+          });
+        }
+      }
+      throw new Error('A photo could not be prepared. Please try another image.');
+    } catch (error) {
+      if (error.name === 'NotSupportedError' || error.name === 'TypeError') {
+        throw new Error('This browser could not prepare your photos. Please try JPG images or another browser.');
+      }
+      throw error;
+    } finally {
+      bitmap?.close();
+    }
+  }
+
+  async function handleFiles(files, existingPhotos, maxPhotos, onUpdate) {
     const fileList = Array.from(files).slice(0, maxPhotos - existingPhotos.length);
     if (!fileList.length) return;
-
-    let loadedCount = 0;
-    fileList.forEach(file => {
-      if (!file.type.startsWith('image/')) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        existingPhotos.push(e.target.result);
-        loadedCount++;
-        if (loadedCount === fileList.length) {
-          onUpdate();
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    try {
+      const photos = [];
+      for (const file of fileList) photos.push(await compressListingPhoto(file));
+      existingPhotos.push(...photos);
+      onUpdate();
+    } catch (error) {
+      alert(error.message || 'Could not prepare the selected photos.');
+    }
   }
 
   // Property Photos

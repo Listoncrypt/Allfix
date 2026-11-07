@@ -626,8 +626,13 @@ Please share the full specifications, vehicle history and available inspection t
           if (!response.ok || data?.success === false) {
             throw new Error(data?.error || `Vehicle inventory request failed (${response.status}).`);
           }
-          const list = data && (data.vehicles || data.data);
-          if (!Array.isArray(list)) throw new Error('The vehicle inventory returned an unexpected response.');
+          const list = Array.isArray(data) ? data
+            : data && (data.vehicles || data.data || data.results || data.items || data.result?.vehicles || data.result?.data);
+          if (!Array.isArray(list)) {
+            const shape = data && typeof data === 'object' ? Object.keys(data).slice(0, 8).join(', ') : typeof data;
+            console.error('Unexpected /api/vehicles response shape:', data);
+            throw new Error(`The vehicle inventory returned an unexpected response${shape ? ` (response fields: ${shape})` : ''}.`);
+          }
           allVehicles = list;
           applyVehicleBrowseFilters();
         } catch (err) {
