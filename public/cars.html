@@ -621,17 +621,31 @@ Please share the full specifications, vehicle history and available inspection t
         const controller = new AbortController();
         const timeoutId = window.setTimeout(() => controller.abort(), 35000);
         try {
-          const response = await fetch('/api/vehicles', { signal: controller.signal });
-          const data = await response.json().catch(() => null);
+          const response = await fetch(`/api/vehicles?_=${Date.now()}`, {
+            signal: controller.signal,
+            cache: 'no-store',
+            headers: { Accept: 'application/json' }
+          });
+          const responseText = await response.text();
+          let data;
+          try {
+            data = JSON.parse(responseText);
+          } catch (_) {
+            const contentType = response.headers.get('content-type') || 'missing content type';
+            const sample = responseText.trim().replace(/\s+/g, ' ').slice(0, 140);
+            throw new Error(`Vehicle API returned invalid JSON (HTTP ${response.status}; ${contentType})${sample ? `: ${sample}` : ': empty response body'}.`);
+          }
           if (!response.ok || data?.success === false) {
             throw new Error(data?.error || `Vehicle inventory request failed (${response.status}).`);
           }
           const list = Array.isArray(data) ? data
             : data && (data.vehicles || data.data || data.results || data.items || data.result?.vehicles || data.result?.data);
           if (!Array.isArray(list)) {
-            const shape = data && typeof data === 'object' ? Object.keys(data).slice(0, 8).join(', ') : typeof data;
+            const shape = data === null ? 'null JSON value'
+              : data && typeof data === 'object' ? Object.keys(data).slice(0, 8).join(', ') || 'empty object/array'
+                : typeof data;
             console.error('Unexpected /api/vehicles response shape:', data);
-            throw new Error(`The vehicle inventory returned an unexpected response${shape ? ` (response fields: ${shape})` : ''}.`);
+            throw new Error(`The vehicle inventory returned an unexpected response (response: ${shape}).`);
           }
           allVehicles = list;
           applyVehicleBrowseFilters();
