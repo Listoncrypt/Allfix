@@ -1586,11 +1586,23 @@ const server = http.createServer(async (req, res) => {
           const db = readDb();
           vehicles = db.vehicles || [];
         }
+        const publicVehicles = (vehicles || []).map(vehicle => {
+          const images = (Array.isArray(vehicle.images) ? vehicle.images : [])
+            .filter(image => typeof image === 'string' && /^https?:\/\//i.test(image));
+          const imageUrl = typeof vehicle.imageUrl === 'string' && /^https?:\/\//i.test(vehicle.imageUrl)
+            ? vehicle.imageUrl
+            : (images[0] || '');
+          if ((Array.isArray(vehicle.images) && vehicle.images.some(image => typeof image === 'string' && image.startsWith('data:image/'))) ||
+              (typeof vehicle.imageUrl === 'string' && vehicle.imageUrl.startsWith('data:image/'))) {
+            console.warn(`Omitted embedded image data from public vehicle response (${vehicle.id || 'unknown vehicle'}).`);
+          }
+          return { ...vehicle, imageUrl, images };
+        });
         return sendJson(res, 200, {
           success: true,
-          total: (vehicles || []).length,
-          vehicles: vehicles || [],
-          data: vehicles || []
+          total: publicVehicles.length,
+          vehicles: publicVehicles,
+          data: publicVehicles
         });
       }
 
