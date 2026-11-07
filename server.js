@@ -1562,11 +1562,24 @@ const server = http.createServer(async (req, res) => {
       if (pathname === '/api/vehicles' && method === 'GET') {
         let vehicles = [];
         if (supabase.isSupabaseConfigured()) {
+          let queryTimeout;
           try {
-            vehicles = await supabase.getVehicles();
+            const timeout = new Promise((_, reject) => {
+              queryTimeout = setTimeout(() => {
+                const error = new Error('Vehicle inventory query timed out.');
+                error.code = 'VEHICLE_QUERY_TIMEOUT';
+                reject(error);
+              }, 30000);
+            });
+            vehicles = await Promise.race([supabase.getVehicles(), timeout]);
           } catch (e) {
             console.error('Failed to load vehicles from Supabase:', e);
-            return sendJson(res, 503, { success: false, error: 'Vehicles are temporarily unavailable. Check the Supabase inventory setup.' });
+            const error = e.code === 'VEHICLE_QUERY_TIMEOUT'
+              ? 'The Supabase vehicle inventory is taking too long to respond. Please try again shortly.'
+              : 'Vehicles are temporarily unavailable. Check that the Supabase vehicles table and server credentials are configured.';
+            return sendJson(res, 503, { success: false, error });
+          } finally {
+            clearTimeout(queryTimeout);
           }
         } else {
           if (!localDatabaseIsAvailable()) return localDatabaseUnavailable(res);
