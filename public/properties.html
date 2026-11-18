@@ -30,6 +30,8 @@
     .property-purpose-tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 0.8rem; }
     .property-purpose-tab { border: 1px solid var(--gray-300); border-radius: 999px; background: #fff; color: var(--navy-700); padding: 0.65rem 1rem; font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
     .property-purpose-tab.active { border-color: var(--brand-600); background: var(--brand-600); color: #fff; }
+    .property-type-filter-group { margin: 0.85rem 0 0; }
+    .property-type-filter-label { margin: 0 0 0.45rem; color: var(--navy-700); font-size: 0.76rem; font-weight: 700; text-align: left; }
   </style>
 </head>
 <body>
@@ -130,14 +132,19 @@
               <option value="20000000000-50000000000">₦20B–₦50B</option>
             </select>
           </label>
-          <label>Property type
-            <select id="propertyTypeBrowseFilter" aria-label="Filter by property type">
-              <option value="all">All types</option>
-              <option value="residential">Residential</option>
-              <option value="land / plot">Land / plots</option>
-              <option value="commercial">Commercial</option>
-            </select>
-          </label>
+        </div>
+        <div class="property-type-filter-group" aria-label="Filter by property type">
+          <p class="property-type-filter-label">Property type</p>
+          <div class="property-purpose-tabs" id="propertyTypeFilterButtons" role="group" aria-label="Choose a property type">
+            <button type="button" class="property-purpose-tab active" data-property-type="all" aria-pressed="true">All types</button>
+            <button type="button" class="property-purpose-tab" data-property-type="furnished" aria-pressed="false">Furnished house</button>
+            <button type="button" class="property-purpose-tab" data-property-type="unfurnished" aria-pressed="false">Unfurnished house</button>
+            <button type="button" class="property-purpose-tab" data-property-type="fully detached duplex" aria-pressed="false">Fully detached duplex</button>
+            <button type="button" class="property-purpose-tab" data-property-type="terrace duplex" aria-pressed="false">Terrace duplex</button>
+            <button type="button" class="property-purpose-tab" data-property-type="semi detached duplex" aria-pressed="false">Semi detached duplex</button>
+            <button type="button" class="property-purpose-tab" data-property-type="block of flats" aria-pressed="false">Block of flat</button>
+            <button type="button" class="property-purpose-tab" data-property-type="land" aria-pressed="false">Land</button>
+          </div>
         </div>
       </div>
     </section>
@@ -240,8 +247,9 @@
       const stateFilter = document.getElementById('propertyStateFilter');
       const areaFilter = document.getElementById('propertyAreaFilter');
       const priceFilter = document.getElementById('propertyPriceFilter');
-      const typeFilter = document.getElementById('propertyTypeBrowseFilter');
+      const typeFilterButtons = document.querySelectorAll('[data-property-type]');
       let selectedPurpose = 'all';
+      let selectedPropertyType = 'all';
       let allProperties = [];
       let visibleProperties = [];
       const cardImageIndices = {};
@@ -284,6 +292,17 @@
         return (purpose ? /rent|lease/.test(purpose) : /for rent|lease/.test(titleAndDescription)) ? 'For Rent / Lease' : 'For Sale';
       }
 
+      function matchesPropertyType(property) {
+        if (selectedPropertyType === 'all') return true;
+        const text = [property.propertyType, property.title, property.description].join(' ').toLowerCase();
+        if (selectedPropertyType === 'furnished') return /\bfurnished\b/.test(text) && !/\bunfurnished\b|\bun furnished\b/.test(text);
+        if (selectedPropertyType === 'unfurnished') return /\bunfurnished\b|\bun furnished\b|\bnot furnished\b/.test(text);
+        if (selectedPropertyType === 'land') return /\bland\b|\bplots?\b/.test(text);
+        if (selectedPropertyType === 'block of flats') return /\bblock of flats?\b/.test(text);
+        const normalizedText = text.replace(/[-_/]+/g, ' ').replace(/\s+/g, ' ');
+        return normalizedText.includes(selectedPropertyType);
+      }
+
       function parsePrice(value) {
         if (typeof value === 'number') return value;
         const text = String(value || '').toLowerCase().replace(/,/g, '').trim();
@@ -316,7 +335,6 @@
       function applyPropertyFilters() {
         const selectedState = stateFilter.value;
         const selectedArea = areaFilter.value;
-        const selectedType = typeFilter.value.toLowerCase();
         const [minPrice, maxPrice] = priceFilter.value === 'all' ? [null, null] : priceFilter.value.split('-').map(Number);
         const filtered = allProperties.filter(property => {
           const place = propertyPlace(property);
@@ -325,7 +343,7 @@
           return (selectedPurpose === 'all' || (selectedPurpose === 'rent' ? isRent : !isRent)) &&
             (selectedState === 'all' || place.state.toLowerCase() === selectedState.toLowerCase()) &&
             (selectedArea === 'all' || place.area.toLowerCase() === selectedArea.toLowerCase()) &&
-            (selectedType === 'all' || String(property.propertyType || '').toLowerCase().includes(selectedType)) &&
+            matchesPropertyType(property) &&
             (minPrice === null || (value !== null && value >= minPrice && value <= maxPrice));
         });
         renderProperties(filtered);
@@ -640,7 +658,15 @@ Please share title documents and schedule an inspection.`;
       stateFilter.addEventListener('change', () => { updateAreaOptions(); applyPropertyFilters(); });
       areaFilter.addEventListener('change', applyPropertyFilters);
       priceFilter.addEventListener('change', applyPropertyFilters);
-      typeFilter.addEventListener('change', applyPropertyFilters);
+      typeFilterButtons.forEach(button => button.addEventListener('click', () => {
+        typeFilterButtons.forEach(item => {
+          const active = item === button;
+          item.classList.toggle('active', active);
+          item.setAttribute('aria-pressed', String(active));
+        });
+        selectedPropertyType = button.dataset.propertyType;
+        applyPropertyFilters();
+      }));
     })();
   </script>
 </body>
