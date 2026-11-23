@@ -2096,10 +2096,6 @@ textarea.form-control {
 .trust-number,.service-no { color: var(--brand-500); font-size: .73rem; font-weight: 700; letter-spacing: .1em; }
 .trust-point h3 { margin: 1.1rem 0 .5rem; color: #172b3f; font-size: 1.05rem; letter-spacing: -.035em; }
 .trust-point p { color: #56645A; font-size: .87rem; line-height: 1.65; }
-.home-impact { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem; margin-top: 3.3rem; padding-top: 1.35rem; border-top: 1px solid #e3e2dc; }
-.home-impact > div { display: flex; align-items: baseline; gap: .65rem; }
-.home-impact strong { color: #172b3f; font-family: var(--font-heading); font-size: 1.4rem; letter-spacing: -.05em; }
-.home-impact span { color: #68756B; font-size: .78rem; }
 .home-services { padding: 5.8rem 0 5rem; background: #f7f6f2; }
 .home-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: 2.4rem; }
 .home-section-heading h2,.process-copy h2 { margin-top: .8rem; color: #172b3f; font-size: clamp(2.2rem,4vw,3.25rem); line-height: 1.12; letter-spacing: -.065em; }
@@ -2215,9 +2211,6 @@ textarea.form-control {
   .trust-point { padding: .15rem 0 0 1rem; }
   .trust-point h3 { margin: .4rem 0 .25rem; }
   .trust-point p { max-width: 420px; }
-  .home-impact { grid-template-columns: 1fr; gap: .75rem; margin-top: 2rem; padding-top: 1rem; }
-  .home-impact > div { justify-content: space-between; }
-  .home-impact strong { font-size: 1.25rem; }
   .home-section-heading { display: block; margin-bottom: 1.5rem; }
   .home-section-heading h2,.process-copy h2 { font-size: 2.45rem; }
   .home-section-heading > p { margin-top: .8rem; font-size: .9rem; }
