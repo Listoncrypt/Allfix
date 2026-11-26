@@ -1,5 +1,3 @@
-// ALLFIX Services Xpress — Customer Request Form Controller
-
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('serviceRequestForm');
   const checkbox = document.getElementById('clientTermsCheckbox');

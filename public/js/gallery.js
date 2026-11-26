@@ -1,7 +1,3 @@
-/**
- * ALLFIX Services Xpress — Vendor Handiwork & Completed Jobs Gallery Controller
- */
-
 (function () {
   'use strict';
 

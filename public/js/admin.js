@@ -361,9 +361,7 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
     }, 4500);
   }
 
-  // ==============================================================================
-  // Live Real-Time Background Synchronization Engine
-  // ==============================================================================
+  // Background synchronization
   let realtimeTimer = null;
   let lastStatsFingerprint = '';
   let knownRequestIds = new Set();
@@ -451,7 +449,6 @@ CREATE POLICY "Allow all on messages" ON public.messages FOR ALL USING (true) WI
       const badgeCount = document.getElementById('badgeRequestsCount');
       if (badgeCount) badgeCount.textContent = allRequests.length;
 
-      // Re-render requests view seamlessly without disturbing search input or closing modal
       renderFilteredRequests();
 
       // If modal is currently open and inspecting a request, refresh its details if modified

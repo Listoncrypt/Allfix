@@ -1,5 +1,3 @@
-// ALLFIX Services Xpress — Asset Marketing Controller (Properties & Vehicles)
-
 document.addEventListener('DOMContentLoaded', () => {
   // Tabs
   const tabBtnProperty = document.getElementById('tabBtnProperty');
